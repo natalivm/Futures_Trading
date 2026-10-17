@@ -1,5 +1,9 @@
 import type { Direction, Observation, SetupId } from './rules';
 
+// Off while the site is public and the AI server isn't set up. When true, the
+// AI check buttons work and scheduled checks run.
+export const AI_ENABLED = false;
+
 // Mirrors worker/src/prompt.ts ANALYSIS_SCHEMA.
 export type Status = 'met' | 'not_met' | 'unclear';
 

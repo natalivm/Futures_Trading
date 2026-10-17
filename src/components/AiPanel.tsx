@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { estimateCost, type AiCheck, type AiSettings } from '../lib/ai';
+import { AI_ENABLED, estimateCost, type AiCheck, type AiSettings } from '../lib/ai';
 import { SETUPS } from '../lib/rules';
 import { streams } from '../lib/streams';
 
@@ -24,6 +24,22 @@ export default function AiPanel(p: Props) {
   const [editing, setEditing] = useState(false);
   const r = p.check?.result;
   const cost = estimateCost(p.check?.usage);
+
+  if (!AI_ENABLED) {
+    return (
+      <section className="ai off" aria-disabled="true">
+        <div className="ai-head">
+          <h3>AI check</h3>
+          <span className="muted small">Off</span>
+        </div>
+        <div className="ai-actions">
+          <button disabled>Share tab</button>
+          <button className="primary" disabled>Analyze now</button>
+        </div>
+        <p className="hint">Turned off for now. Nothing is sent and no auto checks run.</p>
+      </section>
+    );
+  }
 
   return (
     <section className="ai">

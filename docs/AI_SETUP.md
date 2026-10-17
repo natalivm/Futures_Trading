@@ -2,6 +2,8 @@
 
 The AI check sends snapshots of the live charts to Claude and gets back which Matrixchannel setup fits, what's missing, and buy / sell / wait. It needs three things: an Anthropic API key, a small Cloudflare server that keeps the key private, and the server's address entered in the site.
 
+> **Currently off.** The AI check is switched off in the site (`AI_ENABLED = false` in `src/lib/ai.ts`): its buttons are disabled and nothing is sent. Set it to `true` when the server below is set up.
+
 Total time: about 15 minutes. You never need to paste the key anywhere except the GitHub secrets page.
 
 ## 1. Anthropic API key

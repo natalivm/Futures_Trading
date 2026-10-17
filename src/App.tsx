@@ -6,7 +6,7 @@ import DecisionPanel, { type Draft } from './components/DecisionPanel';
 import LogView from './components/LogView';
 import RulesView from './components/RulesView';
 import {
-  checkStore, defaultAiSettings, dueSlot, nextSlot, requestAnalysis,
+  AI_ENABLED, checkStore, defaultAiSettings, dueSlot, nextSlot, requestAnalysis,
   type AiCheck, type AiSettings, type SnapshotImage,
 } from './lib/ai';
 import { TabCapture } from './lib/capture';
@@ -109,6 +109,7 @@ export default function App() {
   const go = (p: Page) => { location.hash = p; setPage(p); };
 
   const startSharing = async () => {
+    if (!AI_ENABLED) return false;
     try {
       if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
       await capture.current.start();
@@ -127,7 +128,7 @@ export default function App() {
   };
 
   const runCheck = useCallback(async (trigger: AiCheck['trigger'], slot?: string) => {
-    if (busyRef.current) return;
+    if (!AI_ENABLED || busyRef.current) return;
     const check: AiCheck = { id: crypto.randomUUID(), at: new Date().toISOString(), trigger, slot, views: [] };
     const fail = async (message: string) => {
       setAiError(message);
@@ -189,7 +190,7 @@ export default function App() {
   useEffect(() => {
     const id = setInterval(() => {
       setTick(t => t + 1);
-      if (!aiSettings.scheduleOn || !aiSettings.url) return;
+      if (!AI_ENABLED || !aiSettings.scheduleOn || !aiSettings.url) return;
       const slot = dueSlot(aiSettings.schedule, ranToday);
       if (!slot) return;
       setRanToday(r => ({ ...r, [slot]: new Date().toDateString() }));
