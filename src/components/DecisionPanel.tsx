@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import {
   FIELD_OPTIONS, SETUPS, evaluate, riskPlan, trendContext, verdict,
   type Direction, type ObsField, type Observation, type PlanInput, type SetupId,
@@ -24,11 +25,12 @@ interface Props {
   onDraft: (patch: Partial<Draft>) => void;
   onClear: () => void;
   onLog: (decision: Decision) => void;
+  top?: ReactNode;
 }
 
 const STATE_LABEL = { met: '✓', not: '✕', unknown: '?' } as const;
 
-export default function DecisionPanel({ timeframe, obs, context, draft, onObs, onDraft, onClear, onLog }: Props) {
+export default function DecisionPanel({ timeframe, obs, context, draft, onObs, onDraft, onClear, onLog, top }: Props) {
   const { direction, setup, full, plan } = draft;
   const ev = evaluate(obs, direction, setup, full);
   const rp = riskPlan(plan, direction);
@@ -39,6 +41,7 @@ export default function DecisionPanel({ timeframe, obs, context, draft, onObs, o
 
   return (
     <aside className="panel" aria-label="Trade decision">
+      {top}
       <div className="panel-head">
         <h2>Decide <span className="muted">· {timeframe}</span></h2>
         {timeframe === '5m' && (

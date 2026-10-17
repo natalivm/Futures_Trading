@@ -4,7 +4,7 @@ import type { Timeframe } from './streams';
 
 // Bump when the shape of a LogEntry changes so later indicator work can
 // migrate older records instead of guessing.
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export type Decision = 'took' | 'skipped' | 'watching';
 export type Result = 'open' | 'target' | 'stop' | 'manual' | 'not-taken';
@@ -31,6 +31,8 @@ export interface LogEntry {
   exitPrice: string;
   closedAt: string;
   note: string;
+  // v2: the AI check that was on screen when this was logged, if recent.
+  ai?: { checkId: string; verdict: string; setup: string; direction: string };
 }
 
 export function useStored<T>(key: string, initial: T): [T, (v: T | ((prev: T) => T)) => void] {
@@ -76,6 +78,7 @@ export function toCSV(entries: LogEntry[]): string {
     'checks_met', 'checks_not', 'checks_unknown', 'verdict',
     'entry', 'stop', 'target', 'costs', 'minRR', 'rr',
     'decision', 'result', 'exitPrice', 'closedAt', 'points', 'r', 'note',
+    'ai_check_id', 'ai_verdict', 'ai_setup', 'ai_direction',
   ];
   const esc = (v: unknown) => {
     const s = v == null ? '' : String(v);
@@ -90,6 +93,7 @@ export function toCSV(entries: LogEntry[]): string {
       e.checks.met, e.checks.not, e.checks.unknown, e.verdict,
       e.plan.entry, e.plan.stop, e.plan.target, e.plan.costs, e.plan.minRR, e.rr?.toFixed(3) ?? '',
       e.decision, e.result, e.exitPrice, e.closedAt, o?.points ?? '', o && Number.isFinite(o.r) ? o.r.toFixed(3) : '', e.note,
+      e.ai?.checkId, e.ai?.verdict, e.ai?.setup, e.ai?.direction,
     ].map(esc).join(',');
   });
   return [head.join(','), ...rows].join('\n');

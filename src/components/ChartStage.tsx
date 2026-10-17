@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { streams, streamURL } from '../lib/streams';
 
 interface Props {
@@ -8,9 +8,19 @@ interface Props {
   onToggleFocus: () => void;
 }
 
-export default function ChartStage({ active, onSelect, focus, onToggleFocus }: Props) {
+export interface ChartStageHandle {
+  player: () => HTMLElement | null;
+  /** Switch to a view and wait long enough for its stream to show a frame. */
+  show: (id: string) => Promise<void>;
+}
+
+const wait = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+export default forwardRef<ChartStageHandle, Props>(function ChartStage({ active, onSelect, focus, onToggleFocus }, ref) {
   // Streams stay mounted once opened so switching tabs is instant.
   const [loaded, setLoaded] = useState<Record<string, number>>({ [active]: 1 });
+  const loadedRef = useRef(loaded);
+  loadedRef.current = loaded;
   const stageRef = useRef<HTMLDivElement>(null);
   const current = streams.find(s => s.id === active) ?? streams[0];
 
@@ -18,6 +28,15 @@ export default function ChartStage({ active, onSelect, focus, onToggleFocus }: P
     setLoaded(l => (l[id] ? l : { ...l, [id]: 1 }));
     onSelect(id);
   };
+
+  useImperativeHandle(ref, () => ({
+    player: () => stageRef.current,
+    show: async (id: string) => {
+      const fresh = !loadedRef.current[id];
+      select(id);
+      await wait(fresh ? 8000 : 1500);
+    },
+  }));
   const reload = () => setLoaded(l => ({ ...l, [active]: (l[active] ?? 0) + 1 }));
   const fullscreen = () => {
     const el = stageRef.current;
@@ -76,4 +95,4 @@ export default function ChartStage({ active, onSelect, focus, onToggleFocus }: P
       </p>
     </section>
   );
-}
+});
