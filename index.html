@@ -3,66 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Word Search</title>
-    <meta name="description" content="A fun mobile word search game" />
-    <meta name="theme-color" content="#4f46e5" />
-    <link rel="icon" type="image/svg+xml" href="/BlueTile/favicon.svg" />
-    <link rel="manifest" href="/BlueTile/manifest.json" />
-    <link rel="apple-touch-icon" href="/BlueTile/icons/icon-192.png" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="BlueTile" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <style>
-      #splash {
-        position: fixed;
-        inset: 0;
-        z-index: 9999;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        background: #ffffff;
-        transition: opacity 0.4s ease, visibility 0.4s ease;
-      }
-      #splash.hidden {
-        opacity: 0;
-        visibility: hidden;
-      }
-      #splash-logo {
-        font-family: 'Inter', sans-serif;
-        font-size: 2rem;
-        font-weight: 800;
-        letter-spacing: -0.03em;
-        color: #4f46e5;
-        opacity: 0;
-        transform: translateY(8px);
-        animation: splash-in 0.6s ease forwards;
-      }
-      #splash-dot {
-        width: 4px;
-        height: 4px;
-        border-radius: 50%;
-        background: #818cf8;
-        margin-top: 1.2rem;
-        animation: pulse 1s ease-in-out infinite;
-      }
-      @keyframes splash-in {
-        to { opacity: 1; transform: translateY(0); }
-      }
-      @keyframes pulse {
-        0%, 100% { opacity: 0.3; transform: scale(1); }
-        50% { opacity: 1; transform: scale(2.5); }
-      }
-    </style>
+    <title>Futures Trading</title>
+    <link rel="icon" type="image/svg+xml" href="/Futures_Trading/favicon.svg" />
   </head>
   <body>
-    <div id="splash">
-      <div id="splash-logo">Word Search</div>
-      <div id="splash-dot"></div>
-    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main, claude/refactor-mobile-app-BrIZ8]
+    branches: [main]
 
 permissions:
   contents: read

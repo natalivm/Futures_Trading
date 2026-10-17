@@ -1,6 +1,6 @@
-# BlueTile - Employee Directory
+# Futures Trading
 
-A fun, modern employee directory with badges, birthday celebrations, and work anniversary effects.
+React + TypeScript + Vite site, deployed to GitHub Pages on every push to `main`.
 
 ## Getting Started
 
@@ -8,7 +8,3 @@ A fun, modern employee directory with badges, birthday celebrations, and work an
 npm install
 npm run dev
 ```
-
-## Adding Employee Photos
-
-Place photos in `public/photos/` and reference them as `/photos/filename.jpg` in the employee data.
