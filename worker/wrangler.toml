@@ -1,0 +1,11 @@
+name = "futures-desk-ai"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+[vars]
+ALLOWED_ORIGINS = "https://natalivm.github.io,http://localhost:5173,http://localhost:4173"
+MODEL = "claude-opus-5-5"
+EFFORT = "high"
+
+# Secrets (set in GitHub repo secrets; the deploy workflow uploads them):
+#   ANTHROPIC_API_KEY, ACCESS_KEY

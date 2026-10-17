@@ -898,3 +898,254 @@ td input.note {
     flex: 1;
   }
 }
+
+/* AI check */
+.ai {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ai > * {
+  flex-shrink: 0;
+}
+
+.ai-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ai-head h3 {
+  font-size: 14px;
+}
+
+.small-btn {
+  font-size: 12px;
+  padding: 3px 8px;
+}
+
+.ai-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 6px;
+}
+
+.sharing {
+  color: var(--buy);
+  border-color: var(--buy);
+}
+
+.warn-text {
+  color: var(--warn);
+}
+
+.ai-busy {
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.ai-error {
+  font-size: 12px;
+  color: var(--sell);
+}
+
+.ai-result {
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--warn);
+  padding: 9px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.ai-result.buy { border-left-color: var(--buy); }
+.ai-result.sell { border-left-color: var(--sell); }
+
+.ai-verdict {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.ai-verdict strong {
+  font-size: 17px;
+}
+
+.ai-result.buy .ai-verdict strong { color: var(--buy); }
+.ai-result.sell .ai-verdict strong { color: var(--sell); }
+.ai-result.wait .ai-verdict strong { color: var(--warn); }
+
+.ai-verdict time {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.ai-reason {
+  color: var(--muted);
+}
+
+.ai-reason strong {
+  color: var(--text);
+}
+
+.levels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.level {
+  font-size: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1px 6px;
+  cursor: help;
+}
+
+.level small {
+  color: var(--muted);
+}
+
+.level.support { border-color: rgba(34, 197, 94, 0.5); }
+.level.resistance { border-color: rgba(240, 82, 82, 0.5); }
+.level.cluster { border-color: rgba(245, 185, 69, 0.6); }
+
+.ai-result details summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-size: 12px;
+}
+
+.ai-result details[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ai-setup {
+  border-top: 1px solid var(--border);
+  padding-top: 6px;
+}
+
+.ai-setup-head {
+  display: flex;
+  justify-content: space-between;
+}
+
+.ai-setup ul {
+  list-style: none;
+  margin: 4px 0;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ai-setup li span {
+  font-weight: 800;
+}
+
+.ai-setup li.met span { color: var(--buy); }
+.ai-setup li.not_met span { color: var(--sell); }
+.ai-setup li.unclear span { color: var(--warn); }
+
+.ai-setup em {
+  color: var(--muted);
+  font-style: normal;
+}
+
+.fit {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.fit.complete { color: var(--buy); }
+.fit.partial { color: var(--warn); }
+.fit.poor { color: var(--muted); }
+
+.ai-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.top-status {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: grid;
+  place-items: center;
+  z-index: 30;
+  padding: 16px;
+}
+
+.modal-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  width: min(460px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modal-card.wide {
+  width: min(1100px, 100%);
+}
+
+.modal-card label:not(.switch) {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.modal-card .row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.modal-card .row.end {
+  justify-content: flex-end;
+}
+
+.modal-card figure img {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.ai-history {
+  margin-top: 36px;
+}
+
+.ai-history h2 {
+  margin: 0 0 4px;
+}
+
+.summary-cell {
+  min-width: 280px;
+  font-size: 12px;
+  color: var(--muted);
+}
