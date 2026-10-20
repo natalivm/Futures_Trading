@@ -1,0 +1,174 @@
+//@version=6
+// Scalp Levels — rebuilt from observed behaviour (not the original source).
+// Paste the published levels per ticker (or use the experimental auto formula).
+// The ARB box lives in the A+ Dashboard indicator.
+indicator("Scalp Levels (clone)", "Scalp Lvls", overlay = true, max_lines_count = 100, max_labels_count = 200)
+
+// ───────────── Inputs ─────────────
+const string GRP_LV  = "Levels"
+const string GRP_AU  = "Auto levels (experimental)"
+const string GRP_REJ = "Rejections"
+
+const string M_MANUAL   = "Manual (pasted)"
+const string M_FALLBACK = "Manual, auto if ticker missing"
+const string M_AUTO     = "Auto (experimental)"
+
+levelMode  = input.string(M_MANUAL, "Levels source", options = [M_MANUAL, M_FALLBACK, M_AUTO], group = GRP_LV, display = display.none)
+levelsText = input.text_area("META: 733.63, 737.53, 741.62, 747.60 | 727.96, 723.72, 719.63, 713.19", "Pasted levels", tooltip = "Either format works, and you can mix them.\n\n1) The original's own string, pasted as is:\nSPY|Breakout|780.75,782.16,783.29,785.39;SPY|Breakdown|778.07,776.43,775.3,774.15;TSLA|Breakout|...\n\n2) One ticker per line:\nTICKER: bull levels | bear levels\n\nSpaces are ignored; NASDAQ:META also works.", group = GRP_LV, display = display.none)
+bullColor  = input.color(#00e676, "▲ Bull", group = GRP_LV, inline = "col", display = display.none)
+bearColor  = input.color(#ff7043, "▼ Bear", group = GRP_LV, inline = "col", display = display.none)
+lineWidth  = input.int(1, "Line width", minval = 1, maxval = 4, group = GRP_LV, display = display.none)
+labelShift = input.int(12, "Price labels: bars right of last bar", minval = 0, maxval = 200, group = GRP_LV, display = display.none)
+alertCross = input.bool(true, "alert() when a bar closes across a level", group = GRP_LV, display = display.none)
+
+autoLen = input.int(9, "Center = daily EMA length", minval = 1, group = GRP_AU, display = display.none)
+autoM1  = input.float(0.100, "Step 1 × prior-day range", step = 0.001, group = GRP_AU, display = display.none)
+autoM2  = input.float(0.236, "Step 2 × prior-day range", step = 0.001, group = GRP_AU, display = display.none)
+autoM3  = input.float(0.382, "Step 3 × prior-day range", step = 0.001, group = GRP_AU, display = display.none)
+autoM4  = input.float(0.618, "Step 4 × prior-day range", step = 0.001, group = GRP_AU, display = display.none)
+
+rejMode  = input.string("Latest only", "Show", options = ["Latest only", "All today", "Off"], group = GRP_REJ, display = display.none)
+rejColor = input.color(#ffb300, "Marker color", group = GRP_REJ, display = display.none)
+
+// ───────────── Pasted levels ─────────────
+parseSide(string s) =>
+    array<float> out = array.new<float>()
+    for tok in str.split(s, ",")
+        float v = str.tonumber(tok)
+        if not na(v)
+            out.push(v)
+    out
+
+var array<float> manBull = array.new<float>()
+var array<float> manBear = array.new<float>()
+if barstate.isfirst
+    string clean = str.upper(str.replace_all(str.replace_all(str.replace_all(levelsText, " ", ""), "\r", ""), "\t", ""))
+    string me    = str.upper(syminfo.ticker)
+    // one record per line, or ";"-separated like the original's own input
+    for ln in str.split(str.replace_all(clean, ";", "\n"), "\n")
+        array<string> f = str.split(ln, "|")
+        if f.size() == 3 and (f.get(1) == "BREAKOUT" or f.get(1) == "BREAKDOWN")
+            // the original's format: SPY|Breakout|780.75,782.16,... and SPY|Breakdown|778.07,776.43,...
+            array<string> tk = str.split(f.get(0), ":")
+            if tk.size() > 0 and tk.get(tk.size() - 1) == me
+                if f.get(1) == "BREAKOUT"
+                    manBull := parseSide(f.get(2))
+                else
+                    manBear := parseSide(f.get(2))
+        else
+            array<string> parts = str.split(ln, ":")
+            int n = parts.size()
+            // last two pieces are TICKER and the data, so "NASDAQ:META: ..." works too
+            if n >= 2 and parts.get(n - 2) == me
+                array<string> sides = str.split(parts.get(n - 1), "|")
+                if sides.size() > 0
+                    manBull := parseSide(sides.get(0))
+                if sides.size() > 1
+                    manBear := parseSide(sides.get(1))
+bool hasManual = manBull.size() + manBear.size() > 0
+
+// ───────────── Session start ─────────────
+bool newDay = timeframe.change("D")
+var bool sawRegular = false
+if session.isfirstbar_regular
+    sawRegular := true
+bool dayStarts = session.isfirstbar_regular or (not sawRegular and newDay)
+var int dayStartBar = na
+if dayStarts
+    dayStartBar := bar_index
+
+// ───────────── Auto levels (guess — see README) ─────────────
+// Lead: on META the two inner levels sit symmetrically around the daily 9 EMA.
+// Built from the last FINISHED day: pre-market today's daily bar doesn't exist yet, so that's the latest one.
+autoDaily() =>
+    float e = ta.ema(close, autoLen)
+    [time_tradingday, e, high, low, e[1], high[1], low[1]]
+
+[aDay, aE0, aH0, aL0, aE1, aH1, aL1] = request.security(syminfo.tickerid, "D", autoDaily(), lookahead = barmerge.lookahead_on)
+bool  aLatest = aDay != time_tradingday
+float dEma    = aLatest ? aE0 : aE1
+float dHigh   = aLatest ? aH0 : aH1
+float dLow    = aLatest ? aL0 : aL1
+
+autoSide(float center, float rng, float dir) =>
+    array<float> out = array.new<float>()
+    if not na(center) and not na(rng)
+        for m in array.from(autoM1, autoM2, autoM3, autoM4)
+            out.push(math.round_to_mintick(center + dir * m * rng))
+    out
+
+// levels change at most once a day, so the arrays are rebuilt then rather than on every bar
+bool useAuto = levelMode == M_AUTO or (levelMode == M_FALLBACK and not hasManual)
+var array<float> bulls = array.new<float>()
+var array<float> bears = array.new<float>()
+var array<float> allLv = array.new<float>()
+bool lvChanged = false
+if barstate.isfirst or (useAuto and (newDay or (allLv.size() == 0 and not na(dEma))))
+    bulls := useAuto ? autoSide(dEma, dHigh - dLow, 1.0) : manBull
+    bears := useAuto ? autoSide(dEma, dHigh - dLow, -1.0) : manBear
+    allLv := bulls.copy()
+    allLv.concat(bears)
+    lvChanged := true
+
+// ───────────── Level lines (built once per level set, then only moved) ─────────────
+var array<line>  lvLines  = array.new<line>()
+var array<label> lvLabels = array.new<label>()
+var bool needDraw = true
+if lvChanged
+    needDraw := true
+
+drawLevels(array<float> lv, color col, string arrow, int x1, int x2) =>
+    for v in lv
+        lvLines.push(line.new(x1, v, x2, v, color = col, width = lineWidth))
+        lvLabels.push(label.new(x2, v, arrow + " " + str.tostring(v, format.mintick), style = label.style_label_left, color = color.new(col, 82), textcolor = col, size = size.small))
+
+var table note = table.new(position.bottom_right, 1, 1)
+if barstate.islast and timeframe.isintraday
+    int x1 = na(dayStartBar) ? math.max(bar_index - 100, 0) : dayStartBar
+    int x2 = bar_index + labelShift
+    if needDraw
+        for l in lvLines
+            l.delete()
+        lvLines.clear()
+        for lb in lvLabels
+            lb.delete()
+        lvLabels.clear()
+        drawLevels(bulls, bullColor, "▲", x1, x2)
+        drawLevels(bears, bearColor, "▼", x1, x2)
+        needDraw := false
+        if allLv.size() == 0
+            table.cell(note, 0, 0, "No levels for " + syminfo.ticker + " — paste them in settings", text_color = color.gray, text_size = size.small)
+        else
+            table.clear(note, 0, 0)
+    else
+        for l in lvLines
+            l.set_x1(x1)
+            l.set_x2(x2)
+        for lb in lvLabels
+            lb.set_x(x2)
+
+// ───────────── Rejections ─────────────
+// Buy rejection = wick pokes above a level from below and closes back under it (and vice versa).
+// Reproduces the "Buy Rejection at 713.19" marker on META 16 Oct (13:35 on 5m, 13:30 on 15m).
+var array<label> rejLabels = array.new<label>()
+if dayStarts
+    for lb in rejLabels
+        lb.delete()
+    rejLabels.clear()
+
+if timeframe.isintraday and barstate.isconfirmed
+    for v in allLv
+        bool buyRej  = high > v and close < v and close[1] < v
+        bool sellRej = low < v and close > v and close[1] > v
+        if rejMode != "Off" and (buyRej or sellRej)
+            string txt = (buyRej ? "Buy Rejection at " : "Sell Rejection at ") + str.tostring(v, format.mintick)
+            if rejMode == "Latest only"
+                for lb in rejLabels
+                    lb.delete()
+                rejLabels.clear()
+            rejLabels.push(label.new(bar_index, 0, "⚠", yloc = buyRej ? yloc.belowbar : yloc.abovebar, style = label.style_none, textcolor = rejColor, size = size.normal, tooltip = txt))
+            alert(syminfo.ticker + " " + txt, alert.freq_once_per_bar_close)
+        if alertCross and close[1] <= v and close > v
+            alert(syminfo.ticker + " closed above " + str.tostring(v, format.mintick), alert.freq_once_per_bar_close)
+        if alertCross and close[1] >= v and close < v
+            alert(syminfo.ticker + " closed below " + str.tostring(v, format.mintick), alert.freq_once_per_bar_close)
