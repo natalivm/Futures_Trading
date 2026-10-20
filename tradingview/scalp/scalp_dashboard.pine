@@ -1,0 +1,495 @@
+//@version=6
+// A+ Scalp Dashboard + ORB/ARB — rebuilt from observed behaviour (not the original source).
+// Every row matches 24 screenshots of the original (12 stocks, 5m to 4h: after the close, pre-market and live); see README.
+// Row 1 follows the day: "Waiting for open" pre-market → ORB (opening range) → ARB (13:30–15:00 ET afternoon range).
+indicator("A+ Scalp Dashboard + ORB/ARB (clone)", "A+ Dash", overlay = true, max_lines_count = 20, max_labels_count = 30, max_boxes_count = 6)
+
+const int OPEN_MIN   = 9 * 60 + 30   // regular-session open, minutes after midnight in the range timezone
+const int MS_PER_MIN = 60000
+
+// ───────────── Inputs ─────────────
+const string GRP_R = "Rules"
+const string GRP_A = "Opening & afternoon ranges"
+const string GRP_P = "Previous day & pre-market levels"
+const string GRP_E = "200 EMA"
+const string GRP_D = "Display"
+
+emaLen      = input.int(9, "EMA for 2-candle rule", minval = 1, group = GRP_R, display = display.none)
+vwSrcS      = input.string("Close", "VWAP source", options = ["Close", "HLC3"], tooltip = "MU pre-market: the original's VWAP matched a close-based VWAP (910.02 vs 909.87); hlc3 gave 906.84.", group = GRP_R, display = display.none)
+rsiLen      = input.int(14, "RSI length", minval = 1, group = GRP_R, display = display.none)
+rsiHi       = input.float(60, "RSI strength above", group = GRP_R, display = display.none)
+rsiLo       = input.float(40, "RSI weakness below", group = GRP_R, display = display.none)
+streakMin   = input.int(2, "Daily trend: min streak of higher/lower closes", minval = 1, group = GRP_R, display = display.none)
+trendMinPct = input.float(0.5, "Daily trend: a day counts if it closed at least this % up/down", minval = 0, step = 0.05, group = GRP_R, display = display.none)
+
+rangeTfIn  = input.timeframe("5", "Range candle timeframe", options = ["1", "2", "3", "5"], tooltip = "5 min or finer, so a 5-minute opening range is always exact.", group = GRP_A, display = display.none)
+orbLenS    = input.string("5 min", "Opening range length", options = ["5 min", "15 min", "30 min"], group = GRP_A, display = display.none)
+arbSess    = input.session("1330-1500", "Afternoon range window", group = GRP_A, display = display.none)
+rangeTz    = input.string("America/New_York", "Timezone", group = GRP_A, display = display.none)
+showRanges = input.bool(true, "Draw ORB / ARB boxes", group = GRP_A, display = display.none)
+orbColor   = input.color(#ffd600, "ORB color", group = GRP_A, inline = "rc", display = display.none)
+arbColor   = input.color(#ffd600, "ARB color", group = GRP_A, inline = "rc", display = display.none)
+
+prevMode  = input.string("Recently touched", "Show", options = ["Recently touched", "Always", "Off"], group = GRP_P, display = display.none)
+prevMins  = input.int(120, "Recently = traded through it within the last N minutes", minval = 1, group = GRP_P, display = display.none)
+prevHiCol = input.color(#ff5252, "PrevD High", group = GRP_P, inline = "pd", display = display.none)
+prevLoCol = input.color(#00e676, "PrevD Low", group = GRP_P, inline = "pd", display = display.none)
+showPm    = input.bool(true, "Pre-market high / low", group = GRP_P, display = display.none)
+pmWhen    = input.string("Before the open", "Pre-market lines shown", options = ["Before the open", "All day"], tooltip = "MU and AMD showed PreM High before the open; NVDA at 12:25 did not, although price was trading at it.", group = GRP_P, display = display.none)
+pmColor   = input.color(#ff5252, "Pre-market color", group = GRP_P, display = display.none)
+
+showFace  = input.bool(true, "Mark the 200 EMA when price is near it", group = GRP_E, display = display.none)
+faceNear  = input.float(1.0, "Only when within % of price", minval = 0, step = 0.1, group = GRP_E, display = display.none)
+faceEmoji = input.string("😡", "Marker when below", group = GRP_E, inline = "fe", display = display.none)
+faceUpEmo = input.string("😇", "above", group = GRP_E, inline = "fe", display = display.none)
+
+// each line has a solid and a dotted plot, like the original's Style tab; this picks which one draws
+const string L_SOLID  = "Solid"
+const string L_DOTTED = "Dotted"
+const string L_OFF    = "Off"
+vwLine   = input.string(L_SOLID, "VWAP", options = [L_SOLID, L_DOTTED, L_OFF], group = GRP_D, display = display.none)
+e5Line   = input.string(L_SOLID, "5 EMA (Fastest)", options = [L_SOLID, L_DOTTED, L_OFF], group = GRP_D, display = display.none)
+e9Line   = input.string(L_SOLID, "9 EMA (Fast)", options = [L_SOLID, L_DOTTED, L_OFF], group = GRP_D, display = display.none)
+e20Line  = input.string(L_OFF, "20 EMA (Slow)", options = [L_SOLID, L_DOTTED, L_OFF], group = GRP_D, display = display.none)
+e200Line = input.string(L_OFF, "200 EMA", options = [L_SOLID, L_DOTTED, L_OFF], group = GRP_D, display = display.none)
+tblPosS  = input.string("Top right", "Table position", options = ["Top right", "Top center", "Top left", "Middle right", "Bottom right", "Bottom left"], group = GRP_D, display = display.none)
+tblSizeS = input.string("Normal", "Text size", options = ["Tiny", "Small", "Normal", "Large"], group = GRP_D, display = display.none)
+
+int    orbMins = orbLenS == "5 min" ? 5 : orbLenS == "15 min" ? 15 : 30
+string orbSess = orbLenS == "5 min" ? "0930-0935" : orbLenS == "15 min" ? "0930-0945" : "0930-1000"
+
+// ───────────── Day boundaries ─────────────
+bool newDay = timeframe.change("D")
+var int dayStartBar  = na
+var int prevStartBar = na
+var int dayStartT    = na
+if newDay
+    prevStartBar := dayStartBar
+    dayStartBar  := bar_index
+    dayStartT    := time
+
+// ───────────── Opening and afternoon ranges ─────────────
+// Built from the finer of chart TF and the range TF, so boxes and the dashboard row always share one range.
+bool   chartFiner = timeframe.in_seconds(timeframe.period) < timeframe.in_seconds(rangeTfIn)
+// daily+ charts draw none of this, so keep their requests on the chart TF instead of pulling 5m history
+string rangeTf    = chartFiner or not timeframe.isintraday ? timeframe.period : rangeTfIn
+string fastTf     = timeframe.isintraday ? rangeTfIn : timeframe.period
+
+rangeCalc(string sess) =>
+    bool inW = not na(time(timeframe.period, sess, rangeTz))
+    var float runHi  = na
+    var float runLo  = na
+    var float doneHi = na
+    var float doneLo = na
+    var int   doneT  = na
+    if inW and not inW[1]
+        runHi := high
+        runLo := low
+    else if inW
+        runHi := math.max(runHi, high)
+        runLo := math.min(runLo, low)
+    if not inW and inW[1]
+        doneHi := runHi
+        doneLo := runLo
+        doneT  := time
+    // while the window is open the range is the FINISHED candles only, so the live candle can cross it
+    // (TSLA Mon 14:58 ET: live wick above the 369.37 box top → "Crossing above range" before the window closed)
+    float shutHi = inW and inW[1] ? runHi[1] : runHi
+    float shutLo = inW and inW[1] ? runLo[1] : runLo
+    [doneHi, doneLo, inW, shutHi, shutLo, doneT]
+
+bothRanges() =>
+    [a1, a2, a3, a4, a5, a6] = rangeCalc(orbSess)
+    [b1, b2, b3, b4, b5, b6] = rangeCalc(arbSess)
+    [a1, a2, a3, a4, a5, a6, b1, b2, b3, b4, b5, b6]
+
+[orbHi, orbLo, orbForming, orbSoFarHi, orbSoFarLo, orbDoneT, arbHi, arbLo, arbForming, arbSoFarHi, arbSoFarLo, arbDoneT] = request.security(syminfo.tickerid, rangeTf, bothRanges())
+
+// ───────────── 1: ORB / ARB state ─────────────
+// Pre-market → "Waiting for open" (MU, Mon 19 Oct 08:24). After the open → ORB; once today's ARB is done → ARB.
+// Current 5m candle trading beyond the range (wick or price) = "Crossing"; live price AND the last CLOSED
+// 5m candle both outside = "GO". Only GO counts in the footer.
+// Two or more closed 5m candles outside = "Breakout ↑ held" (plain cell); both GO and held count.
+// TSLA: 15:50 closed above, 15:45 inside → "BREAKOUT ↑ GO". NVDA Mon: closed above since 10:20 → "Breakout ↑ held".
+// MSFT: 15:50 closed inside → "Crossing above range". HPE / CRDO: back inside, but the candle wicked through → "Crossing".
+int  nowMin       = hour(timenow, rangeTz) * 60 + minute(timenow, rangeTz)
+int  nowDow       = dayofweek(timenow, rangeTz)
+bool nowWeekday   = nowDow != dayofweek.saturday and nowDow != dayofweek.sunday
+// regular-hours charts have no pre-market bars, so use the wall clock on a weekday morning
+bool clockPreOpen = barstate.islast and nowWeekday and dayofmonth(timenow, rangeTz) != dayofmonth(time, rangeTz) and nowMin < OPEN_MIN
+bool orbToday     = not na(orbDoneT) and orbDoneT >= dayStartT
+bool arbToday     = not na(arbDoneT) and arbDoneT >= dayStartT
+bool rangeToday   = orbToday or orbForming or arbToday
+// before 9:30 ET with no range yet today; also covers 24h symbols, where nothing flags pre-market
+bool beforeOpen   = hour(time, rangeTz) * 60 + minute(time, rangeTz) < OPEN_MIN
+bool waiting      = clockPreOpen or (not rangeToday and beforeOpen)
+// the afternoon range takes over as soon as its window opens: META Mon 14:55 ET showed "ARB 5m: Inside range"
+// while the 13:30–15:00 box was still forming, with the opening range already gone
+int  rowMode      = waiting ? 0 : (arbToday or arbForming) ? 2 : (orbToday or orbForming) ? 1 : not na(arbHi) ? 2 : 1
+
+// chart finer than 5m: the last two closed 5m candles via the non-repainting [1]/[2] + lookahead pattern
+[fastC1Htf, fastC2Htf] = request.security(syminfo.tickerid, fastTf, [close[1], close[2]], lookahead = barmerge.lookahead_on)
+// chart at 5m or coarser: the latest 5m candle inside the chart bar
+[fastC1Ltf, fastC2Ltf, fastH0, fastL0] = request.security(syminfo.tickerid, fastTf, [close[1], close[2], high, low])
+// on a finer chart, track the current 5m candle's own high/low; a 1m bar alone would miss earlier wicks
+var float curFastHi = na
+var float curFastLo = na
+bool newFast = timeframe.change(fastTf)
+curFastHi := newFast or na(curFastHi) ? high : math.max(curFastHi, high)
+curFastLo := newFast or na(curFastLo) ? low : math.min(curFastLo, low)
+float fastC1 = chartFiner ? fastC1Htf : fastC1Ltf
+float fastC2 = chartFiner ? fastC2Htf : fastC2Ltf
+float fastHi = chartFiner ? curFastHi : fastH0
+float fastLo = chartFiner ? curFastLo : fastL0
+
+// while a window is still open, its high/low so far is the range (shown as a normal range, not "forming")
+float rHi      = rowMode == 2 ? (arbForming ? arbSoFarHi : arbHi) : (orbForming ? orbSoFarHi : orbHi)
+float rLo      = rowMode == 2 ? (arbForming ? arbSoFarLo : arbLo) : (orbForming ? orbSoFarLo : orbLo)
+bool  rReady   = rowMode != 0 and not na(rHi)
+bool upGo      = rReady and close > rHi and fastC1 > rHi
+bool dnGo      = rReady and close < rLo and fastC1 < rLo
+bool upHeld    = upGo and fastC2 > rHi
+bool dnHeld    = dnGo and fastC2 < rLo
+bool upCross   = rReady and (close > rHi or fastHi > rHi)
+bool dnCross   = rReady and (close < rLo or fastLo < rLo)
+int rowDir     = upGo ? 1 : dnGo ? -1 : 0
+int rowSide    = rowDir != 0 ? rowDir : upCross and (not dnCross or close >= (rHi + rLo) / 2) ? 1 : dnCross ? -1 : 0
+
+// ───────────── 2: 2-candle EMA (chart timeframe) ─────────────
+// Live price picks the side; the last two CLOSED candles on that side make it "held".
+float emaRule  = ta.ema(close, emaLen)
+bool liveAbove = close > emaRule
+bool c1Above   = close[1] > emaRule[1]
+bool c2Above   = close[2] > emaRule[2]
+int emaDir = liveAbove and c1Above and c2Above ? 1 : not liveAbove and not c1Above and not c2Above ? -1 : 0
+
+// ───────────── 3: VWAP (chart timeframe, live price) ─────────────
+float vwap = ta.vwap(vwSrcS == "Close" ? close : hlc3)
+int vwDir = close > vwap ? 1 : close < vwap ? -1 : 0
+
+// ───────────── 4: RSI of the last closed bar ─────────────
+float rsiNow = ta.rsi(close, rsiLen)
+float rsiC   = rsiNow[1]
+int rsiDir = rsiC > rsiHi ? 1 : rsiC < rsiLo ? -1 : 0
+
+// ───────────── 5: Daily trend = streak of decisive daily closes (completed days) ─────────────
+// A day only counts if it closed at least ~0.5% beyond the previous close; anything from 0.42% to 0.74% fits all 10 tickers.
+// TSLA/HPE: 4 such down days → "4 days trending down"; NVDA: 2 → "2 days trending down".
+// META (last day −0.11%) and CRDO (last day −0.41%) → streak resets → "Mixed, no confirm".
+dailyInfo() =>
+    var int s = 0
+    float chg = (close - close[1]) / close[1] * 100
+    s := chg >= trendMinPct ? math.max(s, 0) + 1 : chg <= -trendMinPct ? math.min(s, 0) - 1 : 0
+    [time_tradingday, s, s[1], high, low, high[1], low[1]]
+
+// Use the last FINISHED day. In the session that's the daily bar before today's; pre-market, today's daily bar
+// doesn't exist yet, so the latest one (Friday on a Monday) is already finished. AMD Mon pre-market: 3 days down.
+[dDay, dS0, dS1, dH0, dL0, dH1, dL1] = request.security(syminfo.tickerid, "D", dailyInfo(), lookahead = barmerge.lookahead_on)
+// a regular-hours chart before the open still ends on yesterday's bar, but that day is finished too
+bool  dUseLatest = dDay != time_tradingday or clockPreOpen
+int   streak     = dUseLatest ? dS0 : dS1
+float pdHigh     = dUseLatest ? dH0 : dH1
+float pdLow      = dUseLatest ? dL0 : dL1
+int dayDir = streak >= streakMin ? 1 : streak <= -streakMin ? -1 : 0
+
+// ───────────── Score: rows 1–4 (TSLA's "2 of 4 short" rules out counting row 5) ─────────────
+int longN  = (rowDir == 1 ? 1 : 0) + (emaDir == 1 ? 1 : 0) + (vwDir == 1 ? 1 : 0) + (rsiDir == 1 ? 1 : 0)
+int shortN = (rowDir == -1 ? 1 : 0) + (emaDir == -1 ? 1 : 0) + (vwDir == -1 ? 1 : 0) + (rsiDir == -1 ? 1 : 0)
+bool all4L  = longN == 4
+bool all4S  = shortN == 4
+
+alertcondition(barstate.isconfirmed and all4L and not all4L[1], "4 of 4 long", "{{ticker}} {{interval}}: all 4 dashboard rows long at {{close}}")
+alertcondition(barstate.isconfirmed and all4S and not all4S[1], "4 of 4 short", "{{ticker}} {{interval}}: all 4 dashboard rows short at {{close}}")
+alertcondition(barstate.isconfirmed and rowDir == 1 and rowDir[1] != 1, "Range breakout ↑ GO", "{{ticker}}: ORB/ARB breakout up at {{close}}")
+alertcondition(barstate.isconfirmed and rowDir == -1 and rowDir[1] != -1, "Range breakdown ↓ GO", "{{ticker}}: ORB/ARB breakdown at {{close}}")
+
+// ───────────── ORB / ARB boxes ─────────────
+type RangeDraw
+    box   bx
+    line  hi
+    line  lo
+    label hiL
+    label loL
+
+method wipe(RangeDraw this) =>
+    this.bx.delete()
+    this.hi.delete()
+    this.lo.delete()
+    this.hiL.delete()
+    this.loL.delete()
+    this.bx := na
+
+method begin(RangeDraw this, float hiV, float loV, color col) =>
+    this.wipe()
+    this.bx  := box.new(bar_index, hiV, bar_index, loV, border_color = color.new(col, 85), bgcolor = color.new(color.white, 92))
+    this.hi  := line.new(bar_index, hiV, bar_index, hiV, color = col, width = 2)
+    this.lo  := line.new(bar_index, loV, bar_index, loV, color = col, width = 2)
+    this.hiL := label.new(bar_index, hiV, "", style = label.style_label_left, color = col, textcolor = color.black, size = size.small)
+    this.loL := label.new(bar_index, loV, "", style = label.style_label_left, color = col, textcolor = color.black, size = size.small)
+
+method refresh(RangeDraw this, float hiV, float loV, bool forming, string name) =>
+    if not na(this.bx)
+        if forming
+            this.bx.set_top(hiV)
+            this.bx.set_bottom(loV)
+            this.bx.set_right(bar_index)
+        this.hi.set_y1(hiV)
+        this.hi.set_y2(hiV)
+        this.hi.set_x2(bar_index)
+        this.lo.set_y1(loV)
+        this.lo.set_y2(loV)
+        this.lo.set_x2(bar_index)
+        this.hiL.set_xy(bar_index + 2, hiV)
+        this.hiL.set_text(name + " High " + str.tostring(hiV, format.mintick))
+        this.loL.set_xy(bar_index + 2, loV)
+        this.loL.set_text(name + " Low " + str.tostring(loV, format.mintick))
+
+var RangeDraw orbDraw = RangeDraw.new()
+var RangeDraw arbDraw = RangeDraw.new()
+
+float orbDrawHi = orbForming ? orbSoFarHi : orbHi
+float orbDrawLo = orbForming ? orbSoFarLo : orbLo
+float arbDrawHi = arbForming ? arbSoFarHi : arbHi
+float arbDrawLo = arbForming ? arbSoFarLo : arbLo
+// on 1h/4h charts no bar sits inside the window, so also start when a finished range first shows up
+bool orbChanged = not na(orbHi) and (na(orbHi[1]) or orbHi != orbHi[1] or orbLo != orbLo[1])
+bool arbChanged = not na(arbHi) and (na(arbHi[1]) or arbHi != arbHi[1] or arbLo != arbLo[1])
+bool orbNew     = (orbForming and not orbForming[1]) or (orbChanged and not orbForming and not orbForming[1])
+bool arbNew     = (arbForming and not arbForming[1]) or (arbChanged and not arbForming and not arbForming[1])
+
+if showRanges and timeframe.isintraday
+    // a new day clears yesterday's boxes (MU pre-market showed no Friday ARB)
+    if newDay
+        orbDraw.wipe()
+        arbDraw.wipe()
+    if orbNew
+        orbDraw.begin(orbDrawHi, orbDrawLo, orbColor)
+    if arbNew
+        // the afternoon range takes over from the opening range
+        orbDraw.wipe()
+        arbDraw.begin(arbDrawHi, arbDrawLo, arbColor)
+    // only while a range is forming (box edges) and on the last bar (line ends, labels); not on every past bar
+    if barstate.islast or orbForming
+        orbDraw.refresh(orbDrawHi, orbDrawLo, orbForming, "ORB1 " + str.tostring(orbMins) + "m")
+    if barstate.islast or arbForming
+        arbDraw.refresh(arbDrawHi, arbDrawLo, arbForming, "ARB")
+
+// ───────────── Previous day & pre-market high / low ─────────────
+// Drawn once price has traded through the level recently, not by distance (AMZN 0.52% away shown, MSFT 0.43% hidden).
+// Last touch: TSLA 15:55, GOOGL 15:55, AMZN 14:35 → shown; META 13:00, MSFT 11:45, NFLX 10:00 → hidden.
+// MU pre-market: high made 08:15 → "PreM High" shown at 08:24; low made 04:00 → hidden.
+// AMD pre-market: high made 06:55 → shown at 08:32. Touch times come from the 5m candles inside each chart bar,
+// so a 4h chart doesn't stamp them with the 4h bar's open.
+
+pmCalc() =>
+    var float pmH = na
+    var float pmL = na
+    if timeframe.change("D")
+        pmH := na
+        pmL := na
+    if session.ispremarket
+        pmH := na(pmH) ? high : math.max(pmH, high)
+        pmL := na(pmL) ? low : math.min(pmL, low)
+    [pmH, pmL]
+
+[pmHigh, pmLow] = request.security(ticker.modify(syminfo.tickerid, session.extended), rangeTf, pmCalc())
+
+var int pdHiTouch = na
+var int pdLoTouch = na
+var int pmHiTouch = na
+var int pmLoTouch = na
+[ltfT, ltfH, ltfL] = request.security_lower_tf(syminfo.tickerid, rangeTf, [time, high, low])
+int refT = ltfT.size() > 0 ? ltfT.last() : time
+
+lastTouch(float lvl, int prevT) =>
+    int t = prevT
+    int n = ltfT.size()
+    if not na(lvl) and n > 0
+        // newest intrabar first; stop at the first touch
+        for i = n - 1 to 0
+            if ltfL.get(i) <= lvl and ltfH.get(i) >= lvl
+                t := ltfT.get(i)
+                break
+    t
+
+if newDay
+    pdHiTouch := na
+    pdLoTouch := na
+    pmHiTouch := na
+    pmLoTouch := na
+pdHiTouch := lastTouch(pdHigh, pdHiTouch)
+pdLoTouch := lastTouch(pdLow, pdLoTouch)
+pmHiTouch := lastTouch(pmHigh, pmHiTouch)
+pmLoTouch := lastTouch(pmLow, pmLoTouch)
+
+isRecent(int touchT) =>
+    not na(touchT) and refT - touchT <= prevMins * MS_PER_MIN
+
+showLevel(int touchT) =>
+    prevMode == "Always" or (prevMode == "Recently touched" and isRecent(touchT))
+
+// One line + label per key level, created once and then only moved, so live ticks don't rebuild them.
+type KeyLevel
+    line  ln
+    label lb
+
+// Every branch below ends in a void call: Pine requires all branches of a trailing if to return the same type.
+method hide(KeyLevel this) =>
+    line  oldLn = this.ln
+    label oldLb = this.lb
+    this.ln := na
+    this.lb := na
+    oldLn.delete()
+    oldLb.delete()
+
+method show(KeyLevel this, float y, int x1, string name, color col) =>
+    if na(this.ln)
+        this.ln := line.new(x1, y, bar_index, y, color = col, width = 2)
+        this.lb := label.new(bar_index + 2, y, name, style = label.style_label_left, color = #2a2a35, textcolor = color.white, size = size.small)
+    this.ln.set_xy1(x1, y)
+    this.ln.set_xy2(bar_index, y)
+    this.lb.set_xy(bar_index + 2, y)
+
+method showIf(KeyLevel this, bool cond, float y, int x1, string name, color col) =>
+    if cond and not na(y)
+        this.show(y, x1, name, col)
+    else
+        this.hide()
+
+var KeyLevel pdHiKey = KeyLevel.new()
+var KeyLevel pdLoKey = KeyLevel.new()
+var KeyLevel pmHiKey = KeyLevel.new()
+var KeyLevel pmLoKey = KeyLevel.new()
+
+if barstate.islast and timeframe.isintraday
+    int pdX1 = na(prevStartBar) ? math.max(bar_index - 100, 0) : prevStartBar
+    int pmX1 = na(dayStartBar) ? math.max(bar_index - 50, 0) : dayStartBar
+    // before the open only on charts that show pre-market bars; a regular-hours chart still ends on yesterday's bar
+    bool pmNow = showPm and (pmWhen == "All day" or (rowMode == 0 and session.ispremarket))
+    pdHiKey.showIf(showLevel(pdHiTouch), pdHigh, pdX1, "PrevD High", prevHiCol)
+    pdLoKey.showIf(showLevel(pdLoTouch), pdLow, pdX1, "PrevD Low", prevLoCol)
+    pmHiKey.showIf(pmNow and showLevel(pmHiTouch), pmHigh, pmX1, "PreM High", pmColor)
+    pmLoKey.showIf(pmNow and showLevel(pmLoTouch), pmLow, pmX1, "PreM Low", pmColor)
+
+// ───────────── 200 EMA marker ─────────────
+// Gray line at the chart's 200 EMA + 😡 below / 😇 above (tooltip "200 EMA") when price is within ~1% of it.
+// 😡 shown: NFLX 5m 0.80%, MSFT 5m 0.87%, MSFT 15m 0.84%, NVDA 4h 0.79% under; hidden from AMZN's 1.22% up.
+// 😇 shown: NVDA 5m Mon 12:25, 0.33% above.
+float ema200 = ta.ema(close, 200)
+var line  faceLine = na
+var label faceLbl  = na
+if barstate.islast and timeframe.isintraday
+    bool   faceOn  = showFace and math.abs(close - ema200) / close * 100 <= faceNear
+    string faceTxt = close < ema200 ? faceEmoji : faceUpEmo
+    string faceTip = "200 EMA " + str.tostring(ema200, format.mintick)
+    if not faceOn
+        line  oldLine = faceLine
+        label oldLbl  = faceLbl
+        faceLine := na
+        faceLbl  := na
+        oldLine.delete()
+        oldLbl.delete()
+    else
+        if na(faceLine)
+            faceLine := line.new(bar_index - 1, ema200, bar_index, ema200, extend = extend.left, color = color.new(color.gray, 20), width = 2)
+            faceLbl  := label.new(bar_index + 8, ema200, faceTxt, style = label.style_label_left, color = #4a4a5e, textcolor = color.white, size = size.normal, tooltip = faceTip)
+        faceLine.set_xy1(bar_index - 1, ema200)
+        faceLine.set_xy2(bar_index, ema200)
+        faceLbl.set_xy(bar_index + 8, ema200)
+        faceLbl.set_text(faceTxt)
+        faceLbl.set_tooltip(faceTip)
+
+// ───────────── Plots ─────────────
+// same names and order as the original's Style tab
+float ema5  = ta.ema(close, 5)
+float ema9  = ta.ema(close, 9)
+float ema20 = ta.ema(close, 20)
+plot(vwLine == L_SOLID ? vwap : na, "VWAP 💧", color = #2196f3, linewidth = 2)
+plot(vwLine == L_DOTTED ? vwap : na, "VWAP dotted", color = #2196f3, linewidth = 2, linestyle = plot.linestyle_dotted)
+plot(e5Line == L_SOLID ? ema5 : na, "5 EMA (Fastest) 🟡", color = #ffd600, linewidth = 2)
+plot(e5Line == L_DOTTED ? ema5 : na, "5 EMA dotted", color = #ffd600, linewidth = 2, style = plot.style_circles)
+plot(e9Line == L_SOLID ? ema9 : na, "9 EMA (Fast) ⚪", color = color.white, linewidth = 2)
+plot(e9Line == L_DOTTED ? ema9 : na, "9 EMA dotted", color = color.white, linewidth = 2, style = plot.style_circles)
+plot(e20Line == L_SOLID ? ema20 : na, "20 EMA (Slow) 🟣", color = #ab47bc, linewidth = 2)
+plot(e20Line == L_DOTTED ? ema20 : na, "20 EMA dotted", color = #ab47bc, linewidth = 2, style = plot.style_circles)
+plot(e200Line == L_SOLID ? ema200 : na, "200 EMA", color = color.gray, linewidth = 2)
+plot(e200Line == L_DOTTED ? ema200 : na, "200 EMA dotted", color = color.gray, linewidth = 2, style = plot.style_circles)
+
+// ───────────── Table ─────────────
+const color C_BULL  = #00e676
+const color C_BEAR  = #ff5252
+const color C_WAIT  = #ffca28
+const color C_NEUT  = #e1d5ff
+const color C_LABEL = #9e9e9e
+const color C_GOLD  = #e0b84f
+const color C_BG    = #0d0d12
+const color C_FRAME = #2a2a35
+
+tblPos = switch tblPosS
+    "Top center"   => position.top_center
+    "Top left"     => position.top_left
+    "Middle right" => position.middle_right
+    "Bottom right" => position.bottom_right
+    "Bottom left"  => position.bottom_left
+    => position.top_right
+txtSize = switch tblSizeS
+    "Tiny"  => size.tiny
+    "Small" => size.small
+    "Large" => size.large
+    => size.normal
+
+dirColor(int d) =>
+    d == 1 ? C_BULL : d == -1 ? C_BEAR : C_NEUT
+
+var table dash = table.new(tblPos, 3, 7, bgcolor = C_BG, border_color = C_FRAME, border_width = 1, frame_color = C_FRAME, frame_width = 1)
+
+setRow(int row, string name, string dot, color dotCol, string txt, color bg) =>
+    table.cell(dash, 0, row, name, text_color = C_LABEL, text_halign = text.align_left, text_size = txtSize)
+    table.cell(dash, 1, row, dot, text_color = dotCol, bgcolor = bg, text_size = txtSize)
+    table.cell(dash, 2, row, txt, text_color = color.white, bgcolor = bg, text_halign = text.align_left, text_size = txtSize)
+
+if barstate.isfirst
+    table.cell(dash, 0, 0, "")
+    table.cell(dash, 0, 6, "")
+    table.merge_cells(dash, 0, 0, 2, 0)
+    table.merge_cells(dash, 0, 6, 2, 6)
+
+if barstate.islast
+    // display text is built here, once, rather than on every historical bar
+    string rowName = rowMode == 2 ? "ARB " + str.tostring(math.round(timeframe.in_seconds(rangeTfIn) / 60)) + "m" : "ORB " + str.tostring(orbMins) + "m"
+    string rowTxt  = switch
+        rowMode == 0  => "Waiting for open"
+        na(rHi)       => "No range yet"
+        upHeld        => "Breakout ↑ held"
+        dnHeld        => "Breakdown ↓ held"
+        upGo          => "BREAKOUT ↑ GO"
+        dnGo          => "BREAKDOWN ↓ GO"
+        rowSide == 1  => "Crossing above range"
+        rowSide == -1 => "Crossing below range"
+        => "Inside range"
+    string emaTxt = emaDir == 1 ? "Price above, held" : emaDir == -1 ? "Price below, held" : liveAbove ? "Above, needs 2 closes" : "Below, needs 2 closes"
+    string vwTxt  = (close >= vwap ? "Above $" : "Below $") + str.tostring(math.abs(close - vwap), "0.00")
+    string rsiTxt = str.tostring(math.round(rsiC)) + (rsiDir == 1 ? " Strength" : rsiDir == -1 ? " Weakness" : " In between")
+    string dayTxt = dayDir == 1 ? str.tostring(streak) + " days trending up" : dayDir == -1 ? str.tostring(-streak) + " days trending down" : "Mixed, no confirm"
+    // crossing and fresh GO are highlighted; a held breakout is not (NVDA)
+    bool  rowHot = rowSide != 0 and not upHeld and not dnHeld
+    color rowBg  = not rowHot ? C_BG : rowSide == 1 ? color.new(#26a69a, 35) : color.new(C_BEAR, 55)
+    table.cell(dash, 0, 0, "A+ SCALP DASHBOARD", text_color = C_GOLD, text_size = txtSize)
+    setRow(1, "1. " + rowName, rowMode == 0 ? "⏳" : "●", rowMode == 0 ? color.white : dirColor(rowSide), rowTxt, rowBg)
+    setRow(2, "2. " + str.tostring(emaLen) + " EMA 2 Candle", "●", emaDir != 0 ? dirColor(emaDir) : C_WAIT, emaTxt, C_BG)
+    setRow(3, "3. VWAP", "●", dirColor(vwDir), vwTxt, C_BG)
+    setRow(4, "4. RSI " + str.tostring(rsiLo) + "/" + str.tostring(rsiHi), "●", dirColor(rsiDir), rsiTxt, C_BG)
+    setRow(5, "5. Daily Trend", dayDir != 0 ? "●" : "", dirColor(dayDir), dayTxt, C_BG)
+
+    // a tie goes to long (NFLX: 1 long / 1 short showed "1 of 4 long")
+    int best = math.max(longN, shortN)
+    string dirWord = best == 0 ? "" : longN >= shortN ? " long" : " short"
+    // 4 of 4 → "GREEN LIGHT" and a teal frame, whatever the daily row says (SPY Tue: daily red, still GREEN LIGHT)
+    // the short version's wording and colors are a guess; only the long one has been seen
+    string footTxt = switch
+        all4L => "🟢 GREEN LIGHT: LONG 4 of 4"
+        all4S => "🔴 GREEN LIGHT: SHORT 4 of 4"
+        => "⏳ " + str.tostring(best) + " of 4" + dirWord
+    color footBg = all4L ? #134e4a : all4S ? #4e1313 : C_BG
+    table.cell(dash, 0, 6, footTxt, text_color = color.white, bgcolor = footBg, text_size = txtSize)
+    table.set_frame_color(dash, all4L ? #26a69a : all4S ? C_BEAR : C_FRAME)
