@@ -1,0 +1,1249 @@
+//@version=6
+// Original approximation based on the user's supplied Matrixchannel instructions.
+// This is not Allen Reminick's code or a reconstruction of his price-level engine.
+indicator("Matrix Trend Companion - Bottom Confirmation Lab", shorttitle="Matrix BTM", overlay=true, max_lines_count=300, max_labels_count=500, max_bars_back=1500)
+
+string G_MAIN = "1 · Main"
+string G_CLOUD = "2 · Cloud and moving average"
+string G_EXTRA = "3 · Extra signals"
+string G_VIEW = "4 · Display"
+string G_LEVEL = "5 · Manual mode levels"
+
+signalEngine = input.string("RSI + cloud trend", "Signal engine", options=["RSI + cloud trend", "EMA trend reversals", "Manual Matrixchannel rules"], group=G_MAIN, tooltip="RSI + cloud: the cloud sets the trend side, RSI crossing its MA gives the BUY / SELL in that direction. EMA: BUY / SELL marks a confirmed white-MA trend change. Manual: reactions and breakouts at your own price levels (group 5).")
+enableSignals = input.bool(true, "Matrix BUY / SELL", group=G_MAIN, tooltip="The lime / purple Matrix triangles, their stop line and alerts.")
+showSignals = input.bool(true, "Show signal triangles", group=G_MAIN, tooltip="Visual only: signals, dashboard and alerts stay active when hidden.")
+hideSignals5And15 = input.bool(false, "Hide signals on 5m + 15m", group=G_MAIN)
+showPlan = input.bool(true, "Show latest stop line", group=G_MAIN)
+
+profile = input.string("Auto: hourly estimate above 15m", "Cloud profile", options=["Auto: hourly estimate above 15m", "Matrix hourly estimate · 9/80/160 +3", "Short projection approximation", "Custom"], group=G_CLOUD, tooltip="Auto: 15m and below use Short (9/26/52, +5 bars), 30m and above use the Matrix hourly estimate (9/80/160, +3 bars), read off the original 1h chart. Custom uses the four numbers below. The cloud also sets the trend side, so the profile changes signals as well as the picture.")
+customConversion = input.int(9, "Custom", minval=1, maxval=500, inline="custom", group=G_CLOUD)
+customBase = input.int(26, "", minval=1, maxval=500, inline="custom", group=G_CLOUD)
+customSpan = input.int(52, "", minval=1, maxval=500, inline="custom", group=G_CLOUD)
+customShift = input.int(5, "shift", minval=0, maxval=150, inline="custom", group=G_CLOUD, tooltip="Custom profile only: conversion, base, slow span, forward shift in bars.")
+maPreset = input.string("Auto: 22 EMA to 15m, 55 SMA above", "Moving average (yellow)", options=["Auto: 22 EMA to 15m, 55 SMA above", "Custom"], group=G_CLOUD, tooltip="Auto: 22 EMA on 15m and below (day-trading instructions), 55 SMA on 30m and above (estimated from the original 1h chart).")
+maLength = input.int(22, "Custom MA", minval=1, maxval=500, inline="ma", group=G_CLOUD)
+maType = input.string("EMA", "", options=["EMA", "SMA", "RMA", "WMA"], inline="ma", group=G_CLOUD, tooltip="Custom moving average only: period and type.")
+
+enableRsiZoneSignals = input.bool(true, "RSI oversold BUY / RSI >80 SELL", group=G_EXTRA, tooltip="Aqua BUY when RSI leaves oversold (30), blocked in a downtrend. Orange SELL on the first candle above RSI 80; re-arms below 70.")
+enableRsiExtremeBuy = input.bool(true, "Extreme-low RSI BUY", group=G_EXTRA, tooltip="White triangle when RSI turns up after dropping below 20 intraday / 30 daily. Off on 5m and 15m.")
+enableRsiExtremeSell = input.bool(true, "Extreme-high RSI SELL - 5m / 15m / daily", group=G_EXTRA, tooltip="White down-triangle when RSI turns down after going above 72 on 5m / 15m or 75 on daily.")
+enableEarlyTopSell = input.bool(true, "Pink early-top SELL", group=G_EXTRA, tooltip="Recent RSI / price strength, then RSI weakness and a bearish close below the prior low. A strong uptrend is protected until a close below the moving average.")
+enableRsiDoubleTop = input.bool(true, "RSI double-top SELL", inline="tops", group=G_EXTRA)
+enableBearDiv = input.bool(true, "Bearish divergence SELL", inline="tops", group=G_EXTRA)
+enableRsiDoubleBottom = input.bool(true, "RSI double-bottom BUY", inline="bottoms", group=G_EXTRA)
+enableBullDiv = input.bool(true, "Bullish divergence BUY", inline="bottoms", group=G_EXTRA)
+enableBottomLab = input.bool(true, "Bottom watch / confirmed BUY", group=G_EXTRA, tooltip="Yellow watch dot after a 9/13 down-count near a recent low; blue BUY when a later bullish candle closes above the watch candle's high with RSI rising.")
+
+showCloud = input.bool(true, "Show cloud", inline="cloud", group=G_VIEW)
+cloudUpColor = input.color(color.rgb(0, 150, 150), "", inline="cloud", group=G_VIEW)
+cloudDownColor = input.color(color.rgb(205, 120, 45), "", inline="cloud", group=G_VIEW)
+showGuides = input.bool(true, "Show Tenkan / Kijun", inline="guides", group=G_VIEW)
+tenkanColor = input.color(color.rgb(255, 0, 0), "", inline="guides", group=G_VIEW)
+kijunColor = input.color(color.rgb(255, 0, 255), "", inline="guides", group=G_VIEW)
+showDashboard = input.bool(true, "Show dashboard", group=G_VIEW)
+showBottomLevels = input.bool(true, "Show bottom-watch confirmation / risk lines", group=G_VIEW)
+showAutoLevels = input.bool(false, "Show nearest swing support / resistance", group=G_VIEW)
+showPrevDay = input.bool(true, "Show previous day high / low on 15m", group=G_VIEW)
+
+levelText = input.string("", "Lines / clusters · comma-separated", group=G_LEVEL, tooltip="Manual engine only. Example FORMAT ONLY: 100:102, 110, 120:122. A single number is a line; low:high is a cluster. 2 to 12 non-overlapping entries.")
+
+// Fixed settings. These were inputs before; each keeps its previous default.
+// Day trading and RSI + cloud engine
+int cloudFlipCloses = 2
+float flipLateRsi = 60.0
+int flipFreshBars = 10
+int flipCrossBars = 5
+string dayPreset = "Auto 5m / 15m"
+int customConfirm = 2
+bool trendRiskGate = false
+int autoHistoryHours = 24
+// Cloud and white MA
+int cloudTransparency = 100
+bool showRibs = true
+int ribEvery = 1
+float maSource = close
+int slopeBars = 1
+float slopeTicks = 0.0
+// Optional trend checks (used only by the EMA / manual engines)
+bool useNear = false
+int atrLength = 14
+float nearMultiple = 1.0
+bool useMacd = false
+int macdFast = 12
+int macdSlow = 26
+int macdSignal = 9
+int recentBars = 5
+// Display. Matrix and aqua / orange RSI triangles are drawn one candle left;
+// confirmation and alerts stay on the actual signal candle.
+bool showLagging = false
+bool showMarkers = false
+string panelText = size.tiny
+// Matrix signal rules and manual levels
+string setupMode = "Reversals"
+string signalProfile = "Basic MA rules"
+bool customSignalCloud = true
+int waitBars = 6
+int clusterCloses = 3
+float minimumRR = 2.0
+int pivotStrength = 3
+int stopBufferTicks = 1
+bool detailedAlerts = true
+bool showLevels = true
+bool limitStart = false
+int levelsFrom = timestamp("01 Jan 2020 00:00 +0000")
+// RSI
+int rsiLength = 14
+int rsiMaLength = 14
+string rsiMaType = "SMA"
+bool useRsiBuyFilter = true
+float rsiBuyCeiling = 70.0
+// Separate RSI signals. The RSI SELL threshold is fixed at 80 by the hard rule.
+string rsiZoneMode = "Leave zone"
+float rsiOversoldLevel = 30.0
+string rsiSellMode = "First candle above 80"
+float rsiExtremeLevel = 20.0
+float rsiExtremeLevelHtf = 30.0
+float rsiExtremeRearm = 10.0
+float rsiExtremeHigh5m = 72.0
+float rsiExtremeSellRearm = 5.0
+float rsiExtremeHighHtf = 75.0
+string rsiBuyTrendFilter = "Block in downtrend"
+// Early top SELL and power-uptrend guard
+float topRsiThreshold = 60.0
+float topRsiFloor = 40.0
+int topWatchBars = 6
+float topMinExtensionATR = 0.5
+bool protectPowerTrend = true
+int topPowerBars = 5
+bool topCloudReject = true
+// Bottom watch
+string bottomExhaustionMode = "Countdown 13"
+int bottomLowLookback = 20
+float bottomLowToleranceATR = 1.0
+int bottomConfirmBars = 12
+bool showBottomWatch = true
+// RSI double top / divergence
+float dtLevel = 60.0
+float divBearFloor = 50.0
+float bullLevel = 40.0
+float divBullCeiling = 50.0
+float dtTolerance = 4.0
+float divMinRsi = 2.0
+float dtDip = 5.0
+float dtDipDeep = 2.5
+int dtLeftBars = 2
+int dtMinGap = 3
+int dtMaxGap = 30
+string dtFailRef = "Previous candle"
+bool dtConfirmClose = false
+bool dtUseGuard = true
+
+bool rsiCloudEngine = signalEngine == "RSI + cloud trend"
+bool emaEngine = signalEngine == "EMA trend reversals"
+// Both automatic engines share swing tracking, stops and targets.
+bool automaticTrend = rsiCloudEngine or emaEngine
+bool signalMarkersVisible = showSignals and not (hideSignals5And15 and timeframe.isminutes and (timeframe.multiplier == 5 or timeframe.multiplier == 15))
+bool preset5 = dayPreset == "Auto 5m / 15m" and timeframe.isminutes and timeframe.multiplier == 5
+bool preset15 = dayPreset == "Auto 5m / 15m" and timeframe.isminutes and timeframe.multiplier == 15
+int confirmCloses = preset5 ? 2 : preset15 ? 2 : customConfirm
+int trendWindow = preset5 ? 6 : preset15 ? 3 : math.max(1, waitBars)
+int effectiveSwing = automaticTrend ? (preset5 ? 3 : preset15 ? 2 : pivotStrength) : pivotStrength
+
+// Day-trading charts (15m and below) keep the original short cloud and 22 EMA.
+// 30m and above use the slower settings estimated from the original 1h chart.
+bool fastChart = timeframe.isseconds or (timeframe.isminutes and timeframe.multiplier <= 15)
+bool hourlyCloud = profile == "Matrix hourly estimate · 9/80/160 +3" or (profile == "Auto: hourly estimate above 15m" and not fastChart)
+int conversionLength = profile == "Custom" ? customConversion : 9
+int baseLength = profile == "Custom" ? customBase : hourlyCloud ? 80 : 26
+int spanLength = profile == "Custom" ? customSpan : hourlyCloud ? 160 : 52
+int shift = profile == "Custom" ? customShift : profile == "Conventional 9/26/52 · +25 bars" ? 25 : hourlyCloud ? 3 : 5
+bool maAuto = maPreset == "Auto: 22 EMA to 15m, 55 SMA above"
+int effMaLength = maAuto ? (fastChart ? 22 : 55) : maLength
+string effMaType = maAuto ? (fastChart ? "EMA" : "SMA") : maType
+color blue = color.rgb(31, 174, 232)
+color orange = color.rgb(245, 151, 52)
+color panel = color.rgb(18, 25, 39)
+color matrixSellInk = color.rgb(235, 75, 255)
+
+f_mid(int length) =>
+    math.avg(ta.highest(high, length), ta.lowest(low, length))
+
+f_ma(float src, simple int length, simple string kind) =>
+    // kind is simple and cannot change across bars. This function is called
+    // every bar, so only the selected average needs to maintain history.
+    switch kind
+        "SMA" => ta.sma(src, length)
+        "RMA" => ta.rma(src, length)
+        "WMA" => ta.wma(src, length)
+        => ta.ema(src, length)
+
+float conversion = f_mid(conversionLength)
+float base = f_mid(baseLength)
+float spanA = math.avg(conversion, base)
+float spanB = f_mid(spanLength)
+// Suppress truncated-window cloud values on the first loaded bars.
+bool spansReady = bar_index >= math.max(math.max(conversionLength, baseLength), spanLength) - 1
+float drawA = spansReady ? spanA : na
+float drawB = spansReady ? spanB : na
+float aHere = drawA[shift]
+float bHere = drawB[shift]
+float cloudTop = math.max(aHere, bHere)
+float cloudBottom = math.min(aHere, bHere)
+bool cloudReady = not na(cloudTop) and not na(cloudBottom)
+bool aboveCloud = cloudReady and close > cloudTop
+bool belowCloud = cloudReady and close < cloudBottom
+// Sticky cloud bias: N closes in a row above the cloud = UP, below = DOWN.
+// Closes inside the cloud keep the last side, and a single close that pokes
+// through and falls straight back cannot flip the trend.
+var int cloudBias = 0
+var int closesAboveCloud = 0
+var int closesBelowCloud = 0
+if barstate.isconfirmed and cloudReady
+    closesAboveCloud := close > cloudTop ? closesAboveCloud + 1 : 0
+    closesBelowCloud := close < cloudBottom ? closesBelowCloud + 1 : 0
+    if closesAboveCloud >= cloudFlipCloses
+        cloudBias := 1
+    else if closesBelowCloud >= cloudFlipCloses
+        cloudBias := -1
+bool cloudTurnUp = barstate.isconfirmed and cloudBias == 1 and nz(cloudBias[1]) != 1
+bool cloudTurnDown = barstate.isconfirmed and cloudBias == -1 and nz(cloudBias[1]) != -1
+plot(cloudBias, title="Cloud bias - 1 up / -1 down / 0 none yet", display=display.data_window)
+
+float whiteMA = f_ma(maSource, effMaLength, effMaType)
+bool maReady = bar_index >= effMaLength + slopeBars - 1 and not na(whiteMA[slopeBars])
+float slopeChange = whiteMA - whiteMA[slopeBars]
+float slopeThreshold = slopeTicks * syminfo.mintick
+bool maUp = maReady and slopeChange > slopeThreshold
+bool maDown = maReady and slopeChange < -slopeThreshold
+bool aboveMA = maReady and close > whiteMA
+bool belowMA = maReady and close < whiteMA
+
+float atr = ta.atr(atrLength)
+bool proximityReady = maReady and not na(atr)
+float maDistance = math.abs(close - whiteMA)
+bool nearMA = proximityReady and maDistance <= atr * nearMultiple
+[macdValue, macdSignalValue, macdHistogram] = ta.macd(close, macdFast, macdSlow, macdSignal)
+bool macdCrossUp = ta.crossover(macdValue, macdSignalValue)
+bool macdCrossDown = ta.crossunder(macdValue, macdSignalValue)
+int sinceUp = ta.barssince(macdCrossUp)
+int sinceDown = ta.barssince(macdCrossDown)
+bool macdReady = bar_index >= math.max(macdFast, macdSlow) + macdSignal - 2 and not na(macdSignalValue)
+bool recentUp = macdReady and not na(sinceUp) and sinceUp <= recentBars and macdValue > macdSignalValue
+bool recentDown = macdReady and not na(sinceDown) and sinceDown <= recentBars and macdValue < macdSignalValue
+
+bool ready = maReady and cloudReady and (not useNear or proximityReady) and (not useMacd or macdReady)
+bool longAligned = ready and aboveMA and maUp and aboveCloud and (not useNear or nearMA) and (not useMacd or recentUp)
+bool shortAligned = ready and belowMA and maDown and belowCloud and (not useNear or nearMA) and (not useMacd or recentDown)
+// These are trend alignment events, NOT full support/resistance reversal entries.
+// A new event can occur again after alignment was lost on an intervening close.
+bool longEvent = barstate.isconfirmed and longAligned and not longAligned[1]
+bool shortEvent = barstate.isconfirmed and shortAligned and not shortAligned[1]
+bool breakUp = barstate.isconfirmed and cloudReady and cloudReady[1] and close > cloudTop and close[1] <= cloudTop[1]
+bool breakDown = barstate.isconfirmed and cloudReady and cloudReady[1] and close < cloudBottom and close[1] >= cloudBottom[1]
+
+plot(whiteMA, title="Moving average", color=color.yellow, linewidth=2, linestyle=plot.linestyle_dashed)
+// Hide truncated Tenkan / Kijun windows on the first loaded bars.
+plot(showGuides and bar_index >= conversionLength - 1 ? conversion : na, title="Tenkan-sen", color=tenkanColor, linewidth=1)
+plot(showGuides and bar_index >= baseLength - 1 ? base : na, title="Kijun-sen", color=kijunColor, linewidth=1)
+plot(showLagging ? close : na, title="Chikou Span · lagging close, visual only", color=color.rgb(67, 160, 71), offset=-shift)
+pA = plot(showCloud ? drawA : na, title="Senkou Span A · projected", color=cloudUpColor, offset=shift)
+pB = plot(showCloud ? drawB : na, title="Senkou Span B · projected", color=cloudDownColor, offset=shift)
+fill(pA, pB, title="Cloud shading", color=color.new(spanA >= spanB ? cloudUpColor : cloudDownColor, cloudTransparency))
+
+var array<line> ribs = array.new<line>()
+if showCloud and showRibs and spansReady and barstate.isconfirmed and bar_index % ribEvery == 0
+    line rib = line.new(x1=bar_index + shift, y1=spanA, x2=bar_index + shift, y2=spanB, xloc=xloc.bar_index, color=color.new(spanA >= spanB ? cloudUpColor : cloudDownColor, 40), width=1)
+    array.push(ribs, rib)
+    if array.size(ribs) > 220
+        line.delete(array.shift(ribs))
+
+plotshape(showMarkers and longEvent, title="New upward trend alignment", style=shape.triangleup, location=location.belowbar, color=blue, text="Trend +", textcolor=blue, size=size.tiny, offset=-1)
+plotshape(showMarkers and shortEvent, title="New downward trend alignment", style=shape.triangledown, location=location.abovebar, color=orange, text="Trend -", textcolor=orange, size=size.tiny, offset=-1)
+
+// Manual zones supply the missing price-location information. They do not
+// recreate Matrixchannel's proprietary levels. No signal reads a future bar.
+type PriceZone
+    float lo
+    float hi
+    bool longArmed = false
+    bool shortArmed = false
+    int longTouch = na
+    int shortTouch = na
+    float reactionLow = na
+    float reactionHigh = na
+    int upCount = 0
+    int downCount = 0
+    bool upFired = false
+    bool downFired = false
+    float breakoutLow = na
+    float breakoutHigh = na
+    line lowerLine = na
+    line upperLine = na
+    linefill shading = na
+
+var array<PriceZone> zones = array.new<PriceZone>()
+var bool levelsValid = false
+var string levelStatus = "ENTER LEVELS"
+if barstate.isfirst and not automaticTrend
+    array<string> entries = str.split(levelText, ",")
+    bool parsed = str.length(str.trim(levelText)) > 0 and array.size(entries) <= 12
+    if parsed
+        for entry in entries
+            array<string> pair = str.split(str.trim(entry), ":")
+            int parts = array.size(pair)
+            float lo = parts >= 1 ? str.tonumber(str.trim(array.get(pair, 0))) : na
+            float hi = parts == 1 ? lo : parts == 2 ? str.tonumber(str.trim(array.get(pair, 1))) : na
+            if na(lo) or na(hi) or lo > hi or parts > 2
+                parsed := false
+            else
+                array.push(zones, PriceZone.new(lo, hi))
+    int n = array.size(zones)
+    if parsed and n >= 2
+        // At most 12 entries, so a small selection sort is sufficient.
+        for i = 0 to n - 2
+            for j = i + 1 to n - 1
+                PriceZone left = array.get(zones, i)
+                PriceZone right = array.get(zones, j)
+                if right.lo < left.lo
+                    array.set(zones, i, right)
+                    array.set(zones, j, left)
+        for i = 1 to n - 1
+            PriceZone before = array.get(zones, i - 1)
+            PriceZone current = array.get(zones, i)
+            if current.lo <= before.hi
+                parsed := false
+    levelsValid := parsed and n >= 2
+    levelStatus := levelsValid ? str.tostring(n) + " LEVELS / ZONES" : str.length(str.trim(levelText)) == 0 ? "ENTER LEVELS" : "CHECK LEVEL FORMAT"
+
+// RSI always uses this chart's own closes, so it follows the chart timeframe.
+float rsiValue = ta.rsi(close, rsiLength)
+float rsiAverage = f_ma(rsiValue, rsiMaLength, rsiMaType)
+// Matrix filters inspect the marker candle (-1), not the later confirmation
+// candle. Separate RSI-only events below still use current rsiValue as before.
+float markerRsiValue = rsiValue[1]
+float markerRsiAverage = rsiAverage[1]
+bool rsiReady = not na(markerRsiValue) and not na(markerRsiAverage)
+// Equality is allowed: the requested block is strictly RSI BELOW its average.
+// Missing oscillator data or RSI below its MA cannot pass a Matrix SELL.
+bool rsiSellAllowed = rsiReady and markerRsiValue >= markerRsiAverage
+// The BUY block requires BOTH conditions, exactly as requested. Equality at
+// the MA or at the overbought level does not trigger this block.
+bool rsiBuyAllowed = not useRsiBuyFilter or (rsiReady and not (markerRsiValue > markerRsiAverage and markerRsiValue > rsiBuyCeiling))
+plot(rsiValue, title="RSI at chart candle", display=display.data_window)
+plot(rsiAverage, title="RSI MA at chart candle", display=display.data_window)
+// Gate diagnostics are shifted to the same candle as the Matrix triangles.
+plot(rsiSellAllowed ? 1 : 0, title="Matrix SELL RSI gate - 1 pass / 0 blocked", offset=-1, display=display.data_window)
+plot(rsiBuyAllowed ? 1 : 0, title="Matrix BUY RSI gate - 1 pass / 0 blocked", offset=-1, display=display.data_window)
+// RSI direction on the signal candle. A Matrix BUY needs RSI rising and a
+// SELL needs it falling: RSI can "cross" its MA while still falling when the
+// MA drops faster, and that is not a buy.
+bool rsiUpNow = not na(rsiValue) and not na(rsiValue[1]) and rsiValue > rsiValue[1]
+bool rsiDownNow = not na(rsiValue) and not na(rsiValue[1]) and rsiValue < rsiValue[1]
+
+// Separate RSI-only events. The existing Matrix BUY/SELL gates are not used.
+// BUY crossings require prior RSI. The hard SELL rule needs current RSI only.
+bool rsiZonesValid = rsiOversoldLevel < 80.0
+bool rsiZoneReady = rsiZonesValid and not na(rsiValue) and not na(rsiValue[1])
+bool rsiEnterOversold = rsiZoneReady and rsiValue <= rsiOversoldLevel and rsiValue[1] > rsiOversoldLevel
+bool rsiLeaveOversold = rsiZoneReady and rsiValue > rsiOversoldLevel and rsiValue[1] <= rsiOversoldLevel
+// Oversold in a downtrend is usually continuation, not a bottom. The RSI +
+// cloud engine uses the cloud bias; the other engines use the white MA.
+bool rsiBuyDowntrend = rsiCloudEngine ? cloudBias == -1 : belowMA and maDown
+bool rsiBuyTrendOK = rsiBuyTrendFilter == "Allow" or not rsiBuyDowntrend
+bool rsiZoneBuy = enableRsiZoneSignals and barstate.isconfirmed and (rsiZoneMode == "Enter zone" ? rsiEnterOversold : rsiLeaveOversold) and rsiBuyTrendOK
+// RSI > 80 SELL. By default one per overbought episode: it re-arms only after
+// RSI falls back below 70, so a strong trend holding near 80 does not repeat it.
+var bool rsiSellArmed = true
+bool rsiAbove80 = enableRsiZoneSignals and barstate.isconfirmed and not na(rsiValue) and rsiValue > 80.0
+bool rsiZoneSell = rsiAbove80 and (rsiSellMode == "Every candle above 80" or rsiSellArmed)
+if barstate.isconfirmed and not na(rsiValue)
+    if rsiZoneSell
+        rsiSellArmed := false
+    else if rsiValue < 70.0
+        rsiSellArmed := true
+
+// Extreme-low RSI BUY: arm when RSI drops below the extreme level, fire on the
+// first candle where RSI turns up. Not blocked by the down-trend filter.
+// Daily and above use their own level: RSI there rarely reaches 20.
+// Trailing: if RSI then makes a LOWER low than the episode low before it has
+// recovered, the bottom was not in yet. The signal waits for the next turn and
+// the marker moves to the new low, so each episode ends with one marker on its
+// lowest RSI candle. The alert fires again on each move.
+bool rsiChartFast = timeframe.isminutes and (timeframe.multiplier == 5 or timeframe.multiplier == 15)
+float rsiExtremeActive = timeframe.isdwm ? rsiExtremeLevelHtf : rsiExtremeLevel
+var bool rsiExtremeArmed = true
+var bool rsiExtremeWaiting = false
+var bool rsiExtremeFired = false
+var float rsiExtremeLow = na
+var bool rsiExtremeHadBuy = false
+var label rsiExtremeLabel = na
+bool rsiExtremeBuy = false
+bool rsiExtremeMove = false
+// Off on 5m and 15m: RSI flushes there are too frequent for this BUY.
+if enableRsiExtremeBuy and not rsiChartFast and barstate.isconfirmed and not na(rsiValue) and not na(rsiValue[1])
+    if (rsiExtremeWaiting or rsiExtremeFired) and rsiValue < rsiExtremeLow
+        rsiExtremeLow := rsiValue
+        if rsiExtremeFired
+            rsiExtremeFired := false
+            rsiExtremeWaiting := true
+    if rsiExtremeWaiting and rsiValue > rsiValue[1]
+        rsiExtremeBuy := true
+        // A turn after an earlier BUY in the same episode replaces its marker.
+        rsiExtremeMove := rsiExtremeHadBuy
+        rsiExtremeHadBuy := true
+        rsiExtremeWaiting := false
+        rsiExtremeFired := true
+    if rsiExtremeArmed and rsiValue < rsiExtremeActive
+        rsiExtremeArmed := false
+        rsiExtremeWaiting := true
+        rsiExtremeLow := rsiValue
+        rsiExtremeHadBuy := false
+        rsiExtremeLabel := na
+    else if not rsiExtremeArmed and not rsiExtremeWaiting and rsiValue > rsiExtremeActive + rsiExtremeRearm
+        rsiExtremeArmed := true
+        rsiExtremeFired := false
+        rsiExtremeLow := na
+
+// Extreme-high RSI SELL on 5m, 15m and daily+. Arms above the extreme-high
+// level and fires on the first candle where RSI turns down. On 5m/15m every
+// spike is sold: a higher RSI high afterwards is a new spike with its own SELL
+// (earlier ones stay), and a pullback by the re-arm amount lets the next push
+// fire too. On daily+ it mirrors the daily white BUY: a higher RSI high before
+// RSI falls back moves the marker, so each episode ends on its top.
+bool rsiExHiDaily = timeframe.isdwm
+float rsiExHiLevel = rsiExHiDaily ? rsiExtremeHighHtf : rsiExtremeHigh5m
+float rsiExHiRearm = rsiExHiDaily ? rsiExtremeRearm : rsiExtremeSellRearm
+var bool rsiExHiArmed = true
+var bool rsiExHiWaiting = false
+var bool rsiExHiFired = false
+var float rsiExHiPeak = na
+var bool rsiExHiHadSell = false
+var label rsiExHiLabel = na
+bool rsiExtremeSell = false
+bool rsiExtremeSellMove = false
+if enableRsiExtremeSell and (rsiChartFast or rsiExHiDaily) and barstate.isconfirmed and not na(rsiValue) and not na(rsiValue[1])
+    if (rsiExHiWaiting or rsiExHiFired) and rsiValue > rsiExHiPeak
+        rsiExHiPeak := rsiValue
+        if rsiExHiFired
+            rsiExHiFired := false
+            rsiExHiWaiting := true
+    if rsiExHiWaiting and rsiValue < rsiValue[1]
+        rsiExtremeSell := true
+        rsiExtremeSellMove := rsiExHiDaily and rsiExHiHadSell
+        rsiExHiHadSell := true
+        rsiExHiWaiting := false
+        rsiExHiFired := true
+    if rsiExHiArmed and rsiValue > rsiExHiLevel
+        rsiExHiArmed := false
+        rsiExHiWaiting := true
+        rsiExHiPeak := rsiValue
+        rsiExHiHadSell := false
+        rsiExHiLabel := na
+    else if not rsiExHiArmed and not rsiExHiWaiting and rsiValue < rsiExHiLevel - rsiExHiRearm
+        rsiExHiArmed := true
+        rsiExHiFired := false
+        rsiExHiPeak := na
+
+// A separate EARLY reversal candidate, not an exact-top forecast. All inputs
+// use the current chart/selected RSI source; no future pivots or backplotting.
+bool topParametersValid = topRsiThreshold > topRsiFloor
+bool topRsiReady = not na(rsiValue) and not na(rsiAverage) and not na(rsiValue[1])
+bool topStrength = topRsiReady and maReady and not na(atr) and close > whiteMA and high - whiteMA >= topMinExtensionATR * atr and rsiValue >= topRsiThreshold and rsiValue > rsiAverage
+int sinceTopStrength = ta.barssince(topStrength)
+bool topRecentlyStrong = not na(sinceTopStrength) and sinceTopStrength >= 1 and sinceTopStrength <= topWatchBars
+bool topMomentumTurn = topRsiReady and rsiValue < rsiAverage and rsiValue < rsiValue[1] and rsiValue > topRsiFloor
+bool topPriceTurn = not na(low[1]) and close < low[1] and close < open
+
+// A sustained uptrend is protected until a CLOSE breaks the white MA. A wick
+// through the MA or a briefly flat slope alone cannot cancel that protection.
+var int topPowerCloses = 0
+var bool topPowerActive = false
+if barstate.isconfirmed
+    if not maReady or na(whiteMA) or close <= whiteMA
+        topPowerCloses := 0
+        topPowerActive := false
+    else
+        topPowerCloses := maUp ? math.min(topPowerCloses + 1, topPowerBars) : 0
+        if topPowerCloses >= topPowerBars
+            topPowerActive := true
+
+// An RSI >80 climax arms an EXCEPTION, not an immediate pink SELL. It still
+// needs the existing momentum/price turn, and can be used only once per climax.
+bool topClimax = topStrength and rsiValue > 80.0
+int sinceTopClimax = ta.barssince(topClimax)
+bool topClimaxRecent = not na(sinceTopClimax) and sinceTopClimax >= 1 and sinceTopClimax <= topWatchBars
+bool topEnterClimax = not na(rsiValue) and rsiValue > 80.0 and (na(rsiValue[1]) or rsiValue[1] <= 80.0)
+var bool topClimaxUsed = false
+if barstate.isconfirmed and topEnterClimax
+    topClimaxUsed := false
+// 4h only: a rally that tops while still inside or below the cloud is a bounce
+// into resistance, not a power trend, so the guard does not protect it.
+bool topChart4h = timeframe.isminutes and timeframe.multiplier == 240
+var bool topStrengthUnderCloud = false
+if barstate.isconfirmed and topStrength
+    topStrengthUnderCloud := cloudReady and close <= cloudTop
+bool topCloudRejectOK = topCloudReject and topChart4h and topStrengthUnderCloud
+bool topPowerGuardPass = not protectPowerTrend or (maReady and not na(whiteMA) and (not topPowerActive or (topClimaxRecent and not topClimaxUsed) or topCloudRejectOK))
+plot(topPowerActive ? 1 : 0, title="Power uptrend active - 1 yes / 0 no", display=display.data_window)
+plot(topPowerGuardPass ? 1 : 0, title="Pink SELL power guard - 1 pass / 0 blocked", display=display.data_window)
+
+var bool topCycleUsed = false
+if barstate.isconfirmed and topStrength
+    topCycleUsed := false
+bool earlyTopSell = enableEarlyTopSell and topParametersValid and barstate.isconfirmed and not topCycleUsed and topRecentlyStrong and topMomentumTurn and topPriceTurn and topPowerGuardPass
+if earlyTopSell
+    topCycleUsed := true
+    if topClimaxRecent
+        topClimaxUsed := true
+
+// RSI double top / divergences. The 2nd RSI turn is confirmed by the very next
+// candle (1 right bar), which is also the candle that must fail to extend price.
+float dtPivotHi = ta.pivothigh(rsiValue, dtLeftBars, 1)
+float dtPivotLo = ta.pivotlow(rsiValue, dtLeftBars, 1)
+// Price extreme of an RSI turn: the turn candle and the one before it.
+float dtTurnHigh = math.max(high[1], high[2])
+float dtTurnLow = math.min(low[1], low[2])
+
+var float dtPeak1 = na
+var int dtPeak1At = na
+var float dtPeak1High = na
+bool rsiDoubleTopSell = false
+bool rsiBearDivSell = false
+if barstate.isconfirmed and not na(dtPivotHi)
+    int peak2At = bar_index - 1
+    int gap = na(dtPeak1At) ? na : peak2At - dtPeak1At
+    bool gapOK = not na(gap) and gap >= dtMinGap and gap <= dtMaxGap
+    if gapOK
+        // Offsets 2..gap are the bars strictly between the two peaks.
+        float troughRsi = 100.0
+        for k = 2 to gap
+            troughRsi := math.min(troughRsi, nz(rsiValue[k], 100.0))
+        bool dipped = troughRsi <= math.min(dtPeak1, dtPivotHi) - dtDip
+        float failRef = dtFailRef == "Previous candle" ? high[1] : dtPeak1High
+        bool priceFails = high <= failRef and (not dtConfirmClose or close < open)
+        // On 4h these confirmed two-peak patterns skip the power-uptrend guard.
+        bool topOK = dipped and priceFails and (not dtUseGuard or topChart4h or topPowerGuardPass)
+        rsiDoubleTopSell := enableRsiDoubleTop and topOK and dtPivotHi >= dtLevel and math.abs(dtPivotHi - dtPeak1) <= dtTolerance
+        rsiBearDivSell := enableBearDiv and topOK and dtPivotHi >= divBearFloor and dtPivotHi <= dtPeak1 - divMinRsi and dtTurnHigh > dtPeak1High
+    // A lower peak never replaces a higher first peak still in the window, so
+    // dip bumps and divergence peaks keep the original reference.
+    bool expired = na(gap) or gap > dtMaxGap
+    if dtPivotHi >= dtLevel and (expired or dtPivotHi >= dtPeak1 - dtTolerance)
+        dtPeak1 := dtPivotHi
+        dtPeak1At := peak2At
+        dtPeak1High := dtTurnHigh
+
+var float dbLow1 = na
+var int dbLow1At = na
+var float dbLow1Price = na
+bool rsiBullDivBuy = false
+bool rsiDoubleBottomBuy = false
+if barstate.isconfirmed and not na(dtPivotLo)
+    int low2At = bar_index - 1
+    int gap = na(dbLow1At) ? na : low2At - dbLow1At
+    bool gapOK = not na(gap) and gap >= dtMinGap and gap <= dtMaxGap
+    if gapOK
+        float peakRsi = 0.0
+        for k = 2 to gap
+            peakRsi := math.max(peakRsi, nz(rsiValue[k], 0.0))
+        // Deep oversold W-bottoms bounce less, so they need a smaller swing.
+        float bounceNeed = math.max(dbLow1, dtPivotLo) <= 30.0 ? dtDipDeep : dtDip
+        bool bounced = peakRsi >= math.max(dbLow1, dtPivotLo) + bounceNeed
+        float failRef = dtFailRef == "Previous candle" ? low[1] : dbLow1Price
+        bool priceHolds = low >= failRef and (not dtConfirmClose or close > open)
+        rsiBullDivBuy := enableBullDiv and bounced and priceHolds and dtPivotLo <= divBullCeiling and dtPivotLo >= dbLow1 + divMinRsi and dtTurnLow < dbLow1Price
+        rsiDoubleBottomBuy := enableRsiDoubleBottom and bounced and priceHolds and dtPivotLo <= bullLevel and math.abs(dtPivotLo - dbLow1) <= dtTolerance
+    bool expired = na(gap) or gap > dtMaxGap
+    if dtPivotLo <= bullLevel and (expired or dtPivotLo <= dbLow1 + dtTolerance)
+        dbLow1 := dtPivotLo
+        dbLow1At := low2At
+        dbLow1Price := dtTurnLow
+plot(dtPeak1, title="RSI pattern - reference peak", display=display.data_window)
+plot(dbLow1, title="RSI pattern - reference low", display=display.data_window)
+
+bool signalUseCloud = signalProfile == "Full checklist" or (signalProfile == "Custom filters" and customSignalCloud)
+bool signalUseNear = signalProfile == "Full checklist" or (signalProfile == "Custom filters" and useNear)
+bool signalUseMacd = signalProfile == "Full checklist" or (signalProfile == "Custom filters" and useMacd)
+bool longGates = aboveMA and maUp and (not signalUseCloud or aboveCloud) and (not signalUseNear or nearMA) and (not signalUseMacd or recentUp) and rsiBuyAllowed
+bool shortGates = belowMA and maDown and (not signalUseCloud or belowCloud) and (not signalUseNear or nearMA) and (not signalUseMacd or recentDown) and rsiSellAllowed
+bool dateReady = not limitStart or time >= levelsFrom
+bool reversalMode = setupMode != "Breakouts"
+bool breakoutMode = setupMode != "Reversals"
+
+// A pivot is only available after the right-hand confirmation bars close.
+float pivotLow = ta.pivotlow(low, effectiveSwing, effectiveSwing)
+float pivotHigh = ta.pivothigh(high, effectiveSwing, effectiveSwing)
+var float lastSwingLow = na
+var float lastSwingHigh = na
+if barstate.isconfirmed
+    if not na(pivotLow)
+        lastSwingLow := pivotLow
+    if not na(pivotHigh)
+        lastSwingHigh := pivotHigh
+
+// Confirmed swings supply automatic risk context. They are NOT recovered
+// Matrixchannel levels. A price only enters this collection on confirmation.
+var array<float> swingPrices = array.new<float>()
+var array<int> swingKnownAt = array.new<int>()
+
+f_rememberSwing(float price) =>
+    // Refresh an exact duplicate without counting it as another obstacle.
+    int i = array.size(swingPrices) - 1
+    while i >= 0
+        if math.abs(array.get(swingPrices, i) - price) < syminfo.mintick * 0.5
+            array.remove(swingPrices, i)
+            array.remove(swingKnownAt, i)
+        i -= 1
+    array.push(swingPrices, price)
+    array.push(swingKnownAt, time)
+    if array.size(swingPrices) > 100
+        array.shift(swingPrices)
+        array.shift(swingKnownAt)
+    array.size(swingPrices)
+
+if automaticTrend and barstate.isconfirmed
+    if not na(pivotLow)
+        f_rememberSwing(pivotLow)
+    if not na(pivotHigh)
+        f_rememberSwing(pivotHigh)
+    int i = array.size(swingPrices) - 1
+    while i >= 0
+        if time - array.get(swingKnownAt, i) > autoHistoryHours * 60 * 60 * 1000
+            array.remove(swingPrices, i)
+            array.remove(swingKnownAt, i)
+        i -= 1
+
+float autoResistance = na
+float autoSupport = na
+if automaticTrend and array.size(swingPrices) > 0
+    for price in swingPrices
+        // Equality deliberately produces zero reward rather than skipping a level.
+        if price >= close
+            autoResistance := na(autoResistance) ? price : math.min(autoResistance, price)
+        if price <= close
+            autoSupport := na(autoSupport) ? price : math.max(autoSupport, price)
+float recentRiskLow = ta.lowest(low, trendWindow)
+float recentRiskHigh = ta.highest(high, trendWindow)
+
+
+// Normalize floating-point noise before rounding OUTWARD, then add the exact
+// integer tick buffer. E.g. 100.02 - 0.01 must not become a 100.00 long stop.
+// Eight fractional tick digits preserve meaningful sub-tick extremes.
+f_longStop(float extreme) =>
+    float extremeTicks = math.round(extreme / syminfo.mintick, 8)
+    (math.floor(extremeTicks) - stopBufferTicks) * syminfo.mintick
+
+f_shortStop(float extreme) =>
+    float extremeTicks = math.round(extreme / syminfo.mintick, 8)
+    (math.ceil(extremeTicks) + stopBufferTicks) * syminfo.mintick
+
+f_rr(float entryPrice, float stopPrice, float targetPrice, bool isLong) =>
+    // Work in ticks so price-subtraction noise is removed and tiny tick sizes
+    // do not collapse positive risk/reward to zero in Pine's comparisons.
+    float risk = math.round((isLong ? entryPrice - stopPrice : stopPrice - entryPrice) / syminfo.mintick, 8)
+    float reward = math.round((isLong ? targetPrice - entryPrice : entryPrice - targetPrice) / syminfo.mintick, 8)
+    not na(risk) and not na(reward) and risk > 0 and reward > 0 ? reward / risk : na
+
+f_price(float value) =>
+    na(value) ? "--" : str.tostring(value, format.mintick)
+
+// Small text tag at the right end of a reference line, so every dashed or
+// dotted line says what it is. A missing price removes the tag.
+f_tag(label tag, int x, float y, string txt, color ink) =>
+    label result = tag
+    if na(y)
+        label.delete(result)
+        result := na
+    else if na(result)
+        result := label.new(x, y, txt, style=label.style_label_left, color=color.new(color.black, 100), textcolor=ink, size=size.small)
+    else
+        label.set_xy(result, x, y)
+        label.set_text(result, txt)
+    result
+
+// Experimental price-count exhaustion. These are simplified public comparative
+// rules, NOT full Sequential/Combo or a recovered Propulsion calculation.
+bool bottomDownBar = not na(close[4]) and close < close[4]
+bool bottomUpBar = not na(close[4]) and close > close[4]
+bool bottomCountEligible = not na(low[2]) and close <= low[2]
+var int bottomDownRun = 0
+var int bottomUpRun = 0
+var bool bottomCountdownActive = false
+var int bottomCountdown = 0
+var float bottomCount8Close = na
+bool bottomSetup9 = false
+bool bottomCountdown13 = false
+if enableBottomLab and barstate.isconfirmed
+    bottomDownRun := bottomDownBar ? bottomDownRun + 1 : 0
+    bottomUpRun := bottomUpBar ? bottomUpRun + 1 : 0
+    // Opposite completed setup cancels an unfinished countdown.
+    if bottomUpRun == 9
+        bottomCountdownActive := false
+        bottomCountdown := 0
+        bottomCount8Close := na
+    if bottomDownRun == 9
+        bottomSetup9 := true
+        if not bottomCountdownActive
+            bottomCountdownActive := true
+            bottomCountdown := 0
+            bottomCount8Close := na
+    // Setup bar 9 can also be the first qualifying Countdown bar.
+    if bottomCountdownActive and bottomCountEligible
+        if bottomCountdown < 12
+            bottomCountdown += 1
+            if bottomCountdown == 8
+                bottomCount8Close := close
+        else if not na(bottomCount8Close) and low <= bottomCount8Close
+            bottomCountdown := 13
+            bottomCountdown13 := true
+            bottomCountdownActive := false
+
+float bottomRecentLow = ta.lowest(low, bottomLowLookback)
+bool bottomContextReady = bar_index >= bottomLowLookback - 1 and not na(atr) and not na(bottomRecentLow)
+bool bottomNearLow = bottomContextReady and low - bottomRecentLow <= atr * bottomLowToleranceATR
+bool bottomExhaustionEvent = bottomExhaustionMode == "Countdown 13" ? bottomCountdown13 : bottomSetup9
+bool bottomRsiRising = not na(rsiValue) and not na(rsiValue[1]) and rsiValue > rsiValue[1]
+// The new BUY is unshifted, so its existing overbought block uses THIS candle.
+bool bottomRsiBuyAllowed = not useRsiBuyFilter or (not na(rsiValue) and not na(rsiAverage) and not (rsiValue > rsiAverage and rsiValue > rsiBuyCeiling))
+bool bottomReversalReady = close > open and bottomRsiRising and bottomRsiBuyAllowed
+var bool bottomWatchActive = false
+var int bottomWatchAt = na
+var float bottomTrigger = na
+var float bottomRisk = na
+// Last watch outcome, not live position status: 0 none, 1 watching,
+// 2 confirmed, -1 risk broken, -2 expired.
+var int bottomWatchState = 0
+bool bottomWatchEvent = false
+bool bottomBuy = false
+bool bottomWatchFailed = false
+if enableBottomLab and barstate.isconfirmed
+    if bottomWatchActive and bar_index > bottomWatchAt
+        // Invalidation has priority if one bar touches risk and then rebounds.
+        if low <= bottomRisk
+            bottomWatchActive := false
+            bottomWatchState := -1
+            bottomWatchFailed := true
+        else if bar_index - bottomWatchAt > bottomConfirmBars
+            bottomWatchActive := false
+            bottomWatchState := -2
+            bottomWatchFailed := true
+        else if close > bottomTrigger and bottomReversalReady
+            bottomBuy := true
+            bottomWatchActive := false
+            bottomWatchState := 2
+    // Freeze the watch levels once. Never trail them down to excuse a failure.
+    if not bottomWatchActive and not bottomBuy and not bottomWatchFailed and bottomExhaustionEvent and bottomNearLow
+        bottomWatchActive := true
+        bottomWatchAt := bar_index
+        bottomTrigger := high
+        bottomRisk := f_longStop(low)
+        bottomWatchState := 1
+        bottomWatchEvent := true
+
+var line bottomTriggerLine = na
+var line bottomRiskLine = na
+var label bottomTriggerTag = na
+var label bottomRiskTag = na
+if showBottomLevels and enableBottomLab and bottomWatchActive
+    if na(bottomTriggerLine)
+        bottomTriggerLine := line.new(bottomWatchAt, bottomTrigger, bar_index + 1, bottomTrigger, color=color.rgb(80, 170, 255), style=line.style_dotted)
+        bottomRiskLine := line.new(bottomWatchAt, bottomRisk, bar_index + 1, bottomRisk, color=color.new(color.red, 25), style=line.style_dashed)
+    else
+        line.set_x2(bottomTriggerLine, bar_index + 1)
+        line.set_x2(bottomRiskLine, bar_index + 1)
+    bottomTriggerTag := f_tag(bottomTriggerTag, bar_index + 1, bottomTrigger, "Bottom BUY above " + f_price(bottomTrigger), color.rgb(80, 170, 255))
+    bottomRiskTag := f_tag(bottomRiskTag, bar_index + 1, bottomRisk, "Bottom watch fails " + f_price(bottomRisk), color.new(color.red, 25))
+else
+    line.delete(bottomTriggerLine)
+    line.delete(bottomRiskLine)
+    bottomTriggerLine := na
+    bottomRiskLine := na
+    bottomTriggerTag := f_tag(bottomTriggerTag, bar_index, na, "", color.silver)
+    bottomRiskTag := f_tag(bottomRiskTag, bar_index, na, "", color.silver)
+plot(enableBottomLab ? math.min(bottomDownRun, 9) : na, title="Bottom lab - consecutive down setup (0-9)", display=display.data_window)
+plot(enableBottomLab ? bottomCountdown : na, title="Bottom lab - paused countdown (0-13)", display=display.data_window)
+plot(enableBottomLab ? bottomWatchState : na, title="Bottom watch state - 1 watch / 2 confirmed / -1 risk / -2 expired", display=display.data_window)
+plot(enableBottomLab ? bottomTrigger : na, title="Bottom lab - frozen confirmation high", display=display.data_window)
+plot(enableBottomLab ? bottomRisk : na, title="Bottom lab - frozen buffered risk low", display=display.data_window)
+
+// Reset on every execution. Only confirmed-bar processing can set a signal.
+bool buySignal = false
+bool sellSignal = false
+bool longLocation = false
+bool shortLocation = false
+float previewLongRR = na
+float previewShortRR = na
+float chosenStop = na
+float chosenTarget = na
+float chosenRR = na
+string chosenKind = ""
+
+if not automaticTrend and levelsValid and dateReady and barstate.isconfirmed
+    for i = 0 to array.size(zones) - 1
+        PriceZone z = array.get(zones, i)
+        if showLevels and na(z.lowerLine)
+            z.lowerLine := line.new(bar_index, z.lo, bar_index + 1, z.lo, extend=extend.right, color=color.new(color.silver, 45))
+            z.upperLine := line.new(bar_index, z.hi, bar_index + 1, z.hi, extend=extend.right, color=color.new(color.silver, 45))
+            z.shading := linefill.new(z.lowerLine, z.upperLine, color.new(color.silver, 93))
+
+        // A reversal needs an approach from outside the zone, then a touch.
+        // After consumption, a whole candle outside is needed before re-arming.
+        bool touches = low <= z.hi and high >= z.lo
+        if z.longArmed and touches and na(z.longTouch)
+            z.longTouch := bar_index
+            z.reactionLow := low
+            z.longArmed := false
+        if z.shortArmed and touches and na(z.shortTouch)
+            z.shortTouch := bar_index
+            z.reactionHigh := high
+            z.shortArmed := false
+        if not na(z.longTouch)
+            z.reactionLow := math.min(z.reactionLow, low)
+            if close < z.lo or bar_index - z.longTouch > waitBars
+                z.longTouch := na
+                z.reactionLow := na
+        if not na(z.shortTouch)
+            z.reactionHigh := math.max(z.reactionHigh, high)
+            if close > z.hi or bar_index - z.shortTouch > waitBars
+                z.shortTouch := na
+                z.reactionHigh := na
+        if low > z.hi and na(z.longTouch)
+            z.longArmed := true
+        if high < z.lo and na(z.shortTouch)
+            z.shortArmed := true
+        if close < z.lo
+            z.longArmed := false
+        if close > z.hi
+            z.shortArmed := false
+
+        // Count a fresh break only after a prior eligible close on the other side.
+        // Loading history that begins above/below a zone is not itself a breakout.
+        if close > z.hi
+            if z.upCount > 0
+                z.upCount += 1
+                z.breakoutLow := math.min(z.breakoutLow, low)
+            else if bar_index > 0 and dateReady[1] and close[1] <= z.hi
+                z.upCount := 1
+                z.breakoutLow := low
+                z.upFired := false
+        else
+            z.upCount := 0
+            z.breakoutLow := na
+            z.upFired := false
+        if close < z.lo
+            if z.downCount > 0
+                z.downCount += 1
+                z.breakoutHigh := math.max(z.breakoutHigh, high)
+            else if bar_index > 0 and dateReady[1] and close[1] >= z.lo
+                z.downCount := 1
+                z.breakoutHigh := high
+                z.downFired := false
+        else
+            z.downCount := 0
+            z.breakoutHigh := na
+            z.downFired := false
+
+        int needed = z.lo == z.hi ? 1 : clusterCloses
+        int breakWindow = math.max(waitBars, needed)
+        bool reverseLong = reversalMode and not na(z.longTouch) and close > z.hi
+        bool reverseShort = reversalMode and not na(z.shortTouch) and close < z.lo
+        bool breakoutLong = breakoutMode and not z.upFired and z.upCount >= needed and z.upCount <= breakWindow
+        bool breakoutShort = breakoutMode and not z.downFired and z.downCount >= needed and z.downCount <= breakWindow
+        bool locLong = reverseLong or breakoutLong
+        bool locShort = reverseShort or breakoutShort
+        longLocation := longLocation or locLong
+        shortLocation := shortLocation or locShort
+
+        float targetLong = na
+        float targetShort = na
+        if i < array.size(zones) - 1
+            PriceZone nextUpper = array.get(zones, i + 1)
+            targetLong := nextUpper.lo
+        if i > 0
+            PriceZone nextLower = array.get(zones, i - 1)
+            targetShort := nextLower.hi
+        // If the next entered obstacle is already reached, do not skip over it.
+        // Prefer the reversal variant when both variants describe the same bar.
+        float longExtreme = reverseLong ? math.min(nz(lastSwingLow, z.reactionLow), z.reactionLow) : z.breakoutLow
+        float shortExtreme = reverseShort ? math.max(nz(lastSwingHigh, z.reactionHigh), z.reactionHigh) : z.breakoutHigh
+        float stopLong = f_longStop(longExtreme)
+        float stopShort = f_shortStop(shortExtreme)
+        float rrLong = locLong ? f_rr(close, stopLong, targetLong, true) : na
+        float rrShort = locShort ? f_rr(close, stopShort, targetShort, false) : na
+        if not na(rrLong)
+            previewLongRR := na(previewLongRR) ? rrLong : math.max(previewLongRR, rrLong)
+        if not na(rrShort)
+            previewShortRR := na(previewShortRR) ? rrShort : math.max(previewShortRR, rrShort)
+        bool qualifiedLong = enableSignals and locLong and longGates and not na(rrLong) and rrLong >= minimumRR
+        bool qualifiedShort = enableSignals and locShort and shortGates and not na(rrShort) and rrShort >= minimumRR
+        // If several entered zones qualify on one bar, keep the highest R:R.
+        // MA direction makes opposite-direction qualifications mutually exclusive.
+        if qualifiedLong and (na(chosenRR) or rrLong > chosenRR)
+            buySignal := true
+            chosenStop := stopLong
+            chosenTarget := targetLong
+            chosenRR := rrLong
+            chosenKind := reverseLong ? "REVERSAL" : "BREAKOUT"
+        if qualifiedShort and (na(chosenRR) or rrShort > chosenRR)
+            sellSignal := true
+            chosenStop := stopShort
+            chosenTarget := targetShort
+            chosenRR := rrShort
+            chosenKind := reverseShort ? "REVERSAL" : "BREAKOUT"
+
+// EMA engine: last confirmed directional regime persists through mixed bars.
+// A reversal is emitted only after the opposite regime confirms; recovering the
+// same direction after a neutral pullback does not create another reversal.
+var int trendDirection = 0
+var int upCloses = 0
+var int downCloses = 0
+var int regimeStarted = na
+var bool regimeSent = false
+var bool initialRegime = true
+var string autoDecision = "WARMING UP"
+bool trendTurnUp = false
+bool trendTurnDown = false
+float autoLongStop = f_longStop(math.min(nz(lastSwingLow, recentRiskLow), recentRiskLow))
+float autoShortStop = f_shortStop(math.max(nz(lastSwingHigh, recentRiskHigh), recentRiskHigh))
+float autoLongRR = f_rr(close, autoLongStop, autoResistance, true)
+float autoShortRR = f_rr(close, autoShortStop, autoSupport, false)
+bool autoLongRiskOK = not na(autoLongRR) and autoLongRR >= minimumRR
+bool autoShortRiskOK = not na(autoShortRR) and autoShortRR >= minimumRR
+
+if emaEngine and barstate.isconfirmed
+    upCloses := aboveMA and maUp ? upCloses + 1 : 0
+    downCloses := belowMA and maDown ? downCloses + 1 : 0
+    int confirmedDirection = upCloses >= confirmCloses ? 1 : downCloses >= confirmCloses ? -1 : 0
+    if confirmedDirection != 0 and confirmedDirection != trendDirection
+        initialRegime := trendDirection == 0
+        trendDirection := confirmedDirection
+        regimeStarted := bar_index
+        regimeSent := false
+        trendTurnUp := confirmedDirection == 1
+        trendTurnDown := confirmedDirection == -1
+    bool windowOpen = not na(regimeStarted) and bar_index - regimeStarted <= trendWindow
+    bool pendingLong = trendDirection == 1 and not regimeSent and windowOpen and confirmedDirection == 1
+    bool pendingShort = trendDirection == -1 and not regimeSent and windowOpen and confirmedDirection == -1
+    longLocation := pendingLong
+    shortLocation := pendingShort
+    previewLongRR := pendingLong ? autoLongRR : na
+    previewShortRR := pendingShort ? autoShortRR : na
+    buySignal := enableSignals and pendingLong and longGates and rsiUpNow and (not trendRiskGate or autoLongRiskOK)
+    sellSignal := enableSignals and pendingShort and shortGates and rsiDownNow and (not trendRiskGate or autoShortRiskOK)
+    if buySignal or sellSignal
+        chosenStop := buySignal ? autoLongStop : autoShortStop
+        chosenTarget := buySignal ? autoResistance : autoSupport
+        chosenRR := buySignal ? autoLongRR : autoShortRR
+        chosenKind := initialRegime ? "INITIAL TREND" : "TREND REVERSAL"
+        regimeSent := true
+    if not enableSignals
+        autoDecision := "SIGNALS OFF"
+    else if not maReady
+        autoDecision := "WARMING UP"
+    else if buySignal
+        autoDecision := "↑ UP TREND"
+    else if sellSignal
+        autoDecision := "↓ DOWN TREND"
+    else if regimeSent
+        autoDecision := confirmedDirection == trendDirection ? "SIGNAL ALREADY SENT" : "PULLBACK / TURN WAIT"
+    else if trendDirection == 0
+        autoDecision := "WAIT FOR CONFIRMATION"
+    else if not windowOpen
+        autoDecision := "SETUP EXPIRED"
+    else if confirmedDirection == 0
+        autoDecision := "WAIT FOR CONFIRMATION"
+    else if (pendingLong and not longGates) or (pendingShort and not shortGates)
+        autoDecision := "OPTIONAL FILTER BLOCK"
+    else if trendRiskGate
+        autoDecision := (pendingLong and na(autoLongRR)) or (pendingShort and na(autoShortRR)) ? "NO VALID TARGET / RISK" : "R:R BELOW MINIMUM"
+    else
+        autoDecision := "WAIT"
+
+// RSI + cloud engine. RSI is the trigger; the cloud only decides which side
+// has priority. No EMA, MACD or profile filters, so no two rules can deadlock.
+bool rsiCrossUp = not na(rsiValue[1]) and not na(rsiAverage[1]) and rsiValue > rsiAverage and rsiValue[1] <= rsiAverage[1] and rsiUpNow
+bool rsiCrossDown = not na(rsiValue[1]) and not na(rsiAverage[1]) and rsiValue < rsiAverage and rsiValue[1] >= rsiAverage[1] and rsiDownNow
+// Age of the RSI move: bars since RSI was last on the other side of 50.
+// A flip deep in the green/red zone is a new trend start only if that age is
+// short (fast impulse); a long-running move reaching the cloud is late.
+int rsiBarsSinceBelow50 = ta.barssince(rsiValue < 50.0)
+int rsiBarsSinceAbove50 = ta.barssince(rsiValue > 50.0)
+bool flipBuyOnTime = rsiValue < flipLateRsi or (not na(rsiBarsSinceBelow50) and rsiBarsSinceBelow50 <= flipFreshBars)
+bool flipSellOnTime = rsiValue > 100.0 - flipLateRsi or (not na(rsiBarsSinceAbove50) and rsiBarsSinceAbove50 <= flipFreshBars)
+// A flip also needs a recent RSI cross of its MA in the flip direction. If
+// RSI crossed long ago, the momentum move is old and the flip is late.
+int rsiBarsSinceMaCrossUp = ta.barssince(rsiValue > rsiAverage and rsiValue[1] <= rsiAverage[1])
+int rsiBarsSinceMaCrossDown = ta.barssince(rsiValue < rsiAverage and rsiValue[1] >= rsiAverage[1])
+bool flipBuyFreshCross = not na(rsiBarsSinceMaCrossUp) and rsiBarsSinceMaCrossUp <= flipCrossBars
+bool flipSellFreshCross = not na(rsiBarsSinceMaCrossDown) and rsiBarsSinceMaCrossDown <= flipCrossBars
+if rsiCloudEngine and barstate.isconfirmed
+    // With the trend: every RSI cross of its MA in the cloud's direction.
+    // In a DOWN bias only SELLs come from RSI; in an UP bias only BUYs.
+    bool withBuy = cloudBias == 1 and rsiCrossUp
+    bool withSell = cloudBias == -1 and rsiCrossDown
+    // Trend flip: the confirming close beyond the cloud, with RSI still on the
+    // same side of its MA and the RSI move not already late. Otherwise the
+    // trend still flips, and the next RSI cross on the new side signals.
+    bool flipBuy = cloudTurnUp and rsiValue > rsiAverage and rsiUpNow and flipBuyOnTime and flipBuyFreshCross
+    bool flipSell = cloudTurnDown and rsiValue < rsiAverage and rsiDownNow and flipSellOnTime and flipSellFreshCross
+    longLocation := withBuy or flipBuy
+    shortLocation := withSell or flipSell
+    previewLongRR := longLocation ? autoLongRR : na
+    previewShortRR := shortLocation ? autoShortRR : na
+    buySignal := enableSignals and longLocation and (not trendRiskGate or autoLongRiskOK)
+    sellSignal := enableSignals and shortLocation and (not trendRiskGate or autoShortRiskOK)
+    if buySignal or sellSignal
+        chosenStop := buySignal ? autoLongStop : autoShortStop
+        chosenTarget := buySignal ? autoResistance : autoSupport
+        chosenRR := buySignal ? autoLongRR : autoShortRR
+        chosenKind := (buySignal ? flipBuy : flipSell) ? "CLOUD FLIP" : "WITH TREND"
+    autoDecision := not enableSignals ? "SIGNALS OFF" : cloudBias == 0 ? "WAIT FOR CLOUD" : buySignal ? "↑ BUY" : sellSignal ? "↓ SELL" : cloudBias == 1 ? "UP - WAIT FOR RSI" : "DOWN - WAIT FOR RSI"
+
+// Final shared output guards on the MARKER candle RSI. The overbought BUY
+// block applies to every engine. The RSI-below-MA SELL block applies to the
+// EMA and manual engines only: an RSI-cross SELL already starts from RSI
+// at/above its MA, and the block must not veto a cloud-flip SELL.
+buySignal := buySignal and rsiBuyAllowed and rsiUpNow
+sellSignal := sellSignal and (rsiCloudEngine or rsiSellAllowed) and rsiDownNow
+
+// Same-candle guard: a candle never shows a BUY and a SELL together. Matrix,
+// aqua/orange and the white extreme-low markers are drawn one candle left; all other markers are drawn on
+// their own candle. Conflicts on one bar go to the trend side (DOWN = SELL,
+// UP = BUY, no trend = neither). A shifted marker is also dropped if the
+// candle it would land on already shows an opposite marker.
+int signalTrend = rsiCloudEngine ? cloudBias : emaEngine ? trendDirection : aboveMA and maUp ? 1 : belowMA and maDown ? -1 : 0
+bool ownBuyRaw = rsiBullDivBuy or rsiDoubleBottomBuy or bottomBuy
+bool ownSellRaw = earlyTopSell or rsiDoubleTopSell or rsiBearDivSell
+bool ownConflict = ownBuyRaw and ownSellRaw
+bool ownKeepBuy = not ownConflict or signalTrend == 1
+bool ownKeepSell = not ownConflict or signalTrend == -1
+rsiBullDivBuy := rsiBullDivBuy and ownKeepBuy
+rsiDoubleBottomBuy := rsiDoubleBottomBuy and ownKeepBuy
+bottomBuy := bottomBuy and ownKeepBuy
+earlyTopSell := earlyTopSell and ownKeepSell
+rsiDoubleTopSell := rsiDoubleTopSell and ownKeepSell
+rsiBearDivSell := rsiBearDivSell and ownKeepSell
+bool ownBuyShown = rsiBullDivBuy or rsiDoubleBottomBuy or bottomBuy
+bool ownSellShown = earlyTopSell or rsiDoubleTopSell or rsiBearDivSell
+bool leftConflict = (buySignal or rsiZoneBuy or rsiExtremeBuy) and (sellSignal or rsiZoneSell or rsiExtremeSell)
+bool leftKeepBuy = (not leftConflict or signalTrend == 1) and not ownSellShown[1]
+bool leftKeepSell = (not leftConflict or signalTrend == -1) and not ownBuyShown[1]
+buySignal := buySignal and leftKeepBuy
+rsiZoneBuy := rsiZoneBuy and leftKeepBuy
+rsiExtremeBuy := rsiExtremeBuy and leftKeepBuy
+sellSignal := sellSignal and leftKeepSell
+rsiZoneSell := rsiZoneSell and leftKeepSell
+rsiExtremeSell := rsiExtremeSell and leftKeepSell
+
+// Informational current swing levels. They do not backdate any signal.
+var line autoSupportLine = na
+var line autoResistanceLine = na
+var label autoSupportTag = na
+var label autoResistanceTag = na
+if barstate.islast and automaticTrend and showAutoLevels
+    autoSupportTag := f_tag(autoSupportTag, bar_index + 20, autoSupport, "Swing support " + f_price(autoSupport), blue)
+    autoResistanceTag := f_tag(autoResistanceTag, bar_index + 20, autoResistance, "Swing resistance " + f_price(autoResistance), orange)
+    if not na(autoSupport)
+        if na(autoSupportLine)
+            autoSupportLine := line.new(bar_index, autoSupport, bar_index + 20, autoSupport, color=blue, style=line.style_dotted)
+        else
+            line.set_xy1(autoSupportLine, bar_index, autoSupport)
+            line.set_xy2(autoSupportLine, bar_index + 20, autoSupport)
+    else
+        line.delete(autoSupportLine)
+        autoSupportLine := na
+    if not na(autoResistance)
+        if na(autoResistanceLine)
+            autoResistanceLine := line.new(bar_index, autoResistance, bar_index + 20, autoResistance, color=orange, style=line.style_dotted)
+        else
+            line.set_xy1(autoResistanceLine, bar_index, autoResistance)
+            line.set_xy2(autoResistanceLine, bar_index + 20, autoResistance)
+    else
+        line.delete(autoResistanceLine)
+        autoResistanceLine := na
+
+
+// Consume same-direction active reactions after an actual emitted signal.
+// This avoids a delayed duplicate from an older overlapping setup.
+if not automaticTrend and (buySignal or sellSignal)
+    for z in zones
+        if buySignal
+            z.longTouch := na
+            z.reactionLow := na
+            z.longArmed := false
+            if z.upCount > 0
+                z.upFired := true
+        if sellSignal
+            z.shortTouch := na
+            z.reactionHigh := na
+            z.shortArmed := false
+            if z.downCount > 0
+                z.downFired := true
+
+if barstate.islast and levelsValid and showLevels
+    for z in zones
+        if not na(z.lowerLine)
+            color zoneColor = close > z.hi ? blue : close < z.lo ? orange : color.silver
+            line.set_color(z.lowerLine, color.new(zoneColor, 35))
+            line.set_color(z.upperLine, color.new(zoneColor, 35))
+            linefill.set_color(z.shading, color.new(zoneColor, 92))
+
+var float lastEntry = na
+var float lastStop = na
+var float lastTarget = na
+var float lastRR = na
+var string lastSide = "NONE"
+var string lastKind = "--"
+var int lastSignalAt = na
+var bool lastRiskOK = false
+var line stopLine = na
+var label stopTag = na
+if buySignal or sellSignal
+    lastSignalAt := time_close
+    lastRiskOK := not na(chosenRR) and chosenRR >= minimumRR
+    lastEntry := close
+    lastStop := chosenStop
+    lastTarget := chosenTarget
+    lastRR := chosenRR
+    lastSide := buySignal ? "BUY" : "SELL"
+    lastKind := chosenKind
+    if showPlan
+        if na(stopLine)
+            stopLine := line.new(bar_index, lastStop, bar_index + 20, lastStop, color=color.red, style=line.style_dashed)
+        else
+            line.set_xy1(stopLine, bar_index, lastStop)
+            line.set_xy2(stopLine, bar_index + 20, lastStop)
+        stopTag := f_tag(stopTag, bar_index + 20, lastStop, lastSide + " stop " + f_price(lastStop), color.red)
+    if detailedAlerts
+        alert("Matrix Trend " + lastSide + " " + lastKind + " | " + syminfo.tickerid + " " + timeframe.period + " | close " + f_price(lastEntry) + " | stop " + f_price(lastStop) + " | target " + f_price(lastTarget) + " | R:R " + (na(lastRR) ? "unknown" : str.tostring(lastRR, "#.##")) + " | " + (automaticTrend ? "automatic trend" : "manual level setup") + " | risk " + (lastRiskOK ? "meets threshold" : "UNASSESSED / BELOW THRESHOLD"), alert.freq_once_per_bar_close)
+
+// Triangles draw one candle left. Matrix RSI gates inspect that drawn candle;
+// trend confirmation, alert times and plan lines stay on the confirmation bar.
+// Use the PREVIOUS candle's high/low for explicit Matrix marker placement.
+float matrixMarkerGap = math.max(nz(atr[1], high[1] - low[1]) * 0.12, syminfo.mintick * 2)
+float matrixBuyMarkerPrice = low[1] - matrixMarkerGap
+float matrixSellMarkerPrice = high[1] + matrixMarkerGap
+plotshape(signalMarkersVisible and buySignal ? matrixBuyMarkerPrice : na, title="Matrix BUY - previous candle", style=shape.triangleup, location=location.absolute, color=color.lime, size=size.tiny, display=display.all, force_overlay=true, offset=-1)
+plotshape(signalMarkersVisible and sellSignal ? matrixSellMarkerPrice : na, title="Matrix SELL - previous candle", style=shape.triangledown, location=location.absolute, color=matrixSellInk, size=size.tiny, display=display.all, force_overlay=true, offset=-1)
+// Additional RSI markers use a separate colour pair and a price gap so they
+// remain distinguishable from the lime/purple Matrix triangles. All are text-free.
+float rsiMarkerGap = math.max(nz(atr, high - low) * 0.5, syminfo.mintick * 5)
+// Anchor absolute-price RSI markers to the candle where they are drawn.
+float rsiBuyMarkerPrice = low[1] - rsiMarkerGap[1]
+float rsiSellMarkerPrice = high[1] + rsiMarkerGap[1]
+plotshape(signalMarkersVisible and rsiZoneBuy ? rsiBuyMarkerPrice : na, title="RSI oversold buy triangle", style=shape.triangleup, location=location.absolute, color=color.aqua, size=size.tiny, display=display.all, force_overlay=true, offset=-1)
+plotshape(signalMarkersVisible and rsiZoneSell ? rsiSellMarkerPrice : na, title="RSI overbought sell triangle", style=shape.triangledown, location=location.absolute, color=color.orange, size=size.tiny, display=display.all, force_overlay=true, offset=-1)
+alertcondition(rsiZoneBuy, title="RSI BUY · closed candle", message="RSI zone BUY on {{ticker}} {{interval}} at {{close}}. Check the selected Enter zone or Leave zone trigger. RSI-only event; independent of Matrix trend confirmation.")
+alertcondition(rsiZoneSell, title="RSI SELL · closed candle", message="RSI SELL on {{ticker}} {{interval}} at {{close}}: RSI is above 80 on this closed candle (first candle of the episode unless Every candle is selected). Independent of Matrix trend confirmation.")
+alertcondition(rsiZoneBuy or rsiZoneSell, title="Any RSI BUY / SELL · closed candle", message="RSI zone event on {{ticker}} {{interval}} at {{close}}. See aqua/orange RSI marker for direction.")
+
+// Pink early-reversal signals use real confirmation timing, unlike the
+// existing shifted marker sets. They do not alter Matrix trade-reference lines.
+plotshape(signalMarkersVisible and earlyTopSell, title="Early top SELL - confirmation candle", style=shape.triangledown, location=location.abovebar, color=color.rgb(255, 96, 143), size=size.tiny, display=display.all, force_overlay=true, offset=0)
+alertcondition(earlyTopSell, title="Early top SELL - closed candle", message="Early top SELL candidate on {{ticker}} {{interval}} at {{close}}: recent strength, RSI below its MA and falling, and bearish close below the previous low. With power protection ON, a protected uptrend requires a recent RSI >80 climax or a close breaking the moving average. Confirmed now; continuation is possible.")
+
+// Triangle = double top, diamond = divergence. Spaced so they don't overlap
+// the pink early-top or blue bottom-lab markers on the same candle.
+float dtMarkerGap = math.max(nz(atr, high - low) * 0.6, syminfo.mintick * 5)
+color dtSellInk = color.rgb(255, 59, 48)
+color divBuyInk = color.rgb(0, 200, 170)
+plotshape(signalMarkersVisible and rsiDoubleTopSell ? high + dtMarkerGap : na, title="RSI double-top SELL", style=shape.triangledown, location=location.absolute, color=dtSellInk, size=size.tiny, display=display.all, force_overlay=true, offset=0)
+plotshape(signalMarkersVisible and rsiBearDivSell ? high + dtMarkerGap * 1.6 : na, title="Bearish divergence SELL", style=shape.diamond, location=location.absolute, color=dtSellInk, size=size.tiny, display=display.all, force_overlay=true, offset=0)
+plotshape(signalMarkersVisible and rsiBullDivBuy ? low - dtMarkerGap * 2.0 : na, title="Bullish divergence BUY", style=shape.diamond, location=location.absolute, color=divBuyInk, size=size.tiny, display=display.all, force_overlay=true, offset=0)
+alertcondition(rsiDoubleTopSell, title="RSI double-top SELL - closed candle", message="RSI double-top SELL on {{ticker}} {{interval}} at {{close}}: two similar RSI peaks with a dip between, and the next candle failed to make a new high.")
+alertcondition(rsiBearDivSell, title="Bearish divergence SELL - closed candle", message="Bearish divergence SELL on {{ticker}} {{interval}} at {{close}}: price made a higher high, RSI a lower peak, and the next candle failed to make a new high.")
+alertcondition(rsiBullDivBuy, title="Bullish divergence BUY - closed candle", message="Bullish divergence BUY on {{ticker}} {{interval}} at {{close}}: price made a lower low, RSI a higher low, and the next candle held above the previous low.")
+plotshape(signalMarkersVisible and rsiDoubleBottomBuy ? low - dtMarkerGap : na, title="RSI double-bottom BUY", style=shape.triangleup, location=location.absolute, color=divBuyInk, size=size.tiny, display=display.all, force_overlay=true, offset=0)
+alertcondition(rsiDoubleBottomBuy, title="RSI double-bottom BUY - closed candle", message="RSI double-bottom BUY on {{ticker}} {{interval}} at {{close}}: two similar low RSI lows with a bounce between, and the next candle held above the previous low.")
+// White triangle: extreme-low RSI turn, placed below the teal divergence diamond.
+// White triangle right under the wick of the RSI-low candle (the one before
+// the turn), closest of all markers so it stays attached to it. A later
+// turn in the same episode deletes the earlier marker, so it trails RSI down
+// and ends on the episode's lowest RSI candle.
+// Larger on daily and above. Anchored to the wick with a transparent label
+// body, so a bigger glyph grows away from the candle instead of into it.
+string rsiExtremeSize = timeframe.isdwm ? size.normal : size.small
+if rsiExtremeBuy and signalMarkersVisible
+    if rsiExtremeMove
+        label.delete(rsiExtremeLabel)
+    rsiExtremeLabel := label.new(bar_index - 1, low[1], "▲", style=label.style_label_up, color=color.new(color.black, 100), textcolor=color.white, size=rsiExtremeSize)
+alertcondition(rsiExtremeBuy, title="Extreme-low RSI BUY - closed candle", message="Extreme-low RSI BUY on {{ticker}} {{interval}} at {{close}}: RSI went below the extreme level and has now turned up. If RSI makes a lower low before recovering, the marker moves to the new low and this alert fires again. Counter-trend bounce signal; fires even in a down trend.")
+// White down-triangle on the RSI-high candle. 5m/15m: one per spike, never
+// moved. Daily+: moves to a higher RSI high within the episode, larger size.
+if rsiExtremeSell and signalMarkersVisible
+    if rsiExtremeSellMove
+        label.delete(rsiExHiLabel)
+    rsiExHiLabel := label.new(bar_index - 1, high[1], "▼", style=label.style_label_down, color=color.new(color.black, 100), textcolor=color.white, size=rsiExtremeSize)
+alertcondition(rsiExtremeSell, title="Extreme-high RSI SELL - closed candle", message="Extreme-high RSI SELL on {{ticker}} {{interval}} at {{close}}: RSI went above the extreme-high level and has now turned down. On daily, if RSI makes a higher high before falling back, the marker moves and this alert fires again. Counter-trend sell; fires even in an uptrend.")
+
+// Yellow watch is exhaustion context; blue BUY needs later confirmation.
+// Both use offset 0 and remain distinct from the shifted older signal sets.
+float bottomMarkerGap = math.max(nz(atr, high - low) * 0.8, syminfo.mintick * 6)
+plotshape(signalMarkersVisible and showBottomWatch and bottomWatchEvent ? low - bottomMarkerGap * 0.5 : na, title="Bottom WATCH - exhaustion candidate", style=shape.circle, location=location.absolute, color=color.yellow, size=size.tiny, display=display.all, force_overlay=true, offset=0)
+plotshape(signalMarkersVisible and bottomBuy ? low - bottomMarkerGap : na, title="Bottom BUY - confirmed reversal", style=shape.triangleup, location=location.absolute, color=color.rgb(80, 170, 255), size=size.tiny, display=display.all, force_overlay=true, offset=0)
+alertcondition(bottomWatchEvent, title="Bottom WATCH - closed candle", message="Experimental bottom WATCH on {{ticker}} {{interval}}: price-count exhaustion near a recent low. This is not a BUY. Wait for a later close above the frozen confirmation high; a risk-level touch or expiry invalidates the watch.")
+alertcondition(bottomBuy, title="Bottom BUY - closed candle", message="Experimental bottom BUY on {{ticker}} {{interval}} at {{close}}: a later bullish candle closed above the frozen exhaustion high with RSI rising, while the buffered risk low held and the watch remained valid. Actual confirmation timing; not the full DeMARK or Propulsion algorithm.")
+
+alertcondition(buySignal, title="BUY signal · closed candle", message="Matrix Trend BUY signal on {{ticker}} {{interval}} at {{close}}. Check the selected mode and the displayed target/R:R status. Use Any alert() function call for full price details.")
+alertcondition(sellSignal, title="SELL signal · closed candle", message="Matrix Trend SELL signal on {{ticker}} {{interval}} at {{close}}. Check the selected mode and the displayed target/R:R status. Use Any alert() function call for full price details.")
+alertcondition(buySignal or sellSignal, title="Any BUY / SELL setup · closed candle", message="Matrix Trend setup on {{ticker}} {{interval}} at {{close}}. See chart for direction and risk levels.")
+
+
+alertcondition(longEvent, title="Upward trend aligned · closed candle", message="Matrix Trend Companion: upward trend checks aligned on {{ticker}} {{interval}} at {{close}}. Approximation; support/resistance location not assessed.")
+alertcondition(shortEvent, title="Downward trend aligned · closed candle", message="Matrix Trend Companion: downward trend checks aligned on {{ticker}} {{interval}} at {{close}}. Approximation; support/resistance location not assessed.")
+alertcondition(breakUp, title="Close above cloud", message="Matrix Trend Companion: {{ticker}} {{interval}} closed above the cloud at {{close}}.")
+alertcondition(breakDown, title="Close below cloud", message="Matrix Trend Companion: {{ticker}} {{interval}} closed below the cloud at {{close}}.")
+
+// Previous day high / low from the COMPLETED daily candle. high[1] with
+// lookahead_on is the standard non-repainting form: no future data is used.
+[pdHigh, pdLow] = request.security(syminfo.tickerid, "D", [high[1], low[1]], lookahead=barmerge.lookahead_on)
+bool pdChart = timeframe.isminutes and timeframe.multiplier == 15
+bool pdNewDay = timeframe.change("D")
+var line pdHighLine = na
+var line pdLowLine = na
+var label pdHighTag = na
+var label pdLowTag = na
+if showPrevDay and pdChart and not na(pdHigh) and not na(pdLow)
+    if pdNewDay or na(pdHighLine)
+        // One pair only: a new day deletes yesterday's lines and redraws.
+        line.delete(pdHighLine)
+        line.delete(pdLowLine)
+        pdHighLine := line.new(bar_index, pdHigh, bar_index + 3, pdHigh, color=color.yellow, style=line.style_dashed, width=1)
+        pdLowLine := line.new(bar_index, pdLow, bar_index + 3, pdLow, color=color.green, style=line.style_dashed, width=1)
+    else
+        line.set_x2(pdHighLine, bar_index + 3)
+        line.set_x2(pdLowLine, bar_index + 3)
+    pdHighTag := f_tag(pdHighTag, bar_index + 3, pdHigh, "Prev day high " + f_price(pdHigh), color.yellow)
+    pdLowTag := f_tag(pdLowTag, bar_index + 3, pdLow, "Prev day low " + f_price(pdLow), color.green)
+plot(pdChart ? pdHigh : na, title="Previous day high", display=display.data_window)
+plot(pdChart ? pdLow : na, title="Previous day low", display=display.data_window)
+
+// Compact dashboard: presentation only; signal calculations above are unchanged.
+f_compactRow(table t, int row, string label, string value, color ink) =>
+    table.cell(t, 0, row, label, text_color=color.silver, bgcolor=panel, text_size=panelText, text_halign=text.align_left)
+    table.cell(t, 1, row, value, text_color=ink, bgcolor=panel, text_size=panelText)
+
+var table dashboard = table.new(position.top_right, 2, 5, bgcolor=panel, border_width=1, border_color=color.new(color.silver, 80))
+if barstate.islast
+    if showDashboard
+        int d = barstate.isconfirmed ? 0 : 1
+        bool known = bar_index >= d and maReady[d]
+        int direction = 0
+        if known
+            direction := rsiCloudEngine ? cloudBias[d] : emaEngine ? trendDirection[d] : aboveMA[d] and maUp[d] ? 1 : belowMA[d] and maDown[d] ? -1 : 0
+        string trendLabel = not known ? "WAIT" : protectPowerTrend and topPowerActive[d] and direction != -1 ? "POWER UP" : direction == 1 ? "UP" : direction == -1 ? "DOWN" : "MIXED"
+        string priceLabel = not known ? "WAIT" : aboveMA[d] ? "ABOVE" : belowMA[d] ? "BELOW" : "ON MA"
+        string slopeLabel = not known ? "WAIT" : maUp[d] ? "UP" : maDown[d] ? "DOWN" : "FLAT"
+        color trendInk = direction == 1 ? color.lime : direction == -1 ? color.red : color.silver
+        color priceInk = known and aboveMA[d] ? color.lime : known and belowMA[d] ? color.red : color.silver
+        color slopeInk = known and maUp[d] ? color.lime : known and maDown[d] ? color.red : color.silver
+        string latest = na(lastSignalAt) ? "--" : (lastSide == "BUY" ? "▲ " : "▼ ") + str.format_time(lastSignalAt, "MM-dd HH:mm", syminfo.timezone)
+        color signalInk = na(lastSignalAt) ? color.silver : lastSide == "BUY" ? color.lime : matrixSellInk
+        string chartTimeframeLabel = timeframe.isminutes and timeframe.multiplier >= 60 and timeframe.multiplier % 60 == 0 ? str.tostring(timeframe.multiplier / 60, "0") + "h" : timeframe.isminutes ? timeframe.period + "m" : timeframe.period
+        f_compactRow(dashboard, 0, "MATRIX BTM", chartTimeframeLabel + " / RSI", color.white)
+        f_compactRow(dashboard, 1, "Trend", trendLabel, trendInk)
+        f_compactRow(dashboard, 2, "Price / " + effMaType + " " + str.tostring(effMaLength), priceLabel, priceInk)
+        f_compactRow(dashboard, 3, "MA direction", slopeLabel, slopeInk)
+        f_compactRow(dashboard, 4, "Latest Matrix", latest, signalInk)
+    else
+        table.clear(dashboard, 0, 0, 1, 4)
