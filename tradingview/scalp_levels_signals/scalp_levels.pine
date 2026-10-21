@@ -1,0 +1,867 @@
+//@version=6
+// Scalp Levels — rebuilt from observed behaviour (not the original source).
+// Levels: paste the published levels per ticker (or use the experimental auto formula).
+// Signals rebuilt from their tooltips and replayed on TSLA/CVX/MSFT 16 Oct 2026 data:
+//   Stars — 10-min RSI move state machine (tag 30 / exhausted / complete) + T1/T2/T3 target hits
+//   Confluence SELL/BUY — first 5m RSI + ORB/ARB break + EMA9 + VWAP bar of each 10m move
+//   Rejections — ⚠ when a wick crosses a level and the body stays on one side, ▼/▲ on follow-through
+indicator("Scalp Levels (clone)", "Scalp Lvls", overlay = true, max_lines_count = 100, max_labels_count = 500)
+
+// ───────────── Inputs ─────────────
+const string GRP_LV  = "Levels"
+const string GRP_AU  = "Auto levels (experimental)"
+const string GRP_REJ = "Rejections"
+const string GRP_CF  = "Confluence SELL"
+const string GRP_ST  = "RSI move stars"
+
+const string M_MANUAL   = "Manual (pasted)"
+const string M_FALLBACK = "Manual, auto if ticker missing"
+const string M_AUTO     = "Auto (experimental)"
+
+levelMode  = input.string(M_MANUAL, "Levels source", options = [M_MANUAL, M_FALLBACK, M_AUTO], group = GRP_LV)
+levelsText = input.text_area("A+ Scalp Setups - Tues Oct 20\n\nSPY\n❌ Rejection 768.01 🔻 766.77, 765.69, 764.43\n🔻 Breakdown 763.55 🔻 762.13, 761.10, 759.48\n🔼 Breakout 766.77 🔼 767.85, 768.88, 771.23\n🔄 Bounce 765.82 🔼 767.66, 768.86, 771.12\nBias (before 10:00) Neutral — watch for bounce first\n(after 10:00) Neutral — watch for two-way trade environment\n\nTSLA\n❌ Rejection 374.19 🔻 370.34, 368.42, 365.48\n🔻 Breakdown 366.50 🔻 363.82, 362.17, 355.23 ⚠️ counter-trend\n🔼 Breakout 370.34 🔼 376.40, 378.05, 382.19\n🔄 Bounce 368.13 🔼 376.40, 378.33, 380.63\nBias (before 10:00) Bullish — watch for rejection first\n(after 10:00) Bullish — watch for trend continuation likely\n\nNVDA\n❌ Rejection 218.10 🔻 217.41, 216.34, 215.08\n🔻 Breakdown 214.75 🔻 213.33, 212.41, 208.93\n🔼 Breakout 217.41 🔼 218.33, 219.25, 220.78 ⚠️ counter-trend\n🔄 Bounce 216.15 🔼 217.75, 218.82, 220.78\nBias (before 10:00) Bearish — watch for rejection first\n(after 10:00) Bearish — watch for rips to be likely sold\n\nQQQ\n❌ Rejection 719.62 🔻 716.19, 714.50, 712.50\n🔻 Breakdown 713.77 🔻 709.27, 707.80, 706.21\n🔼 Breakout 716.19 🔼 719.02, 720.49, 723.85 ⚠️ counter-trend\n🔄 Bounce 712.50 🔼 713.77, 715.49, 717.43\nBias (before 10:00) Bearish — watch for breakdown first\n(after 10:00) Bearish — watch for rips to be likely sold\n\nMSFT: 539.53, 543.16, 544.98, 553.72 | 536.30, 534.70, 532.89, 528.77\nGOOGL: 343.61, 345.50, 346.91, 349.91 | 341.67, 340.50, 339.09, 336.02\nAAPL: 338.50, 340.33, 341.32, 342.99 |\nMU: 1011.36, 1024.89, 1032.38, 1049.24 | 1000.60, 991.10, 983.61, 918.88\nAMD: 609.98, 619.51, 623.61, 633.39 | 599.86, 596.07, 591.29, 537.11\nPLTR: 209.39, 211.19, 212.24, 213.85 | 206.84, 205.77, 204.86, 198.35\nMETA: 733.63, 737.53, 741.62, 747.60 | 727.96, 723.72, 719.63, 713.19\nAMZN: 262.40, 264.10, 264.99, 267.39 | 261.39, 259.91, 259.02, 257.24\nNFLX: 71.46, 72.09, 72.36, 73.76 | 71.02, 70.34, 70.07, 69.18", "Pasted levels", tooltip = "Paste the A+ Scalp Setups message as it comes — the ticker, then ❌ Rejection / 🔻 Breakdown / 🔼 Breakout / 🔄 Bounce, each a trigger and its targets, then Bias. One line or many, emojis and commas are fine.\n\nThe simple format still works too, one ticker per line:\nTICKER: bull levels | bear levels\n\nBoth can sit in the same box; a ticker's setups win over its simple line.", group = GRP_LV)
+bullColor  = input.color(#00e676, "▲ Bull", group = GRP_LV, inline = "col")
+bearColor  = input.color(#ff7043, "▼ Bear", group = GRP_LV, inline = "col")
+rejSetCol  = input.color(#ff5252, "❌ Rejection", group = GRP_LV, inline = "col2")
+bncSetCol  = input.color(#26c6da, "🔄 Bounce", group = GRP_LV, inline = "col2")
+showRB     = input.bool(false, "Use ❌ Rejection / 🔄 Bounce setups", group = GRP_LV, inline = "rb", tooltip = "Setups only. Off (like the original): only the Breakout ▲ and Breakdown ▼ sets are drawn and used for warnings and triggers. On: the Rejection and Bounce triggers are drawn and used too; tick \"targets\" to draw their targets as well.")
+showRBtg   = input.bool(false, "targets", group = GRP_LV, inline = "rb")
+showSetSig = input.bool(true, "Mark setup triggers and their target hits", group = GRP_LV, tooltip = "Setups only. Breakout/Breakdown trigger on a close through the trigger; Rejection when a wick reaches it and the bar closes back under; Bounce when a wick reaches it and the bar closes back over. Each fires once per session, then ★ marks T1/T2/T3 as they are hit.")
+lineWidth  = input.int(1, "Line width", minval = 1, maxval = 4, group = GRP_LV)
+labelShift = input.int(12, "Price labels: bars right of last bar", minval = 0, maxval = 200, group = GRP_LV)
+alertCross = input.bool(true, "alert() when a bar closes across a level", group = GRP_LV)
+
+autoLen = input.int(9, "Center = daily EMA length", minval = 1, group = GRP_AU)
+autoM1  = input.float(0.100, "Step 1 × prior-day range", step = 0.001, group = GRP_AU)
+autoM2  = input.float(0.236, "Step 2 × prior-day range", step = 0.001, group = GRP_AU)
+autoM3  = input.float(0.382, "Step 3 × prior-day range", step = 0.001, group = GRP_AU)
+autoM4  = input.float(0.618, "Step 4 × prior-day range", step = 0.001, group = GRP_AU)
+
+rejMode  = input.string("All today", "Show", options = ["All today", "Latest level", "Off"], group = GRP_REJ, tooltip = "\"Latest level\" keeps only the markers of the level tested most recently, like the original (GOOGL 344.69, MSFT 528.77, META 713.19 on 16 Oct). \"All today\" keeps every marker until the next session.")
+rejTol   = input.float(0.0, "Wick counts within % of the level", minval = 0, step = 0.05, group = GRP_REJ, tooltip = "0 = the wick has to reach the level, like the original. Raise it (e.g. 0.10) to also warn on wicks that stall just short of a level.")
+rejBars  = input.int(3, "Bars to confirm (▼ / ▲)", minval = 1, group = GRP_REJ, tooltip = "After a ⚠, a close past the warning bar's close on the rejection side (red bar back down after a Buy Rejection, green bar back up after a Sell Rejection) within this many bars confirms it. A close through the level the other way cancels it.")
+rejConf  = input.bool(true, "Show confirmations (▼ / ▲, not in the original)", group = GRP_REJ)
+rejRearm = input.float(1.0, "Warn again after price moves away by × ATR", minval = 0, step = 0.25, group = GRP_REJ, tooltip = "Each level warns once per approach. After a ⚠ that side of the level stays quiet until a bar closes more than this many ATR(14) away from it, then the next test can warn again.")
+rejColor = input.color(#ffb300, "Warning color", group = GRP_REJ, inline = "rc")
+rejDn    = input.color(#f23645, "Rejected ▼", group = GRP_REJ, inline = "rc")
+rejUp    = input.color(#089981, "Held ▲", group = GRP_REJ, inline = "rc")
+
+showSig   = input.bool(true, "Show SELL / BUY labels", group = GRP_CF)
+sigToday  = input.bool(true, "Current session only", group = GRP_CF, tooltip = "Clears SELL/BUY labels and all stars (RSI move and target stars) when a new regular session opens, so only today's signals stay on the chart. Untick to keep the full history.")
+cfTf      = input.timeframe("5", "Signal timeframe", tooltip = "5 = their \"aggressive 5m\" mode.", group = GRP_CF)
+cfRsiLen  = input.int(14, "RSI length", minval = 1, group = GRP_CF, inline = "cf1")
+cfRsiLv   = input.float(40, "SELL when RSI <", group = GRP_CF, inline = "cf1", tooltip = "RSI on the signal timeframe. BUY mirrors it: RSI > 100 − this.")
+cfEmaLen  = input.int(9, "EMA length", minval = 1, group = GRP_CF, inline = "cf2")
+cfEmaBars = input.int(1, "closes beyond it", minval = 1, group = GRP_CF, inline = "cf2", tooltip = "Closes in a row beyond the EMA. 1 reproduces MSFT's 9:35 SELL on 16 Oct (2 moves it to 9:40). What their \"x2\" means is still unknown.")
+cfBreak   = input.string("ORB or ARB", "Range break needs", options = ["ORB or ARB", "ORB and ARB", "ORB only"], group = GRP_CF, tooltip = "SELL: close below the opening-range low or the last ARB low (BUY: above the highs). The ARB only counts once price has crossed it today, so a gap that opens beyond it is not a break. \"ORB or ARB\" is the only choice that reproduces TSLA 11:05/11:45, CVX 12:30 and MSFT 9:35/10:05/10:25/10:55 on 16 Oct.")
+orbSess   = input.session("0930-0945", "ORB window", group = GRP_CF, inline = "rng")
+arbSess   = input.session("1330-1500", "ARB window", group = GRP_CF, inline = "rng", tooltip = "Both windows are New York time. ARB uses the last completed afternoon range, so a morning SELL compares with yesterday's. Nothing is drawn for them.")
+showStar  = input.bool(true, "Show stars", group = GRP_ST)
+sigTf     = input.timeframe("10", "RSI timeframe", group = GRP_ST)
+sigLen    = input.int(14, "RSI length", minval = 1, group = GRP_ST)
+lvEntry   = input.float(40, "Move starts below", group = GRP_ST, inline = "lv", tooltip = "Sell side shown. The buy side mirrors these: 60 / 70 / 75.")
+lvTag     = input.float(30, "tag", group = GRP_ST, inline = "lv")
+lvArm     = input.float(25, "exhaust", group = GRP_ST, inline = "lv")
+sigBuy    = input.bool(true, "Buy side too (BUY labels, stars above bars)", group = GRP_ST)
+showTgt   = input.bool(true, "Target stars (T1/T2/T3 = next levels past the entry)", group = GRP_ST)
+tgtCount  = input.int(3, "Targets per signal", minval = 1, maxval = 10, group = GRP_ST)
+starColor = input.color(#ffd600, "Star color", group = GRP_ST, inline = "c")
+sellColor = input.color(#f23645, "SELL", group = GRP_ST, inline = "c")
+buyColor  = input.color(#089981, "BUY", group = GRP_ST, inline = "c")
+flashBars = input.int(3, "Flash the newest ✸ for N bars (live only)", minval = 0, group = GRP_ST)
+debugSig  = input.bool(false, "Debug: show the 10m RSI and move state", group = GRP_ST)
+
+// Markers (stars, ⚠, ▼/▲) are labels with an invisible box rather than style_none, so hovering the
+// glyph opens its tooltip.
+const color NO_BG = color.new(color.black, 100)
+
+// ───────────── Pasted levels ─────────────
+parseSide(string s) =>
+    array<float> out = array.new<float>()
+    for tok in str.split(s, ",")
+        float v = str.tonumber(tok)
+        if not na(v)
+            out.push(v)
+    out
+
+// A+ Scalp Setups: per ticker a trigger and targets for each of the four setups, plus the bias.
+type Setup
+    string       kind            // "Rejection", "Breakdown", "Breakout", "Bounce"
+    float        trig    = na
+    array<float> tgts
+    bool         counter = false // ⚠️ counter-trend
+    bool         fired   = false // triggered this session
+    int          hit     = 0     // targets reached since the trigger
+
+// u is the word in upper case
+setupKind(string u) =>
+    str.contains(u, "REJECT") ? "Rejection" : str.contains(u, "BREAKDOWN") ? "Breakdown" : str.contains(u, "BREAKOUT") ? "Breakout" : str.contains(u, "BOUNCE") ? "Bounce" : ""
+setupEmoji(string tok) =>
+    str.contains(tok, "❌") ? "Rejection" : str.contains(tok, "🔄") ? "Bounce" : str.contains(tok, "🔻") ? "Breakdown" : str.contains(tok, "🔼") ? "Breakout" : ""
+// chart mark, like the original: ▲ / ▼ for the Breakout / Breakdown sets, ❌ / 🔄 for the other two
+setupMark(string k) => k == "Breakout" ? "▲" : k == "Breakdown" ? "▼" : k == "Rejection" ? "❌" : "🔄"
+setupDown(string k) => k == "Rejection" or k == "Breakdown"
+setupColor(string k) => k == "Rejection" ? rejSetCol : k == "Breakdown" ? bearColor : k == "Breakout" ? bullColor : bncSetCol
+
+var array<float> manBull  = array.new<float>()
+var array<float> manBear  = array.new<float>()
+var array<Setup> setups   = array.new<Setup>()
+var array<float> setupPx  = array.new<float>()  // every drawn trigger and target, once
+var array<float> trigPx   = array.new<float>()  // drawn triggers only
+var string       biasPre  = ""
+var string       biasPost = ""
+if barstate.isfirst
+    string me     = str.upper(syminfo.ticker)
+    string stream = ""
+    for ln0 in str.split(str.replace_all(levelsText, "\r", ""), "\n")
+        string ln = str.upper(str.replace_all(str.replace_all(ln0, " ", ""), "\t", ""))
+        // simple format: "TICKER: …" or "EXCH:TICKER: …" followed by a number
+        if str.match(ln, "^[A-Z0-9._!]+(:[A-Z0-9._!]+)?:[0-9]") != ""
+            array<string> parts = str.split(ln, ":")
+            int n = parts.size()
+            // last two pieces are TICKER and the data, so "NASDAQ:META: ..." works too
+            if n >= 2 and parts.get(n - 2) == me
+                array<string> sides = str.split(parts.get(n - 1), "|")
+                if sides.size() > 0
+                    manBull := parseSide(sides.get(0))
+                if sides.size() > 1
+                    manBear := parseSide(sides.get(1))
+        else
+            stream := stream + " |NL| " + ln0
+    // setups: walk the words; an all-caps word is a ticker, a setup word opens a setup whose first
+    // number is the trigger and the rest are targets, "Bias" switches to collecting the bias text
+    // Each setup is "emoji trigger emoji targets": ❌ 357.83 🔻 354.47, 352.62, 350.80. So ❌ and 🔄 always
+    // open a setup, and 🔻 / 🔼 open one (Breakdown / Breakout) unless the current setup has its trigger
+    // but no targets yet — then they are the target marker. That works with or without the setup names
+    // (on TSLA 19 Oct the names alone failed and Breakdown/Breakout ran into Rejection). A name, in any
+    // case, also opens a setup; a name right after its own emoji is swallowed so it doesn't open twice.
+    string cur  = ""
+    string mode = ""
+    string part = ""
+    string skip = ""
+    Setup  cs   = na
+    for tok0 in str.split(str.replace_all(stream, "\t", " "), " ")
+        string tok = str.replace_all(tok0, ",", "")
+        if tok == ""
+            mode := mode
+        else if tok == "|NL|"
+            // a line break ends the bias once its "(after 10:00)" text is in, so whatever follows the
+            // message (a disclaimer, a sign-off) doesn't run into the last ticker's bias
+            if mode == "bias" and part == "post"
+                mode := ""
+        else
+            string skipIn  = skip
+            skip := ""
+            bool   isNum   = not na(str.tonumber(tok))
+            bool   hasWord = str.match(tok, "[A-Za-z]{3,}") != ""
+            string emo     = setupEmoji(tok)
+            string word    = mode == "bias" ? "" : setupKind(str.upper(tok))
+            string opn     = ""
+            if str.match(tok, "^[A-Z]{1,6}$") != "" and not array.from("VWAP", "ORB", "ARB", "EMA", "RSI", "ATH", "HOD", "LOD", "ET", "AM", "PM").includes(tok)
+                cur  := tok
+                mode := ""
+                part := ""
+                cs   := na
+            else if emo != "" and (emo == "Rejection" or emo == "Bounce" or hasWord or na(cs) or cs.tgts.size() > 0 or mode != "setup")
+                opn  := emo
+                skip := emo
+            else if emo != ""
+                mode := mode   // 🔻 / 🔼 before the targets
+            else if word != "" and word != skipIn
+                opn := word
+            else if word != "" and word == skipIn
+                mode := mode
+            else if str.contains(tok, "counter-trend")
+                if not na(cs)
+                    cs.counter := true
+            else if tok == "Bias"
+                mode := "bias"
+                cs   := na
+            else if mode == "bias"
+                if str.contains(tok, "(before")
+                    part := "pre"
+                else if str.contains(tok, "(after")
+                    part := "post"
+                else if cur == me and str.match(tok, "^[0-9]{1,2}:[0-9]{2}\\)?$") == ""
+                    if part == "pre"
+                        biasPre := biasPre == "" ? tok : biasPre + " " + tok
+                    else if part == "post"
+                        biasPost := biasPost == "" ? tok : biasPost + " " + tok
+            else if mode == "setup" and not na(cs) and isNum
+                float v = str.tonumber(tok)
+                if na(cs.trig)
+                    cs.trig := v
+                else
+                    cs.tgts.push(v)
+            if opn != ""
+                mode := "setup"
+                cs   := na
+                if cur == me
+                    cs := Setup.new(opn, na, array.new<float>())
+                    setups.push(cs)
+    // setupPx: every price that is drawn (and so warns); trigPx: the triggers among them
+    for st in setups
+        bool rb = st.kind == "Rejection" or st.kind == "Bounce"
+        if not na(st.trig) and (not rb or showRB)
+            trigPx.push(st.trig)
+            if not setupPx.includes(st.trig)
+                setupPx.push(st.trig)
+            if not rb or showRBtg
+                for t in st.tgts
+                    if not setupPx.includes(t)
+                        setupPx.push(t)
+bool useSetups = setups.size() > 0 and levelMode != M_AUTO
+bool hasManual = manBull.size() + manBear.size() > 0 or useSetups
+
+// ───────────── Auto levels (guess — see README) ─────────────
+// Lead: on META the two inner levels sit symmetrically around the daily 9 EMA.
+float dEma  = na
+float dHigh = na
+float dLow  = na
+if levelMode != M_MANUAL
+    [e, h, l] = request.security(syminfo.tickerid, "D", [ta.ema(close, autoLen)[1], high[1], low[1]], lookahead = barmerge.lookahead_on)
+    dEma  := e
+    dHigh := h
+    dLow  := l
+
+autoSide(float center, float rng, float dir) =>
+    array<float> out = array.new<float>()
+    if not na(center) and not na(rng)
+        for m in array.from(autoM1, autoM2, autoM3, autoM4)
+            out.push(math.round_to_mintick(center + dir * m * rng))
+    out
+
+bool useAuto = levelMode == M_AUTO or (levelMode == M_FALLBACK and not hasManual)
+array<float> bulls = useAuto ? autoSide(dEma, dHigh - dLow, 1.0) : manBull
+array<float> bears = useAuto ? autoSide(dEma, dHigh - dLow, -1.0) : manBear
+array<float> allLv = useSetups ? setupPx : bulls.copy()   // read-only below, so setupPx needs no copy
+if not useSetups
+    allLv.concat(bears)
+// ⚠ rejection warnings and level-cross alerts: every drawn level, like the original
+array<float> rejLv = allLv
+
+// ───────────── Session start ─────────────
+bool newDay = timeframe.change("D")
+var bool sawRegular = false
+if session.isfirstbar_regular
+    sawRegular := true
+bool dayStarts = session.isfirstbar_regular or (not sawRegular and newDay)
+var int dayStartBar = na
+if dayStarts
+    dayStartBar := bar_index
+
+var label lastFlash    = na
+var int   lastFlashBar = na
+
+// Every SELL/BUY label and star goes in here so a new session can wipe them (sigToday).
+var array<label> sigLabels = array.new<label>()
+if sigToday and dayStarts
+    for lb in sigLabels
+        lb.delete()
+    sigLabels.clear()
+    lastFlash := na
+
+// SELL/BUY and setup-trigger labels: a second one on the same bar and side joins the first label
+// ("🔄 216.81" + "BUY" → one label, both tooltips) instead of drawing on top of it.
+var array<label>  sideLbl = array.new<label>(2)
+var array<int>    sideBar = array.new<int>(2, -1)
+var array<string> sideTip = array.new<string>(2, "")
+sigLabel(bool above, string txt, color col, color txtCol, string tip) =>
+    int k = above ? 0 : 1
+    if sideBar.get(k) == bar_index and not na(sideLbl.get(k))
+        label lb = sideLbl.get(k)
+        lb.set_text(lb.get_text() + "\n" + txt)
+        sideTip.set(k, sideTip.get(k) + "\n\n" + tip)
+        lb.set_tooltip(sideTip.get(k))
+    else
+        label lb = label.new(bar_index, 0, txt, yloc = above ? yloc.abovebar : yloc.belowbar, style = above ? label.style_label_down : label.style_label_up, color = col, textcolor = txtCol, size = size.tiny, tooltip = tip)
+        sigLabels.push(lb)
+        sideLbl.set(k, lb)
+        sideBar.set(k, bar_index)
+        sideTip.set(k, tip)
+
+float atrNow = ta.atr(14)
+
+// ───────────── Level lines (redrawn on the last bar only) ─────────────
+var array<line>  lvLines  = array.new<line>()
+var array<label> lvLabels = array.new<label>()
+
+drawLevels(array<float> lv, color col, string arrow, int x1, int x2) =>
+    for v in lv
+        lvLines.push(line.new(x1, v, x2, v, color = col, width = lineWidth))
+        lvLabels.push(label.new(x2, v, arrow + " " + str.tostring(v, format.mintick), style = label.style_label_left, color = color.new(col, 82), textcolor = col, size = size.small))
+
+// Setups, drawn like the original: ▲ / ▼ and the price, no setup names. Breakout (▲) and Breakdown (▼)
+// draw the trigger (a step thicker) and every target; Rejection (❌) and Bounce (🔄) draw their trigger,
+// and their dotted targets only with showRBtg. A price in two setups gets one label ("▼🔄 352.97").
+// Labels closer than gap in price are staggered sideways so they don't sit on top of each other.
+drawSetups(int x1, int x2, float gap) =>
+    map<float, string> marks = map.new<float, string>()
+    map<float, color>  cols  = map.new<float, color>()
+    for st in setups
+        if not na(st.trig) and (showRB or not (st.kind == "Rejection" or st.kind == "Bounce"))
+            color  c  = setupColor(st.kind)
+            string mk = setupMark(st.kind) + (st.counter ? "⚠️" : "")
+            bool   rb = st.kind == "Rejection" or st.kind == "Bounce"
+            lvLines.push(line.new(x1, st.trig, x2, st.trig, color = c, width = lineWidth + 1))
+            marks.put(st.trig, marks.contains(st.trig) ? marks.get(st.trig) + mk : mk)
+            if not cols.contains(st.trig)
+                cols.put(st.trig, c)
+            if not rb or showRBtg
+                for t in st.tgts
+                    lvLines.push(line.new(x1, t, x2, t, color = rb ? color.new(c, 35) : c, width = lineWidth, style = rb ? line.style_dotted : line.style_solid))
+                    string m = setupMark(st.kind)
+                    marks.put(t, marks.contains(t) ? (str.contains(marks.get(t), m) ? marks.get(t) : marks.get(t) + m) : m)
+                    if not cols.contains(t)
+                        cols.put(t, c)
+    array<float> pxs = marks.keys()
+    pxs.sort(order.descending)
+    float prev = na
+    int   off  = 0
+    for px in pxs
+        off  := not na(prev) and prev - px < gap ? off + 7 : 0
+        prev := px
+        color c = cols.get(px)
+        lvLabels.push(label.new(x2 + off, px, marks.get(px) + " " + str.tostring(px, format.mintick), style = label.style_label_left, color = color.new(c, 82), textcolor = c, size = size.small))
+
+biasNow() =>
+    bool pre = hour(timenow, "America/New_York") * 60 + minute(timenow, "America/New_York") < 600
+    [pre, pre ? biasPre : biasPost]
+
+var table note = table.new(position.bottom_right, 1, 2)
+float labelGap = atrNow * 0.4
+if barstate.islast and timeframe.isintraday
+    for l in lvLines
+        l.delete()
+    lvLines.clear()
+    for lb in lvLabels
+        lb.delete()
+    lvLabels.clear()
+    int x1 = na(dayStartBar) ? math.max(bar_index - 100, 0) : dayStartBar
+    int x2 = bar_index + labelShift
+    if useSetups
+        drawSetups(x1, x2, labelGap)
+    else
+        drawLevels(bulls, bullColor, "▲", x1, x2)
+        drawLevels(bears, bearColor, "▼", x1, x2)
+    if allLv.size() == 0
+        table.cell(note, 0, 0, "No levels for " + syminfo.ticker + " — paste them in settings", text_color = color.gray, text_size = size.small)
+    else
+        table.clear(note, 0, 0)
+    [pre, bias] = biasNow()
+    if useSetups and bias != ""
+        color bc = str.contains(bias, "Bearish") ? bearColor : str.contains(bias, "Bullish") ? bullColor : color.gray
+        table.cell(note, 0, 1, syminfo.ticker + " bias " + (pre ? "(before 10:00)" : "(after 10:00)") + ": " + bias, text_color = bc, text_size = size.small, bgcolor = color.new(color.black, 40))
+
+// ───────────── Setup triggers ─────────────
+// Each setup fires once per session: Breakout/Breakdown on a close through the trigger; Rejection when
+// the wick reaches the trigger and the whole body stays under it, Bounce when the wick reaches it and the
+// body stays over it (the ⚠ rule — a candle that slices straight through is a breakdown/breakout, not a
+// rejection). From the next bar on, ★ marks each target as it is reached. Runs before the ⚠ section so
+// a level whose Rejection/Bounce just fired doesn't also get a ⚠ on the same bar (firedNow).
+array<float> firedNow = array.new<float>()
+if useSetups and dayStarts
+    for st in setups
+        st.fired := false
+        st.hit   := 0
+if useSetups and showSetSig and timeframe.isintraday and barstate.isconfirmed
+    for st in setups
+        if not na(st.trig) and (showRB or not (st.kind == "Rejection" or st.kind == "Bounce"))
+            bool   dn  = setupDown(st.kind)
+            string px  = str.tostring(st.trig, format.mintick)
+            string etT = " @ " + str.format_time(time, "HH:mm", "America/New_York") + " ET"
+            if not st.fired
+                bool go = switch st.kind
+                    "Breakout"  => close > st.trig and close[1] <= st.trig
+                    "Breakdown" => close < st.trig and close[1] >= st.trig
+                    "Rejection" => high >= st.trig and math.max(open, close) < st.trig
+                    => low <= st.trig and math.min(open, close) > st.trig
+                if go
+                    if st.kind == "Rejection" or st.kind == "Bounce"
+                        firedNow.push(st.trig)
+                    st.fired := true
+                    st.hit   := 0
+                    string tg = ""
+                    for [n, t] in st.tgts
+                        tg := tg + (n == 0 ? "" : ", ") + str.tostring(t, format.mintick)
+                    [pre, bias] = biasNow()
+                    string txt = setupMark(st.kind) + " " + px + " triggered" + etT + " (" + str.lower(st.kind) + ")" + "\nTargets: " + tg + (st.counter ? "\n⚠️ counter-trend" : "") + (bias != "" ? "\nBias " + (pre ? "(before 10:00)" : "(after 10:00)") + ": " + bias : "")
+                    sigLabel(dn, setupMark(st.kind) + " " + px, setupColor(st.kind), color.black, txt)
+                    alert(syminfo.ticker + " " + setupMark(st.kind) + " " + px + " triggered (" + str.lower(st.kind) + ") — targets " + tg, alert.freq_once_per_bar_close)
+            else if st.hit < st.tgts.size()
+                string hits = ""
+                while st.hit < st.tgts.size() and (dn ? low <= st.tgts.get(st.hit) : high >= st.tgts.get(st.hit))
+                    string h = "T" + str.tostring(st.hit + 1) + " Complete: " + str.tostring(close, format.mintick) + "\nTarget " + str.tostring(st.tgts.get(st.hit), format.mintick) + " reached" + etT + " (from " + setupMark(st.kind) + " " + px + ")"
+                    hits := hits == "" ? h : hits + "\n" + h
+                    alert(syminfo.ticker + " " + setupMark(st.kind) + " " + px + " T" + str.tostring(st.hit + 1) + " " + str.tostring(st.tgts.get(st.hit), format.mintick) + " reached", alert.freq_once_per_bar_close)
+                    st.hit += 1
+                if hits != ""
+                    sigLabels.push(label.new(bar_index, 0, "★", yloc = dn ? yloc.belowbar : yloc.abovebar, style = label.style_label_center, color = NO_BG, textcolor = setupColor(st.kind), size = size.normal, tooltip = hits))
+
+// ───────────── Rejections ─────────────
+// ⚠ is the original's warning, at most once per approach to a level (see rejRearm).
+// The name says whose push failed at the level:
+//   "Buy Rejection at L"  — the wick reached L from below, the body stayed under it: buyers were turned
+//                           away. ⚠ under the bar. GOOGL 11:40 + 11:45, MSFT 15:50, META 13:35 (16 Oct).
+//   "Sell Rejection at L" — the wick reached L from above, the body stayed over it: sellers were turned
+//                           away. ⚠ above the bar. MSFT 15:55.
+// ▼ / ▲ are ours: follow-through after a ⚠. Within rejBars bars a red bar closes below both the level
+// and the warning bar's close (▼, after a Buy Rejection), or a green bar closes above both (▲, after a
+// Sell Rejection). A close through the level the other way cancels the wait.
+var array<label> rejLabels = array.new<label>()
+var array<float> rejLvls   = array.new<float>()  // level of each marker, for "Latest level"
+var array<int>   upBar     = array.new<int>()    // bar of the last Buy Rejection, per level
+var array<float> upClose   = array.new<float>()
+var array<int>   dnBar     = array.new<int>()    // bar of the last Sell Rejection, per level
+var array<float> dnClose   = array.new<float>()
+var array<bool>  upArm     = array.new<bool>()   // this side of the level may warn again
+var array<bool>  dnArm     = array.new<bool>()
+if upBar.size() != rejLv.size()
+    upBar   := array.new<int>(rejLv.size(), na)
+    upClose := array.new<float>(rejLv.size(), na)
+    dnBar   := array.new<int>(rejLv.size(), na)
+    dnClose := array.new<float>(rejLv.size(), na)
+    upArm   := array.new<bool>(rejLv.size(), true)
+    dnArm   := array.new<bool>(rejLv.size(), true)
+if dayStarts
+    // array.fill() errors on an empty array (a ticker with no levels), hence the size check
+    if upArm.size() > 0
+        upArm.fill(true)
+        dnArm.fill(true)
+    for lb in rejLabels
+        lb.delete()
+    rejLabels.clear()
+    rejLvls.clear()
+
+rejMark(float lv, string glyph, bool above, color col, string txt) =>
+    if rejMode == "Latest level" and rejLabels.size() > 0
+        for k = rejLabels.size() - 1 to 0
+            if rejLvls.get(k) != lv
+                rejLabels.get(k).delete()
+                rejLabels.remove(k)
+                rejLvls.remove(k)
+    rejLabels.push(label.new(bar_index, 0, glyph, yloc = above ? yloc.abovebar : yloc.belowbar, style = label.style_label_center, color = NO_BG, textcolor = col, size = size.small, tooltip = txt))
+    rejLvls.push(lv)
+    alert(syminfo.ticker + " " + txt, alert.freq_once_per_bar_close)
+
+if timeframe.isintraday and barstate.isconfirmed and rejMode != "Off"
+    for [i, v] in rejLv
+        float  tol    = v * rejTol / 100
+        string px     = str.tostring(v, format.mintick)
+        float  bodyHi = math.max(open, close)
+        float  bodyLo = math.min(open, close)
+        // one warning per approach: re-arm once a bar closes well away from the level without touching it
+        if math.abs(close - v) > rejRearm * atrNow and (high < v - tol or low > v + tol)
+            upArm.set(i, true)
+            dnArm.set(i, true)
+        // follow-through first, so a new ⚠ on this bar starts a fresh wait
+        if not na(upBar.get(i))
+            if close < v and close < open and close < upClose.get(i) and bar_index > upBar.get(i)
+                upBar.set(i, na)
+                if rejConf
+                    rejMark(v, "▼", true, rejDn, "Rejected at " + px + " — follow-through after the Buy Rejection (sell)")
+            else if close > v + tol or bar_index - upBar.get(i) >= rejBars
+                upBar.set(i, na)
+        if not na(dnBar.get(i))
+            if close > v and close > open and close > dnClose.get(i) and bar_index > dnBar.get(i)
+                dnBar.set(i, na)
+                if rejConf
+                    rejMark(v, "▲", false, rejUp, "Held at " + px + " — follow-through after the Sell Rejection (buy)")
+            else if close < v - tol or bar_index - dnBar.get(i) >= rejBars
+                dnBar.set(i, na)
+        bool   setupHere = firedNow.includes(v)
+        if high >= v - tol and bodyHi < v and upArm.get(i) and not setupHere
+            upArm.set(i, false)
+            rejMark(v, "⚠", false, rejColor, "Buy Rejection at " + px + "\nWarning: buyers pushed into " + px + " and were turned back. If it holds as resistance, look to sell.")
+            upBar.set(i, bar_index)
+            upClose.set(i, close)
+        if low <= v + tol and bodyLo > v and dnArm.get(i) and not setupHere
+            dnArm.set(i, false)
+            rejMark(v, "⚠", true, rejColor, "Sell Rejection at " + px + "\nWarning: sellers pushed into " + px + " and were turned back. If it holds as support, look to buy.")
+            dnBar.set(i, bar_index)
+            dnClose.set(i, close)
+
+if timeframe.isintraday and barstate.isconfirmed and alertCross
+    for v in rejLv
+        if close[1] <= v and close > v
+            alert(syminfo.ticker + " closed above " + str.tostring(v, format.mintick), alert.freq_once_per_bar_close)
+        if close[1] >= v and close < v
+            alert(syminfo.ticker + " closed below " + str.tostring(v, format.mintick), alert.freq_once_per_bar_close)
+
+// ───────────── RSI moves, stars and SELL/BUY ─────────────
+// Everything here was checked against TSLA and CVX 5m data for 16 Oct 2026 (Python replay of the same
+// rules); it reproduces every marker on their charts and nothing else.
+//
+// Stars — one sell move on the 10-min RSI, as spelled out by their tooltips (TSLA 5m):
+//   (start)           RSI crosses below 40 — no marker of its own
+//   ✸ complete        RSI crosses back above 40 before tagging 30                  (11:35)
+//   ★ tagged          RSI drops to 30                                              (13:05)
+//   ✸ exhausted       after the tag, RSI hits 25 then reclaims 30                  (13:25)
+//   ★ solid complete  after the ✸, RSI re-breaks 30 then crosses above 40          (15:45)
+// Assumed, not yet seen: crossing above 40 after a tag (no 25) or after a ✸ (no re-break) also
+// ends the move with the "crossed back through 40" ✸. The buy side mirrors around 50
+// (seen: "Gold star — 10-min RSI tagged 70 (buy) @ 12:55 ET", CVX 15m).
+// Stars only show for a move that produced a SELL/BUY: TSLA and CVX had buy moves at the 9:35 gap
+// but no BUY, and no stars there; CVX's buy move started 11:45, BUY 12:30, star 12:55.
+// Moves carry over from the previous session (MSFT's 9:35 SELL and 9:45 ✸ need yesterday's RSI).
+//
+// SELL/BUY — "Confluence SELL — RSI<40, ORB/ARB break, EMA9 x2, <VWAP (aggressive 5m)":
+// the first 5m bar of an active 10m move where all of these hold, once per move. That is why TSLA
+// shows SELLs only at 11:05 and 11:45 (the two move starts), MSFT at its four move starts
+// (9:35, 10:05, 10:25, 10:55) and CVX one BUY at 12:30 (first close above the opening range after
+// its 11:45 move start).
+//
+// Targets — "T1 Complete: 535.02" (MSFT 5m 10:30): T1..Tn are the next levels past the signal bar's
+// 5m close (SELL 10:25 closed 535.33 → T1 534.70). A target completes on the first bar whose low
+// (high for BUY) reaches it; the tooltip shows that bar's close. A new signal replaces the targets,
+// and they clear at the next session.
+//
+// Timing: each 10m value lands on the last 5m slice of its bar (13:20 bar → 13:25), and a 5m bar sees
+// the move state after any 10m value landing on it. Tooltip times use that 5m clock on every chart
+// (13:25 on TSLA 5m, 12:55 and 12:30 on CVX 15m).
+const int STAMP_MS = 5 * 60 * 1000
+at(int t) => " @ " + str.format_time(t, "HH:mm", "America/New_York") + " ET"
+
+// 10m RSI values that finish on this chart bar, with their 10m close times. Charts at or above 10m
+// scan the 10m bars inside the chart bar; charts below take each 10m bar on the chart bar that
+// closes it, keyed on the close time the request returns.
+// Only the request the chart needs runs (v6 allows requests inside if). TradingView still sets up every
+// request when the script loads, so the lower-timeframe one must always ask for a valid timeframe:
+// it falls back to the chart's own when the chart is below sigTf (asking a 5m chart for 10m bars
+// inside each bar is a runtime error even in a branch that never runs).
+bool tenLtf = timeframe.in_seconds() >= timeframe.in_seconds(sigTf)
+var int tenDone = na
+array<float> tenVals  = array.new<float>()
+array<int>   tenTimes = array.new<int>()
+if tenLtf
+    [tenIntra, tenIntraT] = request.security_lower_tf(syminfo.tickerid, tenLtf ? sigTf : timeframe.period, [ta.rsi(close, sigLen), time_close])
+    tenVals  := tenIntra
+    tenTimes := tenIntraT
+else
+    [tenHtf, tenHtfT] = request.security(syminfo.tickerid, sigTf, [ta.rsi(close, sigLen), time_close])
+    if not na(tenHtfT) and time_close >= tenHtfT and (na(tenDone) or tenHtfT != tenDone)
+        tenVals.push(tenHtf)
+        tenTimes.push(tenHtfT)
+        tenDone := tenHtfT
+
+// 5m confluence, computed on 5m data so ORB/ARB/VWAP match on every chart timeframe.
+confluence() =>
+    var float orbHi  = na
+    var float orbLo  = na
+    var float arbHiB = na
+    var float arbLoB = na
+    var float arbHi  = na
+    var float arbLo  = na
+    var int   dn     = 0
+    var int   up     = 0
+    var bool  arbInLo = false  // a close at/above the ARB low since the day (or the ARB) started
+    var bool  arbInHi = false  // a close at/below the ARB high since then
+    bool inOrb = not na(time(timeframe.period, orbSess, "America/New_York"))
+    bool inArb = not na(time(timeframe.period, arbSess, "America/New_York"))
+    if timeframe.change("D")
+        orbHi   := na
+        orbLo   := na
+        arbInLo := false
+        arbInHi := false
+    if inOrb
+        orbHi := na(orbHi) ? high : math.max(orbHi, high)
+        orbLo := na(orbLo) ? low : math.min(orbLo, low)
+    if inArb and not inArb[1]
+        arbHiB := high
+        arbLoB := low
+    else if inArb
+        arbHiB := math.max(arbHiB, high)
+        arbLoB := math.min(arbLoB, low)
+    else if inArb[1]
+        arbHi   := arbHiB
+        arbLo   := arbLoB
+        arbInLo := false
+        arbInHi := false
+    float r  = ta.rsi(close, cfRsiLen)
+    float e  = ta.ema(close, cfEmaLen)
+    float vw = ta.vwap(hlc3)
+    dn := close < e ? dn + 1 : 0
+    up := close > e ? up + 1 : 0
+    bool orbDone = not inOrb and not na(orbLo)
+    bool oDn = orbDone and close < orbLo
+    bool oUp = orbDone and close > orbHi
+    // The ARB is only "broken" by crossing it: CVX opened above its ARB high and never came back, so
+    // that did not count, while MSFT opened above its ARB low and the 9:35 drop through it did.
+    bool aDn = not na(arbLo) and close < arbLo and arbInLo
+    bool aUp = not na(arbHi) and close > arbHi and arbInHi
+    if not na(arbLo) and close >= arbLo
+        arbInLo := true
+    if not na(arbHi) and close <= arbHi
+        arbInHi := true
+    bool brkDn = cfBreak == "ORB only" ? oDn : cfBreak == "ORB or ARB" ? oDn or aDn : oDn and aDn
+    bool brkUp = cfBreak == "ORB only" ? oUp : cfBreak == "ORB or ARB" ? oUp or aUp : oUp and aUp
+    bool sellC = r < cfRsiLv and brkDn and dn >= cfEmaBars and close < vw
+    bool buyC  = r > 100 - cfRsiLv and brkUp and up >= cfEmaBars and close > vw
+    [sellC, buyC, time, time_close, close]
+
+bool cfLtf = timeframe.in_seconds() >= timeframe.in_seconds(cfTf)
+var int cfDone = na
+array<bool>  fiveSell  = array.new<bool>()
+array<bool>  fiveBuy   = array.new<bool>()
+array<int>   fiveTimes = array.new<int>()
+array<float> fivePx    = array.new<float>()
+if cfLtf
+    [cfSellArr, cfBuyArr, cfTimeArr, cfCloseArr, cfPxArr] = request.security_lower_tf(syminfo.tickerid, cfLtf ? cfTf : timeframe.period, confluence())
+    fiveSell  := cfSellArr
+    fiveBuy   := cfBuyArr
+    fiveTimes := cfTimeArr
+    fivePx    := cfPxArr
+else
+    [cfSellHtf, cfBuyHtf, cfTimeHtf, cfCloseHtf, cfPxHtf] = request.security(syminfo.tickerid, cfTf, confluence())
+    if not na(cfCloseHtf) and time_close >= cfCloseHtf and (na(cfDone) or cfCloseHtf != cfDone)
+        fiveSell.push(cfSellHtf)
+        fiveBuy.push(cfBuyHtf)
+        fiveTimes.push(cfTimeHtf)
+        fivePx.push(cfPxHtf)
+        cfDone := cfCloseHtf
+
+const int EV_START     = 1
+const int EV_TAG       = 2
+const int EV_EXHAUST   = 3
+const int EV_COMPLETE  = 4
+const int EV_SOLID     = 5
+
+type Move
+    int   state   = 0     // 0 idle · 1 past 40 · 2 tagged 30 · 3 after the exhaustion ✸
+    bool  armed   = false
+    bool  rebroke = false
+    float prev    = na
+    int   id      = 0     // counts moves; bumps on every start
+    int   firedId = -1    // id of the last move that produced a SELL/BUY
+
+// x is RSI measured from the move's side: RSI for sells, 100 − RSI for buys.
+step(Move m, float x, array<int> ev) =>
+    int s = m.state
+    if s == 0 and not na(m.prev) and m.prev >= lvEntry and x < lvEntry
+        ev.push(EV_START)
+        m.state := 1
+        m.id    += 1
+    if m.state == 1
+        if x <= lvTag
+            ev.push(EV_TAG)
+            m.state := 2
+            m.armed := x <= lvArm
+        else if s == 1 and x >= lvEntry
+            ev.push(EV_COMPLETE)
+            m.state := 0
+    else if s == 2
+        if x <= lvArm
+            m.armed := true
+        if m.armed and x >= lvTag
+            ev.push(EV_EXHAUST)
+            m.state   := 3
+            m.armed   := false
+            m.rebroke := false
+        else if x >= lvEntry
+            ev.push(EV_COMPLETE)
+            m.state := 0
+            m.armed := false
+    else if s == 3
+        if x < lvTag
+            m.rebroke := true
+        if x >= lvEntry
+            ev.push(m.rebroke ? EV_SOLID : EV_COMPLETE)
+            m.state   := 0
+            m.rebroke := false
+    m.prev := x
+
+// Feeds one 10m value (t = its close time); each event gets a 5m-clock stamp and its move's id.
+feed(Move m, float x, int t, array<int> ev, array<int> stamps, array<int> ids) =>
+    step(m, x, ev)
+    while stamps.size() < ev.size()
+        stamps.push(t - STAMP_MS)
+        ids.push(m.id)
+
+// A SELL/BUY can still fire for this move.
+canFire(Move m) => m.state >= 1 and m.firedId != m.id
+
+var Move sellMove = Move.new()
+var Move buyMove  = Move.new()
+array<int> sellEv = array.new<int>()
+array<int> buyEv  = array.new<int>()
+array<int> sellT  = array.new<int>()
+array<int> buyT   = array.new<int>()
+array<int> sellId = array.new<int>()
+array<int> buyId  = array.new<int>()
+int   cfSellT  = na
+int   cfBuyT   = na
+float cfSellPx = na
+float cfBuyPx  = na
+
+// Walk the 5m bars in order, landing each 10m value before the 5m bar it finishes on.
+int j = 0
+for [k, ft] in fiveTimes
+    while j < tenVals.size() and tenTimes.get(j) - STAMP_MS <= ft
+        float v = tenVals.get(j)
+        if not na(v)
+            feed(sellMove, v, tenTimes.get(j), sellEv, sellT, sellId)
+            feed(buyMove, 100 - v, tenTimes.get(j), buyEv, buyT, buyId)
+        j += 1
+    if canFire(sellMove) and fiveSell.get(k)
+        sellMove.firedId := sellMove.id
+        cfSellT  := ft
+        cfSellPx := fivePx.get(k)
+    if canFire(buyMove) and fiveBuy.get(k)
+        buyMove.firedId := buyMove.id
+        cfBuyT  := ft
+        cfBuyPx := fivePx.get(k)
+while j < tenVals.size()
+    float v = tenVals.get(j)
+    if not na(v)
+        feed(sellMove, v, tenTimes.get(j), sellEv, sellT, sellId)
+        feed(buyMove, 100 - v, tenTimes.get(j), buyEv, buyT, buyId)
+    j += 1
+
+string tfTxt = str.tostring(timeframe.in_seconds(sigTf) / 60) + "-min"
+fmt(float x) => str.tostring(x)
+
+eventText(int e, bool sell) =>
+    string side  = sell ? "sell" : "buy"
+    string ent   = fmt(sell ? lvEntry : 100 - lvEntry)
+    string tag   = fmt(sell ? lvTag : 100 - lvTag)
+    string arm   = fmt(sell ? lvArm : 100 - lvArm)
+    string above = sell ? "above" : "below"
+    switch e
+        EV_TAG      => "Gold star — " + tfTxt + " RSI tagged " + tag + " (" + side + ")"
+        EV_EXHAUST  => "Flashing gold star — " + tfTxt + " RSI hit " + arm + " then reclaimed " + tag + " (" + side + " move exhausted)"
+        EV_COMPLETE => "Flashing gold star — " + tfTxt + " RSI crossed back through " + ent + ", " + side + " move complete"
+        EV_SOLID    => "Solid gold star — RSI re-broke " + tag + " after the flashing star, then crossed " + above + " " + ent + ": " + side + " move complete"
+        => ""
+
+// One short "what to do" line under the tooltip, for the star's (latest) event.
+eventHint(int e, bool sell) =>
+    switch e
+        EV_TAG      => "Stretched — watch for the move to run out."
+        EV_EXHAUST  => "Take profits, don't chase new " + (sell ? "shorts" : "longs") + "."
+        EV_COMPLETE => "Done for now — wait for the next setup."
+        EV_SOLID    => "The last push failed — wait for the next setup."
+        => ""
+
+
+// One star per bar; when a 15m/4h bar holds several 10m events the star shows the latest one.
+// The tooltip lists each kind of event once (its latest time) and ends with one hint line.
+// Only moves that produced a SELL/BUY (by the end of this bar) get stars. Returns the ✸ it drew, or na.
+drawEvents(array<int> ev, array<int> times, array<int> ids, int firedId, bool sell) =>
+    array<int>    kinds = array.new<int>()
+    array<string> lines = array.new<string>()
+    int lastE = 0
+    for [i, e] in ev
+        if e != EV_START and ids.get(i) == firedId
+            string txt = eventText(e, sell) + at(times.get(i))
+            alert(syminfo.ticker + " " + txt, alert.freq_once_per_bar_close)
+            int k = kinds.indexof(e)
+            if k >= 0
+                kinds.remove(k)
+                lines.remove(k)
+            kinds.push(e)
+            lines.push(txt)
+            lastE := e
+    string starTxt = lines.join("\n") + (lastE != 0 ? "\n" + eventHint(lastE, sell) : "")
+    label flashLb = na
+    if showStar and lastE != 0
+        bool  flash = lastE == EV_EXHAUST or lastE == EV_COMPLETE
+        label lb    = label.new(bar_index, 0, flash ? "✸" : "★", yloc = sell ? yloc.belowbar : yloc.abovebar, style = label.style_label_center, color = NO_BG, textcolor = starColor, size = size.normal, tooltip = starTxt)
+        sigLabels.push(lb)
+        if flash
+            flashLb := lb
+    flashLb
+
+label sellFlash = drawEvents(sellEv, sellT, sellId, sellMove.firedId, true)
+label buyFlash  = sigBuy ? drawEvents(buyEv, buyT, buyId, buyMove.firedId, false) : na
+for lb in array.from(sellFlash, buyFlash)
+    if not na(lb)
+        lastFlash    := lb
+        lastFlashBar := bar_index
+
+// Pine only redraws when a tick arrives, so the newest ✸ toggles on every live update.
+varip bool blink = false
+if barstate.isrealtime and not na(lastFlash)
+    blink := not blink
+    bool flashing = bar_index - lastFlashBar < flashBars
+    lastFlash.set_textcolor(flashing and blink ? color.new(starColor, 80) : starColor)
+
+string cfMode = cfTf == "5" ? "aggressive 5m" : str.tostring(timeframe.in_seconds(cfTf) / 60) + "m"
+string emaTxt = "EMA" + str.tostring(cfEmaLen) + " x2"
+string brkTxt = cfBreak == "ORB only" ? "ORB break" : "ORB/ARB break"
+
+// Targets for the latest signal: the next tgtCount levels past its 5m close. Checked from the
+// bar after the signal; a new session clears them.
+var array<float> tgts   = array.new<float>()
+var bool         tgtDn  = true
+var int          tgtHit = 0
+var float        tgtFrom = na  // the signal's 5m close
+if dayStarts
+    tgts.clear()
+    tgtHit := 0
+string tgtTxt = ""
+if tgts.size() > tgtHit and showTgt and not useSetups
+    while tgtHit < tgts.size() and (tgtDn ? low <= tgts.get(tgtHit) : high >= tgts.get(tgtHit))
+        string t = "T" + str.tostring(tgtHit + 1) + " Complete: " + str.tostring(close, format.mintick) + "\nTarget " + str.tostring(tgts.get(tgtHit), format.mintick) + " reached — level " + str.tostring(tgtHit + 1) + (tgtDn ? " below the SELL at " : " above the BUY at ") + str.tostring(tgtFrom, format.mintick) + "."
+        tgtTxt := tgtTxt == "" ? t : tgtTxt + "\n" + t
+        alert(syminfo.ticker + " " + t + " (target " + str.tostring(tgts.get(tgtHit), format.mintick) + ")", alert.freq_once_per_bar_close)
+        tgtHit += 1
+if tgtTxt != ""
+    sigLabels.push(label.new(bar_index, 0, "★", yloc = tgtDn ? yloc.belowbar : yloc.abovebar, style = label.style_label_center, color = NO_BG, textcolor = starColor, size = size.normal, tooltip = tgtTxt))
+
+setTargets(float px, bool dn) =>
+    array<float> out = array.new<float>()
+    for v in allLv
+        if dn ? v < px : v > px
+            out.push(v)
+    out.sort(dn ? order.descending : order.ascending)
+    out.size() > tgtCount ? out.slice(0, tgtCount) : out
+
+if not na(cfSellT)
+    string txt = "Confluence SELL — RSI<" + fmt(cfRsiLv) + ", " + brkTxt + ", " + emaTxt + ", <VWAP (" + cfMode + ")" + at(cfSellT)
+    alert(syminfo.ticker + " " + txt, alert.freq_once_per_bar_close)
+    if showSig
+        sigLabel(true, "SELL", sellColor, color.white, txt)
+    tgts    := setTargets(cfSellPx, true)
+    tgtDn   := true
+    tgtHit  := 0
+    tgtFrom := cfSellPx
+if not na(cfBuyT) and sigBuy
+    string txt = "Confluence BUY — RSI>" + fmt(100 - cfRsiLv) + ", " + brkTxt + ", " + emaTxt + ", >VWAP (" + cfMode + ")" + at(cfBuyT)
+    alert(syminfo.ticker + " " + txt, alert.freq_once_per_bar_close)
+    if showSig
+        sigLabel(false, "BUY", buyColor, color.white, txt)
+    tgts    := setTargets(cfBuyPx, false)
+    tgtDn   := false
+    tgtHit  := 0
+    tgtFrom := cfBuyPx
+
+// Debug: the RSI the stars run on and where each move is. Values show in the Data Window,
+// the table sits bottom-left.
+var int starCount = 0
+for e in sellEv
+    starCount += e != EV_START ? 1 : 0
+for e in buyEv
+    starCount += e != EV_START and sigBuy ? 1 : 0
+float dbgRsi = na
+if debugSig and tenVals.size() > 0
+    dbgRsi := tenVals.last()
+plot(dbgRsi, "Star RSI (10m)", color.yellow, display = display.data_window)
+plot(debugSig ? sellMove.state : na, "Sell move state", color.red, display = display.data_window)
+plot(debugSig ? buyMove.state : na, "Buy move state", color.green, display = display.data_window)
+var table dbg = table.new(position.bottom_left, 2, 6, bgcolor = color.new(color.black, 30))
+if debugSig and barstate.islast
+    dbg.cell(0, 0, "10m feed", text_color = color.white, text_size = size.small)
+    dbg.cell(1, 0, tenLtf ? "10m bars inside chart bar" : "10m bar on its last chart bar", text_color = color.white, text_size = size.small)
+    dbg.cell(0, 1, "10m values this bar", text_color = color.white, text_size = size.small)
+    dbg.cell(1, 1, str.tostring(tenVals.size()), text_color = color.white, text_size = size.small)
+    dbg.cell(0, 2, "last 10m RSI", text_color = color.white, text_size = size.small)
+    dbg.cell(1, 2, str.tostring(sellMove.prev, "#.0"), text_color = color.white, text_size = size.small)
+    dbg.cell(0, 3, "sell / buy state", text_color = color.white, text_size = size.small)
+    dbg.cell(1, 3, str.tostring(sellMove.state) + " / " + str.tostring(buyMove.state), text_color = color.white, text_size = size.small)
+    dbg.cell(0, 4, "star events so far", text_color = color.white, text_size = size.small)
+    dbg.cell(1, 4, str.tostring(starCount), text_color = color.white, text_size = size.small)
+    string parsed = ""
+    for st in setups
+        parsed := parsed + (parsed == "" ? "" : "  ") + setupMark(st.kind) + " " + str.tostring(st.trig) + " +" + str.tostring(st.tgts.size())
+    dbg.cell(0, 5, "setups parsed", text_color = color.white, text_size = size.small)
+    dbg.cell(1, 5, parsed == "" ? "none" : parsed, text_color = color.white, text_size = size.small)
