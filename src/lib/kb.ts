@@ -695,6 +695,7 @@ const invertedCycles: KbArticle = {
         { rule: 'Working interval', detail: '82 × 3 = 246 weeks. Not a count on the chart; a multiple of one.' },
         { rule: 'Polarity', detail: 'Inverted. The highest high lines up with a major low.' },
         { rule: 'Command', detail: 'find_cycles.py --symbol ZB=F --preset bonds --allow-invert' },
+        { rule: 'Scope', detail: 'Inversion is allowed on this market and no other — the scanner refuses the flag anywhere else.' },
       ],
     },
     { kind: 'heading', text: 'Two new ideas' },
@@ -726,7 +727,7 @@ const invertedCycles: KbArticle = {
       kind: 'callout',
       tone: 'warn',
       title: 'What makes this one hard to trust',
-      text: 'An inverted match doubles the number of patterns that can be called a fit, so it roughly doubles the chance of finding one by accident. The scanner only accepts an inversion when --allow-invert is set, and the noise bar has not been re-measured for inverted matching — assume the bar is higher than the table says until it has been.',
+      text: 'An inverted match doubles the number of patterns that can be called a fit, so it roughly doubles the chance of finding one by accident — and the random-walk baseline every other claim here is scored against was measured without it. That is why inversion is not a global setting: --allow-invert works on the 30-year bond series and the scanner refuses it on anything else, so one market spends the extra freedom and the rest keep a baseline that still applies. Until the noise bar is re-measured for inverted matching, assume it is higher here than the table says.',
     },
   ],
 };

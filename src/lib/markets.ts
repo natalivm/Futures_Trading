@@ -16,6 +16,7 @@ export const MARKETS: Market[] = [
   { slug: 'ES_F', label: 'E-mini S&P 500 futures', short: 'E-mini' },
   { slug: 'CL_F', label: 'WTI crude oil', short: 'Crude' },
   { slug: 'GC_F', label: 'Gold', short: 'Gold' },
+  { slug: 'ZB_F', label: 'US 30-year Treasury bonds', short: 'US 30y' },
 ];
 
 export function marketLabel(slug: string): string {

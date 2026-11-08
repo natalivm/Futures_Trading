@@ -65,6 +65,17 @@ PRESETS = {
     "bonds":    [1.57, 3.14, 4.72],
 }
 
+# The one market --allow-invert may be used on, keyed by data-file slug.
+#
+# Not a preference. Accepting an inverted repeat doubles the hypothesis space:
+# every offset now gets two chances to score, so the random-walk baseline the
+# whole project gates on no longer applies, and it has not been re-measured
+# under inversion. The course demonstrates exactly one inverted cycle — US
+# 30-year bonds, 82 x 3 = 246 weeks, where the highest high lands on a major
+# low — so that is the one series allowed to spend the extra freedom until
+# there is a control for it.
+INVERT_MARKETS = {"ZB_F"}
+
 
 # ── Data ──
 
@@ -441,7 +452,9 @@ def main():
     ap.add_argument("--swing", type=int, default=21, help="bars per swing-return block (default 21 ≈ monthly)")
     ap.add_argument("--allow-invert", action="store_true",
                     help="also accept an inverted repeat, where a low lines up with a high and every "
-                         "leg mirrors — the shape of the 246-week bond cycle")
+                         "leg mirrors — the shape of the 246-week bond cycle. Restricted to "
+                         + ", ".join(sorted(INVERT_MARKETS)) + ": it doubles the hypothesis space "
+                         "and the noise control has not been re-measured under it")
     ap.add_argument("--epochs", type=int, default=5, help="earlier anchor points used to check the cycle held")
     ap.add_argument("--epoch-years", type=float, default=5, help="years between those anchor points")
     ap.add_argument("--horizon", type=int, default=230, help="trading days to project forward (default 230 ≈ 11 months)")
@@ -470,6 +483,20 @@ def main():
         paths = [os.path.join(DATA_DIR, f"{name}.csv")]
     else:
         ap.error("pass --symbol or --all")
+
+    # Inversion stays on the one market it was demonstrated on. A sweep that
+    # allowed it everywhere would score every series against twice as many
+    # candidate shapes while being read against a baseline measured for one.
+    if args.allow_invert:
+        allowed = ", ".join(sorted(INVERT_MARKETS))
+        if args.all:
+            ap.error(f"--allow-invert is not a sweep setting: run it on one of {allowed}")
+        slug = os.path.splitext(os.path.basename(paths[0]))[0]
+        if slug not in INVERT_MARKETS:
+            ap.error(f"--allow-invert is limited to {allowed}, not {slug} "
+                     "(see INVERT_MARKETS in this file for why)")
+        print(f"inversion allowed on {slug} — an upside-down match scores as a match, "
+              "so read the swing figure against a control that does not exist yet")
 
     missing = [p for p in paths if not os.path.exists(p)]
     if missing:

@@ -143,7 +143,7 @@ tolFor(expected) =>
 // appears to tie it.
 noiseBar(int pivots, int tb, float tp) =>
     int band = tb <= 0 and tp <= 0 ? 0 : (tb <= 1 and tp <= 2.0 ? 1 : (tb <= 2 and tp <= 4.0 ? 2 : 3))
-    int row = pivots <= 15 ? 0 : (pivots <= 25 ? 1 : (pivots <= 35 ? 2 : (pivots <= 50 ? 3 : (pivots <= 70 ? 4 : (pivots <= 95 ? 5 : 6)))))
+    int row = pivots <= 15 ? 0 : (pivots <= 25 ? 1 : (pivots <= 35 ? 2 : (pivots <= 50 ? 3 : (pivots <= 70 ? 4 : (pivots <= 95 ? 5 : (pivots <= 130 ? 6 : 7))))))
     int v = 4
     if band == 0
         v := row <= 0 ? 3 : (row <= 3 ? 4 : 5)
@@ -152,7 +152,7 @@ noiseBar(int pivots, int tb, float tp) =>
     else if band == 2
         v := row == 0 ? 5 : (row == 1 ? 6 : (row == 2 ? 7 : (row <= 4 ? 8 : (row == 5 ? 9 : 10))))
     else
-        v := row == 0 ? 5 : (row == 1 ? 6 : (row == 2 ? 7 : (row == 3 ? 8 : (row == 4 ? 9 : 10))))
+        v := row == 0 ? 5 : (row == 1 ? 6 : (row == 2 ? 7 : (row == 3 ? 8 : (row == 4 ? 9 : (row <= 6 ? 10 : 11)))))
     v
 
 // Closes over [startBar, startBar+len), oldest first.
@@ -296,7 +296,11 @@ if barstate.islast
         array<int>   bestB = array.new<int>(MAXL, -1)
         array<float> bestM = array.new<float>(MAXL, 1e9)
         array<int> bestChain = array.new<int>()
-        float chainErr = 0.0
+        // The worst single link, not the total. "±3" has to mean no term is
+        // more than 3 off its predecessors' sum; a running total says nothing
+        // a reader can check against a term, and climbs with chain length, so
+        // a long exact-looking chain reads worse than a short sloppy one.
+        float chainWorst = 0.0
 
         int m = array.size(counts)
         if m >= 2
@@ -344,7 +348,7 @@ if barstate.islast
             while ext2
                 int k2 = nearestIdx(counts, x2 + y2)
                 if k2 >= 0 and array.get(counts, k2) > y2
-                    chainErr += math.abs(array.get(counts, k2) - (x2 + y2))
+                    chainWorst := math.max(chainWorst, math.abs(array.get(counts, k2) - (x2 + y2)))
                     array.push(bestChain, k2)
                     x2 := y2
                     y2 := array.get(counts, k2)
@@ -685,8 +689,8 @@ if barstate.islast
                  bgcolor=color.new(color.black, 20), text_color=color.white, text_size=size.small)
             table.cell(info, 0, 1, "Pivots counted", text_color=color.gray, text_size=size.tiny)
             table.cell(info, 1, 1, str.tostring(array.size(counts)), text_color=color.white, text_size=size.tiny)
-            table.cell(info, 0, 2, "Chain" + (haveChain ? (chainErr == 0 ? " (exact)" :
-                 " (±" + str.tostring(chainErr, "#.#") + ")") : ""),
+            table.cell(info, 0, 2, "Chain" + (haveChain ? (chainWorst == 0 ? " (exact)" :
+                 " (±" + str.tostring(chainWorst, "#.#") + " worst)") : ""),
                  text_color=color.gray, text_size=size.tiny)
             // Greyed when it does not clear the noise bar: a chain that random
             // data reaches is not a finding, and should not be coloured as one.

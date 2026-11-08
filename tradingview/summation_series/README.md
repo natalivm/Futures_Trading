@@ -91,7 +91,10 @@ counts before it, never from the predicted value, so drift cannot accumulate.
 
 ## Multiples, and cycles that repeat upside down
 
-Two mechanisms from the US 30-year bond chart, both implemented.
+Two mechanisms from the US 30-year bond chart. Both live in the Python
+scanner (`cycles/find_cycles.py`); **neither is in the indicator**, which
+counts pivots and chains them and says nothing about polarity or
+multiples.
 
 **The interval may be a multiple of a count.** The bond chain gives 9, 21, 30,
 51, 82 — and the one that works is **82 × 3 = 246 weeks**, which never appears
@@ -110,9 +113,14 @@ weeks, so the mirrored decline had that long to run — the rally it mirrored
 was small and the decline was a crash.
 
 > An inverted match roughly doubles the number of patterns that can be called
-> a fit, so it roughly doubles the chance of finding one by accident. The
-> noise bar has **not** been re-measured for inverted matching; assume the
-> real bar is higher than the table says until it has been.
+> a fit, so it roughly doubles the chance of finding one by accident — and
+> the random-walk baseline is the one measured without it. So inversion is
+> **not a global setting**: `--allow-invert` is limited to the 30-year bond
+> series (`INVERT_MARKETS` in `find_cycles.py`) and the scanner refuses the
+> flag on any other symbol and on `--all`. One market spends the extra
+> freedom; the rest keep a baseline that still applies. The noise bar has
+> **not** been re-measured for inverted matching; assume the real bar is
+> higher than the table says until it has been.
 
 ## Which chain wins: exactness, not length
 

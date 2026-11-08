@@ -95,6 +95,12 @@ jobs:
             python3 cycles/find_cycles.py --symbol CL=F --preset crude --window 650 --json-suffix _named
           run_section "Named-cycle overlays (gold)" \
             python3 cycles/find_cycles.py --symbol GC=F --preset gold --window 1800 --epochs 4 --json-suffix _named
+          # The only run that passes --allow-invert, and the script refuses it
+          # anywhere else: US 30-year bonds are the one market the course shows
+          # repeating upside down, and a sign flip doubles what an offset can
+          # match against. 246 weeks is 4.72 years on a weekly chart.
+          run_section "Named-cycle overlays (US 30-year bonds, inversion allowed)" \
+            python3 cycles/find_cycles.py --symbol ZB=F --preset bonds --window 440 --allow-invert --json-suffix _named
           run_section "Composite — where the named cycles agree" \
             python3 cycles/composite.py --all --preset course --json
           run_section "Four-year election cycle" \
