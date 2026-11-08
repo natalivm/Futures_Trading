@@ -1,9 +1,17 @@
-/** One knowledge-base article. `body` holds plain paragraphs; a `> ` prefix marks a quote. */
+import type { KbBlock } from './kbBlocks';
+
+export type { KbBlock } from './kbBlocks';
+
+/**
+ * One knowledge-base article. `body` is a list of blocks: a plain string is a
+ * paragraph, a string starting with `> ` is a quote, and an object is a
+ * figure — a live chart, a cycle overlay, a timeline, a table or a demo.
+ */
 export interface KbArticle {
   id: string;
   title: string;
   summary: string;
-  body: string[];
+  body: KbBlock[];
   source?: string;
   updated?: string;
 }
@@ -53,7 +61,38 @@ const sixtyYear: KbArticle = {
     'The part that actually counts as evidence is what came next, because it was out of sample. In June 2022 the market was falling out of bed: rates had just been raised, recession was the consensus, and the expectation was lower. The 1962 roadmap said something else — up into August, down into the middle of October, around the 15th to the 20th, and then away to the upside. That is what happened. The market turned up into August, sold off into the October low, and then ran.',
     'The course reports the pattern as holding at roughly 90% accuracy since 2022, and notes it checked out historically too: taking the window back 25 years and comparing with 60 years before that, the correlation was still over 90%.',
     'Where that clock puts us now: 2026 corresponds to 1966. In 1966 the market had a bear phase whose low arrived in October; 1967 was up. Looking further out, 2033–2034 corresponds to 1973–1974, where a major decline began — the Dow fell roughly 50% into 1974, the largest decline in many years, and the market stayed depressed until 1982. The lecture’s aside about that period: Merrill Lynch let go of half its staff.',
+    {
+      kind: 'chart',
+      symbol: 'BLACKBULL:US30',
+      label: 'Dow 30 — where price is now',
+      interval: 'M',
+      range: 'ALL',
+      caption: 'Monthly, for present context: this is the part of the chain the timeline below calls 2026. It is a CFD proxy for the Dow — TradingView’s anonymous embeds cannot serve the exchange-listed index itself — so it tracks the index without reaching back to 1906. The long view is the timeline and the overlay charts, which come from our own data.',
+    },
     'The chain goes back further than one step, which is what makes it interesting. Another 60 years before 1966 is 1906: an up move in 1906, the down move starting in 1907, a low in 1908, then back up and down into 1914. So 1914, 1974 and 2034 are the same point on three consecutive turns of the clock, and 1906, 1966 and 2026 line up the same way. A cycle that holds across three repetitions is a different proposition from one observed once.',
+    {
+      kind: 'timeline',
+      title: 'The same point on three turns of the 60-year clock',
+      rows: [
+        { when: '1906', what: 'An up year', note: '— the high before the break' },
+        { when: '1907', what: 'The down move starts' },
+        { when: '1908', what: 'The low, then back up' },
+        { when: '1914', what: 'Down again into the war' },
+        { when: '1966', what: 'Bear phase, low in October', note: '— 1906 + 60' },
+        { when: '1967', what: 'Up year' },
+        { when: '1974', what: 'Roughly 50% off the Dow', note: '— 1914 + 60; Merrill Lynch let go of half its staff' },
+        { when: '2026', what: 'Where we are', note: '— 1966 + 60; the course expects a low around October', now: true },
+        { when: '2027', what: 'The up year, if the clock holds', note: '— and the election cycle agrees' },
+        { when: '2034', what: 'The turn both long cycles point at', note: '— 1974 + 60, and 1720 + 314' },
+      ],
+      caption: 'Three repetitions is a different proposition from one observation — and it is also what makes the claim testable rather than merely striking.',
+    },
+    {
+      kind: 'callout',
+      tone: 'warn',
+      title: 'Not yet tested on our own data',
+      text: 'The first real run, on 2026-11-08, could not test this at all: the Dow history we hold starts in 1992, and a 60-year offset needs 62 years before it can be measured once. Stooq, the source that reaches back to 1896, returned nothing on that run. Until that is fixed the 93% here is the course’s number, not ours.',
+    },
     'Treat all of that as the hypothesis, not the conclusion. The way to hold it honestly is to re-test it: `python3 cycles/find_cycles.py --symbol ^DJI --lag-years 60 --window 440`. Read the swing correlation and the epoch check rather than the headline 93%, for the reasons in “Finding repeating cycles in the indexes”. A pre-specified 60-year offset that still holds across epochs is real evidence; the same number arrived at by searching is not.',
   ],
 };
@@ -69,6 +108,14 @@ const seventyEightYear: KbArticle = {
     'The length is not arbitrary in the course’s framing. 78.5 years is half of 157, and 157 is half of 314. The 314-year cycle is the one that reaches back to the speculative top of 1720, which puts the next turn at 1720 + 314 = 2034.',
     'A note for accuracy, since this is a knowledge base: the 1720 mania is the South Sea Bubble — the one that caught Isaac Newton — not the Dutch tulip mania, which peaked in 1636–37. The arithmetic the course uses is built on 1720 either way.',
     'What makes 2034 interesting is that a different clock lands in the same place. On the 60-year cycle, 2033–2034 corresponds to 1973–1974, the start of a major decline. Two independent cycles pointing at the same window is the kind of agreement the composite method is built on.',
+    {
+      kind: 'chart',
+      symbol: 'FOREXCOM:SPXUSD',
+      label: 'S&P 500 — monthly',
+      interval: 'M',
+      range: 'ALL',
+      caption: 'Present context on the monthly chart. A CFD proxy, so it does not reach 1929 — for the Depression against the financial crisis, the honest comparison is the overlay the scanner draws once a long enough history is loaded.',
+    },
     'Where this one is weaker than the 60-year case, and it is worth being clear about it: aligning the Depression with the financial crisis is a match identified after both crashes were known. The 60-year cycle earns more trust because it made a call in June 2022 about the months ahead and that call came true. A hindsight alignment of two famous crashes is a weaker kind of evidence, however striking the chart.',
     'So the test to run on this one is the pre-specified kind, at offsets that are not the 2008 crash: `python3 cycles/find_cycles.py --symbol ^DJI --lag-years 78.5 --window 345 --epochs 6`. If the 78.5-year offset only fits when one end of it is 1929–32, it is an observation about two crises. If it holds at epochs that contain no crisis at all, it is a cycle.',
   ],
@@ -84,7 +131,27 @@ const electionCycle: KbArticle = {
     'The presidential cycle is the shortest clock the course leans on and the easiest to check. Its shape: a high around the presidential election, a low around the midterms two years later, and strength in the year after that.',
     'The numbering used here, matching the lecture: year 1 is the year after the election (2025), year 2 is the midterm year (2026), year 3 is the pre-election year (2027), year 4 is the election year (2028).',
     'The claim: going back about a hundred years, the third year has been up something like 94% of the time — only two misses in the whole record. The lecture names 1931 and 2008 as the exceptions.',
-    'That second one is worth a flag. 2008 was an election year — year 4 — and the Dow fell roughly a third; it was not a pre-election year. The exceptions usually cited for third years are 1931 and 2015, the latter a fractional loss. This is exactly the sort of detail a knowledge base should settle rather than repeat, so the repo computes it from our own price files: `python3 cycles/election_cycle.py --symbol ^DJI`. It prints the up-rate, mean and median move, and every down year, for each of the four cycle years.',
+    'That second one is worth a flag, and it has now been checked. 2008 was an election year — year 4 — and the Dow fell roughly a third; it was not a pre-election year at all. Run on our own price files, the misses are somewhere else entirely:',
+    {
+      kind: 'table',
+      head: ['Index', 'Pre-election years', 'Up', 'Rate', 'The misses'],
+      rows: [
+        ['S&P 500 (1970–)', '14', '12', '86%', '2011 −0.0%, 2015 −0.7%'],
+        ['Dow (1993–)', '8', '7', '88%', '2015 −2.2%'],
+        ['Nasdaq Composite (1971–)', '13', '11', '85%', '1987 −5.2%, 2011 −1.8%'],
+        ['Nasdaq 100 (1986–)', '10', '10', '100%', 'none'],
+        ['Russell 2000 (1988–)', '9', '6', '67%', '2007, 2011, 2015'],
+      ],
+      caption: 'Measured 2026-11-08 by cycles/election_cycle.py. Calendar-year closes; year 3 is the pre-election year.',
+    },
+    'So the shape of the claim survives contact with the data and the specifics do not. The big indices read 85–88%, close to the 94% quoted; the exceptions are 2011 and 2015, exactly as the correction predicted, and on the S&P both were flat rather than down — minus a rounding error and minus seven tenths of one percent. A year that finishes unchanged is a miss for the statistic and not much of a warning for a trader.',
+    {
+      kind: 'callout',
+      tone: 'warn',
+      title: 'Read the start dates',
+      text: 'This is not the hundred years the claim is made over. Our S&P history begins in 1970 and the Dow’s in 1993, so 1931 cannot appear in either column and the samples are 8 to 14 years rather than 25. Two data faults caused that — a Yahoo request that asked for everything since the Unix epoch, which means 1970, and a Stooq fetch that returned nothing — and both are fixed but not yet re-run. Expect these numbers to move.',
+    },
+    'Note also the one reading of 100 percent. Ten out of ten on the Nasdaq 100 is the smallest sample in the table and the most impressive-looking number in it, which is the whole problem with a hit rate in miniature.',
     'Two cautions on how much weight the statistic can carry. A century holds only about 25 pre-election years, so 94% means roughly 23 or 24 out of 25 — one more miss drops it to 90%, and the error bar around a 25-observation rate is wide. And the usual mechanism offered, policy and stimulus leaning supportive ahead of an election, is plausible but not something a sample this size can prove.',
     'Used properly it is a tilt, not a guarantee: it says which way to lean when other evidence agrees, and it says nothing at all about any particular week.',
   ],
@@ -115,6 +182,14 @@ const crudeCycles: KbArticle = {
   body: [
     'The crude oil slide covers a longer span than the equity ones: 650 trading days, about three and a half years, with the two periods 17 years apart. The light blue path is December 1997 to May 2000; the dark blue is December 2014 to 15 May 2017, which was the present market when the slide was made. The last two and a half years of it are 77% correlated.',
     'Seventy-seven is a lower number than the Dow’s 93, and it is the better piece of evidence. The lecture makes the point directly: it is hard to get that kind of correlation when the market goes down first and then up afterwards. Two stretches that both trend upward will correlate highly for no reason at all — that is the trap documented in “Using a cycle forecast correctly”. Two stretches that fall hard, bottom, and turn up together have to agree about the turn, and a turn is not something a trend can fake. Down hard, up, down, up, with the low arriving within two weeks of the analog.',
+    {
+      kind: 'chart',
+      symbol: 'TVC:USOIL',
+      label: 'WTI crude oil',
+      interval: 'W',
+      range: 'ALL',
+      caption: 'Weekly crude, back as far as the embed reaches. The 2014–16 collapse and its base are the right-hand half of the comparison; the turn, not the trend, is the part that carries the argument.',
+    },
     'The course also notes that the 17-year and 27-year cycles in crude agree with each other both before and after the present moment on that chart, tightly. Two independent intervals landing on the same shape is the composite argument again, applied to one market.',
     'What it was worth in practice is the most useful part of the example, and it is not “it predicted the price”. Through the 2014–2016 collapse the analog said this is the part that goes down, so there was no temptation to catch the falling knife. Then, when price broke the downtrend line, somebody holding the analog knew two things the tape alone did not say: that a turn belonged here, and that what followed in 1999 was not a small bounce but a large sustained advance. That is enough to cover a short, or to start looking for a long, well before the move is obvious to everyone else.',
     'Note the shape of that reasoning. The analog did not generate the entry — the broken downtrend line did. The analog supplied the conviction to take a signal that would otherwise have looked like just another bounce in a bear market. That is the correct division of labour between a cycle and a chart.',
@@ -131,6 +206,14 @@ const metonicCycle: KbArticle = {
   body: [
     'The second crude cycle runs 19 years and one month. The slide, dated 21 June 2022, shows the 2003 Gulf War pattern in green against 2022 in red across about 360 trading days, roughly twenty per month, and calls for higher prices until 25 August.',
     'The striking part is not the war itself but what came before it. Russia invaded Ukraine on 24 February 2022; the United States invaded Iraq in March 2003. For roughly ten months before each of those dates, crude traced the same path. The preparatory period lined up with the preparatory period. Then came the initial spike, the pullback, and the recovery — in both cases.',
+    {
+      kind: 'chart',
+      symbol: 'TVC:USOIL',
+      label: 'WTI crude oil — the war years',
+      interval: 'D',
+      range: '60M',
+      caption: 'Daily crude. The claim is about the ten months before each invasion, not the spike on the day — scroll back to late 2021 and to mid-2002 and compare the run-ups.',
+    },
     'The 19-year interval has a name and a physical basis. It is the Metonic cycle, after Meton of Athens, who described it around 432 BC. Nineteen solar years is almost exactly 235 lunar months, so after 19 years the solar and lunar calendars realign: the dates of the new moons and full moons repeat where they fell 19 years earlier, having matched no intervening year. Two related but distinct periods often get folded into it — the lunar nodal cycle of 18.6 years, which governs where eclipses can occur, and the Saros of 18.03 years, after which a given eclipse repeats. The course refers to all of these loosely as the eclipse cycle; worth separating if the mechanism ever matters.',
     'The course extends the 19-year interval to Middle East conflict itself: 1948 and the war at Israel’s founding, 1967, then on through 1986–87, 2005, and 2023–24. Taken as a strict chain from 1948 the steps land on 1967, 1986, 2005 and 2024 — close to the October 2023 outbreak but not on it, and the 1973 war does not sit on that chain at all, being six years off. Record the pattern, but do not round the dates to make it fit; a cycle that needs its dates adjusted is being fitted rather than found.',
     'One extension came from the session itself: if the long-cycle convergence points at 2033–34, that is also 19 years on from the start of the Ukraine conflict — which works if the conflict is dated from the 2014 annexation of Crimea (2014 + 19 = 2033), not from the 2022 invasion (which gives 2041). Which start date you choose decides whether the cycles agree, and choosing the one that makes them agree is the error this knowledge base exists to prevent. Worth noting, not worth trading, until the 19-year interval is tested on crude with a pre-specified offset.',
@@ -147,6 +230,14 @@ const goldCycle: KbArticle = {
   body: [
     'The gold slide uses the longest window of any example in the lesson: 1,800 trading days, about seven years. The present market runs 1 May 2010 to 11 July 2017, with the 24.5-year interval drawn against it, and the caption reports a high correlation across the whole seven years.',
     'Window length is the reason to take this one seriously. Seven years of daily data contains far too much structure for an accidental match to survive it — the rally, the top, the long decline and the base all have to arrive in roughly the right places. The same scepticism still applies to the headline correlation number, but the test is a much harder one to pass than a two-year window.',
+    {
+      kind: 'chart',
+      symbol: 'TVC:GOLD',
+      label: 'Gold',
+      interval: 'M',
+      range: 'ALL',
+      caption: 'Seven-year windows are long enough that the rally, the top, the decline and the base all have to line up — a far harder test than a two-year window.',
+    },
     'Note that 24.5 years is not a round interval and has no stated mechanism behind it, unlike the Metonic 19 or the 60 that recurs across the equity work. The lecture presents it as something located in the data rather than derived. That makes the pre-specified re-test more important rather than less: a cycle discovered by looking is exactly the kind that needs to prove itself on epochs that were not used to find it.',
     'To test it: `python3 cycles/find_cycles.py --symbol GC=F --lag-years 24.5 --window 1800 --epochs 4`. Gold futures history runs from the mid-1970s, so a 24.5-year offset with a seven-year window needs roughly 32 years of data before a single epoch check is even possible — expect few epochs and read `heldMin` accordingly.',
   ],
@@ -165,6 +256,31 @@ const usingForecasts: KbArticle = {
     'So it changes the bias, not the entry. The cycle decides which side you want to be working — long into 2027, on the current composite. The Matrixchannel checklist still decides whether there is a trade in front of you today: price at a level, a reaction to it, confirmation on closed candles, and a stop, target and R:R set before entering. A roadmap that says “up” is not a reason to buy a chart that has not given a setup, and it is never a reason to skip the stop.',
     'Never trade a cycle without a stop. Ninety percent accurate means it fails one time in ten, and the failures are the years everyone remembers — 1931, 2008. The roadmap tells you what to expect; the stop is what pays for the times the expectation is wrong.',
     'On the statistics, the single most important thing in this knowledge base. Price correlation is nearly worthless as evidence on its own. A pure random walk, with no cycle in it whatsoever, produced a “50-year cycle” correlated 0.947 on closing prices — a higher correlation than a genuine planted cycle scored in the same test — and it ranked in the top 0.01% of twelve thousand offsets. High correlation and exclusive ranking are both reachable by chance. What separated the real cycle from the noise was the monthly swing correlation (0.875 against 0.449) and re-scoring the same offset at earlier epochs (never below +0.79, against −0.01). Gate on those two.',
+    { kind: 'demo', id: 'noise' },
+    'That is not a thought experiment about a test run months ago — the chart above is generated in your browser each time you press the button, and the scan behind it is the same one the repo runs. Press it a few times and watch which numbers move.',
+    'Then the uncomfortable part. The first run against real index history, on 2026-11-08, searched every offset in seven markets. Every single best match scored like the noise:',
+    {
+      kind: 'table',
+      head: ['Market', 'Best offset found', 'Price corr', 'Swing corr', 'Worst epoch'],
+      rows: [
+        ['Russell 2000', '12.4 years', '0.959', '0.295', '−0.80'],
+        ['S&P 500', '12.4 years', '0.957', '0.218', '−0.92'],
+        ['Dow', '30.3 years', '0.953', '0.389', 'untestable'],
+        ['Nasdaq 100', '11.8 years', '0.948', '−0.082', '−0.88'],
+        ['Nasdaq Composite', '32.6 years', '0.947', '0.009', '−0.52'],
+        ['Gold', '19.7 years', '0.921', '0.544', 'untestable'],
+        ['Crude oil', '8.3 years', '0.808', '0.307', '−0.27'],
+        ['— random walk, for comparison', '50.2 years', '0.947', '0.449', '−0.01'],
+      ],
+      caption: 'Open search, 440-day window, from cycles/REPORT.md. The last row is the synthetic control with no cycle in it.',
+    },
+    {
+      kind: 'callout',
+      tone: 'key',
+      title: 'Read that table before trusting any search result',
+      text: 'Seven real markets produced price correlations of 0.81 to 0.96, and the random walk with no cycle in it scored 0.947 — inside that range, beating five of them. On the measures that can tell the difference, the real markets did no better than the noise either: swing correlations near zero and worst-epoch scores of −0.5 to −0.9. Searching for a cycle finds one whether or not there is one to find.',
+    },
+    'None of which says the 60-year cycle is not real. It says the open search cannot establish it, and that the only run that could — a named 60-year offset on a century of Dow data — has not been possible yet for want of the history. Those are different statements and the difference matters.',
     'Pre-specify the cycle. Testing 60 years because the course says 60 years is a single hypothesis and the result means something. Taking the best of twelve thousand searched offsets is a different activity with a different, much weaker, standard of proof. The scanner supports both and labels which one produced a given match; prefer the named test when a cycle is already in mind.',
     'Distrust hindsight alignment. Matching the Depression to the financial crisis after both had happened is a weaker claim than the 60-year cycle making a call in June 2022 that then came true. The difference is whether the forecast existed before the outcome. Which is why forecasts belong in the signal log the moment they are made, with the date — so the hit rate is measured later rather than remembered.',
     'Separate being right about price from being right about timing. The lecture’s remark about a well-known strategist — right about the prices, no clue about the timing — is the common failure, and it is the specific thing cycles are supposed to fix. A target with no date is not a plan, and a direction with no window cannot be risk-managed. If a cycle is not improving the timing, it is not earning its place.',
@@ -191,6 +307,12 @@ const cycleScanner: KbArticle = {
     'The uncomfortable result first. The random walk produced a “50-year cycle” correlated 0.947 on closing prices — a higher price correlation than the genuine cycle scored — and it ranked in the top 0.01% of twelve thousand offsets. So corr, the number on the slide, cannot by itself tell a cycle from two similar-looking trends, and neither can the ranking: coming first out of twelve thousand bad fits is what a search over twelve thousand hypotheses does by construction.',
     'What did separate them: swingCorr, the correlation of monthly (21-bar) returns, scored 0.875 on the real cycle against 0.449 on the noise. That measure is also the one that matches what the course actually claims — the general direction and the general swing, not day by day perfect. And the stability check, re-scoring the same offset at five earlier anchor points five years apart, never dropped below +0.79 on the real cycle while the random walk’s best match sat at −0.01. That check is the course’s own: a cycle that only fits the last two years is not a cycle.',
     'So gate on the swing correlation and on the worst epoch, not on corr. And when a cycle is already in mind, name it — `--lag-years 60` tests one hypothesis instead of searching, and on the random-walk control that removed the false positive entirely, scoring 0.086. `--preset course` runs the whole set the lectures use: 4, 28, 56, 60, 78.5, 157 and 314 years.',
+    {
+      kind: 'overlay',
+      series: 'DJI',
+      label: 'Dow — the scanner’s own output',
+      caption: 'Drawn from public/cycles/DJI.json, written by the last workflow run. Switch to “What happened next” for the analog’s forward path laid on today’s price — the course’s forecast chart, from our data.',
+    },
     'The forecast is the analog’s own forward path, rescaled to today’s price range and anchored to today’s close: what that stretch of history did next, drawn on today’s chart. A roadmap to trade against with the usual stop and target — not a prediction.',
   ],
 };

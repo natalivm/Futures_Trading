@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { articleCount, categories, categoryOf, type KbArticle } from '../lib/kb';
+import { blockText } from '../lib/kbBlocks';
+import ArticleBody from './kb/ArticleBody';
 
 // The knowledge base is the course: Market Forecast Mastery and the cycles.
 // It deliberately links nowhere else in the app — the trading desk is a
@@ -13,7 +15,7 @@ export default function KnowledgeBase() {
   const shelves = categories
     .map(c => ({
       ...c,
-      articles: c.articles.filter(a => match(a.title) || match(a.summary) || a.body.some(match)),
+      articles: c.articles.filter(a => match(a.title) || match(a.summary) || a.body.some(b => match(blockText(b)))),
     }))
     .filter(c => !q || c.articles.length > 0 || match(c.title) || match(c.description));
   const written = shelves.filter(c => c.articles.length > 0);
@@ -27,11 +29,7 @@ export default function KnowledgeBase() {
         <h1>{open.title}</h1>
         <p className="muted lead">{open.summary}</p>
         {open.source && <p className="muted small">Source: {open.source}</p>}
-        {open.body.map((para, i) =>
-          para.startsWith('> ')
-            ? <blockquote key={i} className="kb-quote">{para.slice(2)}</blockquote>
-            : <p key={i} className="kb-para">{para}</p>,
-        )}
+        <ArticleBody body={open.body} />
       </article>
     );
   }
