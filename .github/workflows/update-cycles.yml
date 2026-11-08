@@ -83,6 +83,8 @@ jobs:
             python3 cycles/find_cycles.py --symbol GC=F --preset gold --window 1800 --epochs 4
           run_section "Open search, every market" \
             python3 cycles/find_cycles.py --all --min-years 3 --max-years 100 --top 5
+          run_section "Composite — where the named cycles agree" \
+            python3 cycles/composite.py --all --preset course --json
           run_section "Four-year election cycle" \
             python3 cycles/election_cycle.py --all --json
 

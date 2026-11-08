@@ -168,6 +168,13 @@ const composite: KbArticle = {
     'The near-term composite as the course reads it. On the 60-year clock, 2026 corresponds to 1966: a year with real damage in it, whose low arrived in October, followed by an up year in 1967. On the election clock, the midterm year is where the low belongs and the pre-election year is the strong one. Both therefore point the same way into 2027, and the course anticipates something like another year to eighteen months of upside — while being explicit that it will not be a straight line and that a one- or two-month decline somewhere along the way, perhaps early in the year, would be entirely normal.',
     'The long-term composite. 2033–2034 is where the 60-year clock reaches 1973–1974 and where the 314-year chain from 1720 lands. The course’s expectation is a major top in that window, followed by a long decline rather than a crash-and-recover. That fits a third rhythm it cites, a roughly 28-year pattern associated with JB Cycles and tied to a 56-year cycle, in which a five- to eight-year decline tends to arrive; the most recent of those was the 1966–1982 era. Both of the long secular bears in the modern record — 1929 to 1942, and 1966 to 1982 — have that shape: up, then down for a year or two, then up again, with no sustained advance for a decade or more.',
     'One more input the lecture mentions: margin and leverage excess, which it describes as running on a roughly 22-year rhythm and as not yet near its peak — perhaps another eighteen months of room. On that reading the speculative phase has not finished, which is consistent with the near-term composite pointing up.',
+    'The agreement itself is now computed rather than argued. `python3 cycles/composite.py --symbol ^GSPC --preset sp500` runs each named interval, projects each one forward, and takes a weighted vote at one, three, six and twelve months. A cycle’s vote is weighted by its swing correlation and its worst epoch — not by its price correlation, since weighting that would give the loudest vote to the noise. Cycles that disagree cancel, which is the point: a split is a forecast of chop, and that is a usable answer rather than a missing one.',
+    {
+      kind: 'callout',
+      tone: 'warn',
+      title: 'What it says today',
+      text: 'On the S&P data currently loaded, not one of the named short cycles clears the swing and epoch floors at a 440-day window, so there is no composite to read. The 11.65-year interval does clear them at its own window — see “The S&P short cycles” — which is a reminder that the window belongs to the cycle rather than to the run. A composite assembled from intervals that have not individually passed R9 is not a composite, it is an average of coincidences.',
+    },
     'All of this is recorded here as the course’s expectation — the hypothesis the desk trades against, not a set of facts. Every piece of it is testable with the scripts in `cycles/`, and it should be re-tested as data arrives rather than carried forward on memory.',
     'What would break the near-term case, decided in advance: the market taking out its October 2026 low decisively rather than turning up from it; the 60-year analog diverging on swing correlation when re-scored, not merely on price; or the pre-election-year tilt failing to show in our own data when `election_cycle.py` is run. Any of those and the roadmap is void, whatever the narrative says.',
   ],
@@ -243,6 +250,114 @@ const goldCycle: KbArticle = {
   ],
 };
 
+const spShortCycles: KbArticle = {
+  id: 'cycle-sp-short',
+  title: 'The S&P short cycles — 11.65, 22 and 6.8 years',
+  summary: 'Three claims from the lectures, each re-measured on our own data as of the date it was made. One reproduces almost exactly, one does not, one cannot be tested here.',
+  source: 'Market Forecast Mastery, Lesson 1 — Allen Reminick; measured 2026-11-08',
+  updated: TODAY,
+  body: [
+    'The long cycles set the bias; the short ones decide whether the next three months are up. The lectures demonstrate three on the S&P, all anchored at the end of April 2022, and all three are checkable — which is what this page does.',
+    { kind: 'heading', text: 'What the slides claim' },
+    'The 11.65-year interval: 28 April 2022 against 3 September 2010, over 230 trading days — about eleven months — with the ups and downs landing in the same places. The lecture adds that over a longer window, roughly 400 trading days, the same interval runs 96% correlated for almost two years.',
+    'The 22-year interval: 2000 against 2022 over 260 trading days. What made this one memorable was not the chart. In May 2022 the Federal Reserve raised rates by half a point for the first time in 22 years — so on the lecture’s reading, the interval repeated and so did the surface reason for it.',
+    'The 6.8-year interval: 13 April 2002 against 29 April 2022, 365 bars at 240 minutes each — roughly three months of four-hour bars — reported at 80% correlation. The claim here is the most striking of the three, because it is intraday: not a general drift but a day-by-day shape repeating from twenty years earlier.',
+    { kind: 'heading', text: 'What the data says' },
+    'Each was re-run with the course’s own window and anchored to the date the claim was made, which is what `--as-of` exists for: a claim made in April 2022 is about the window ending in April 2022, and scoring it against today tests something else.',
+    {
+      kind: 'table',
+      head: ['Claim', 'Window', 'Price corr', 'Swing corr', 'Worst epoch', 'Verdict'],
+      rows: [
+        ['11.65y, as of 2022-04-28', '400 days', '0.962', '0.585', '−0.68', 'reproduces'],
+        ['11.65y, as of 2022-04-28', '230 days', '0.766', '0.511', '+0.10', 'reproduces'],
+        ['22y, as of 2022-04-28', '260 days', '0.285', '0.101', '−0.54', 'does not'],
+        ['6.8y, as of 2022-04-29', '365 days', '0.831', '−0.066', '−0.35', 'not a fair test'],
+      ],
+      caption: 'S&P 500 daily closes, cycles/find_cycles.py with --as-of. The course quotes 96% for the first row.',
+    },
+    {
+      kind: 'callout',
+      tone: 'key',
+      title: 'The 11.65-year cycle is the first claim in this knowledge base to survive its own test',
+      text: 'Measured 0.962 against the quoted 96%, with the analog window ending 2010-08-30 against the slide’s 3 September 2010 — days apart. More importantly it is the only interval so far with a swing correlation near 0.6, roughly where the genuine planted cycle scored in the controls and far above the 0.449 the random walk managed. An open search over 10 to 13 years lands on 11.6 by itself, so the named interval is also the local best rather than a number that needed rounding to work.',
+    },
+    'The 22-year claim does not reproduce. At exactly 22.0 years it scores 0.285, which is nothing; searching 19 to 25 years finds its best fit at 23.4 years and 0.751, not at 22. The Federal Reserve detail is true and is a good story, and it is not evidence about the interval — a coincidence of policy dates is the kind of thing that reads as confirmation precisely because it cannot be scored.',
+    'The 6.8-year row is marked “not a fair test” deliberately. The claim was made on four-hour bars and we hold only daily closes, so running it on dailies tests a different thing and failing it proves nothing. Intraday history is the missing ingredient; until it exists this one is simply open.',
+    { kind: 'heading', text: 'And then the part that matters: it was still wrong' },
+    'The 11.65-year interval passed every gate in R9 — swing correlation 0.51, a positive worst epoch, the local best in its own neighbourhood, and a price correlation matching the quoted figure. It was the one cycle on the board worth voting. So run the composite as of 28 April 2022 and see what it told you to do, then check what the index actually did.',
+    {
+      kind: 'table',
+      head: ['Horizon from 2022-04-28', 'Forecast', 'Actual', 'Index'],
+      rows: [
+        ['1 month', '+7.2%', '−3.0%', '4288 → 4158'],
+        ['3 months', '+10.5%', '−3.7%', '4288 → 4130'],
+        ['6 months', '+19.4%', '−11.2%', '4288 → 3807'],
+        ['12 months', '+12.2%', '−2.8%', '4288 → 4168'],
+      ],
+      caption: 'The composite’s weighted call against S&P 500 closes. Wrong in direction at every horizon.',
+    },
+    {
+      kind: 'callout',
+      tone: 'warn',
+      title: 'Read this one twice',
+      text: 'The best-scoring cycle we have, tested the honest way, called for a rally into late 2022 and the index fell 11% instead — and it was most wrong exactly where it was most confident. Every protection in this knowledge base was in place: the interval was pre-specified, it cleared the swing floor, it held at earlier epochs, and the search agreed with it. It was still wrong. That is what a 90% method looks like from the inside of the other 10%, and it is the reason R8 and R10 exist — the analog never gets to size the position or skip the stop.',
+    },
+    'Worth setting beside the 60-year cycle’s June 2022 call, which described the following months closely. Same index, same quarter, two intervals, opposite readings, and the one with the better scores is the one that failed. A composite built from more than one qualifying cycle might have caught the disagreement and reported chop; with only one cycle passing, there was nothing to disagree with it. That is an argument for the composite rather than for any single clock.',
+    { kind: 'heading', text: 'What to take from it' },
+    'Three claims, three different outcomes, and the difference between them is the whole argument for measuring rather than admiring. The chart that looks most convincing on a slide is not reliably the one that holds up, and the one that holds up here — 11.65 years — is also the one the course spends the least time on.',
+  ],
+};
+
+const rulesOfAnalysis: KbArticle = {
+  id: 'rules-of-analysis',
+  title: 'The rules, in order',
+  summary: 'The whole method condensed to ten rules, with the two that are most often broken marked.',
+  source: 'Distilled from the Market Forecast Mastery lessons; the long form is cycles/METHOD.md',
+  updated: TODAY,
+  body: [
+    'The lectures run to hours and the method underneath them is short. These are the rules the scanner implements and everything else on these pages elaborates.',
+    { kind: 'heading', text: 'Finding a cycle' },
+    'R1 — A window has to be long enough to be hard to fit. Five months will match something by accident; twenty-two months containing a sequence of highs and lows is a real test. The course’s windows run from eleven months to seven years.',
+    'R2 — A match that turns is worth more than a match that trends. Two rising stretches correlate for no reason at all. Two that fall, base and turn together have to agree about the turn, and a trend cannot fake a turn. This is why crude’s 77% is better evidence than the Dow’s 93%.',
+    'R3 — The repeat has to be non-reflexive. Nobody trades off 1962, or off four-hour bars from 2002. A pattern that could be produced by people watching the same chart is not evidence of a cycle.',
+    'R7 — Pre-specify the interval. Testing one the course names is a single hypothesis. Taking the best of twelve thousand searched offsets is a different activity with a far weaker standard of proof.',
+    {
+      kind: 'callout',
+      tone: 'warn',
+      title: 'R9 — the scoring order, and the one most often got backwards',
+      text: 'Worst-epoch correlation first, then swing correlation, then daily returns, and price correlation last. The headline number on every slide is the least informative of the four: a random walk with no cycle in it scores 0.947 on it.',
+    },
+    { kind: 'heading', text: 'Reading one' },
+    'R4 — Direction and swing, not day by day. What repeats is the general direction and the general shape. Any use that needs an exact day or an exact level is using the method for something it does not provide.',
+    'R5 — The composite is the forecast, not any single cycle. Where several independent intervals agree on the next few months, the odds stack. Where they fight, expect chop rather than a move — a disagreement is a forecast of nothing, and that is a usable answer. Where they all point down together, expect a real decline.',
+    'R6 — A long cycle gives the bias, a short cycle gives the timing. The 60-year clock says which side to work for a year; a four-year or eleven-month cycle says whether the next three months are up.',
+    { kind: 'heading', text: 'Trading one' },
+    'R8 — The analog gives conviction, not entries. The trade is still taken on a level, a reaction and a stop. What the roadmap buys is the nerve to act on a valid trigger before it is obvious — covering a short when crude broke its downtrend line, knowing what followed in the analog was large and sustained rather than a bounce.',
+    'R10 — Know what would void it, before entering. “The 60-year analog says up into 2027” is not tradeable. “Long while the October low holds, void below it” is.',
+    {
+      kind: 'callout',
+      tone: 'note',
+      title: 'And one that is not a rule',
+      text: 'The lectures argue that the driver is not human — that nobody is looking at 1962, so the surface reason given for a move is a story attached afterwards rather than its cause. That is the course’s position on why cycles exist. Nothing here depends on it: the scanner measures whether a pattern repeats, not why.',
+    },
+  ],
+};
+
+const waveMechanics: KbArticle = {
+  id: 'wave-mechanics',
+  title: 'Wave mechanics — the approach we are not using',
+  summary: 'Decomposition: find the component cycles, add them into a composite wave, project it. Why the course defers it, and what its gold forecast looked like.',
+  source: 'Market Forecast Mastery, Lesson 1 — Allen Reminick',
+  updated: TODAY,
+  body: [
+    'The other half of the fork from Lesson 1. Where synthesis slides one window back through history looking for a match, decomposition takes the market apart: locate the component waves, of which as many as fifteen to twenty may be live in one market at once, add them back together into a single composite wave, and check whether that composite reproduces the price action you already have. If it does, project it forward.',
+    'The reasoning is the same bet in a different costume — if the model matches the past it will probably match the future — and it is a demanding one. The mathematics is Fourier series and spectral analysis, the work needs software, and the number of free parameters is large enough that reproducing the past is not by itself impressive.',
+    'The course shows one result rather than the method: a gold forecast drawn in 1982 and run to 2015, thirty-three years of projection as a single smooth curve laid over the weekly bars, with the component waves visible underneath it. Then it sets the whole approach aside, explicitly, until the synthesis side has been learned.',
+    'That ordering is worth respecting rather than skipping. Synthesis has one parameter you can argue about — which interval — and a scoring discipline that can reject it. Decomposition has fifteen to twenty components, each with a period, an amplitude and a phase, which is enough freedom to fit almost anything in hindsight. Learning to tell a real repeat from a flattering one on the simpler method first is the right order.',
+    'Nothing in this repo implements decomposition, and nothing is planned until the synthesis side is settled — which, on the evidence in these pages, it is not yet.',
+  ],
+};
+
 // ── Using the forecasts ──
 
 const usingForecasts: KbArticle = {
@@ -286,6 +401,7 @@ const usingForecasts: KbArticle = {
     'Separate being right about price from being right about timing. The lecture’s remark about a well-known strategist — right about the prices, no clue about the timing — is the common failure, and it is the specific thing cycles are supposed to fix. A target with no date is not a plan, and a direction with no window cannot be risk-managed. If a cycle is not improving the timing, it is not earning its place.',
     'The real value of a roadmap is permission to act early at a trigger you would otherwise distrust. The crude oil example is the model: through the collapse the analog said this is the down part, so there was nothing to catch; when price broke the downtrend line, the analog said the move that follows is large and sustained, not a bounce. The break was the entry; the analog was the conviction to take it before it was obvious. A cycle that makes you enter without a trigger is being misused; one that makes you take a valid trigger others are too frightened to take is being used correctly.',
     'A cycle belongs to a market. Sixty and 78.5 years are equity clocks; crude runs on 17 and 19; gold on 24.5. Do not carry a cycle across markets because the number is familiar — test it where you intend to trade it.',
+    'And there is now a worked example of all of this failing, in “The S&P short cycles”: the best-scoring interval on our board, pre-specified and tested as of the day the claim was made, called a rally into late 2022 while the index fell 11%. Read it before trusting anything here.',
     'Size for being wrong. A 94% statistic drawn from 25 observations has a wide error bar, and the composite is not 94% simply because two cycles agree. Position size should survive the case where the roadmap is void.',
     'Write the invalidation down before entering. “The 60-year analog says up into 2027” is not tradeable; “long while the October low holds, void below it” is. Decide in advance what would prove the roadmap wrong, and act on that rather than on discomfort.',
     'Finally, the failure mode the lectures dwell on, which is emotional rather than analytical. Isaac Newton made a fortune in the 1720 bubble, took profits, watched it keep going, bought back near the top and was destroyed. Stanley Druckenmiller did the same thing in 1999 and 2000: out with the gains, back in as the melt-up continued, caught at the top. A roadmap only helps if it is followed when the tape feels wrong, and abandoned when its own stated invalidation trips — not when it merely becomes uncomfortable, and not when everyone else is making money faster.',
@@ -359,13 +475,13 @@ export const categories: KbCategory[] = [
     id: 'catalogue',
     title: 'The cycle catalogue',
     description: 'The specific cycles the course works with — equities, crude and gold — what the evidence for each one is, and where each currently points.',
-    articles: [sixtyYear, seventyEightYear, electionCycle, crudeCycles, metonicCycle, goldCycle, composite],
+    articles: [sixtyYear, seventyEightYear, spShortCycles, electionCycle, crudeCycles, metonicCycle, goldCycle, composite],
   },
   {
     id: 'using',
     title: 'Using a forecast',
     description: 'How a cycle roadmap meets the entry rules, what it can and cannot tell you, and the traps that make people misuse it.',
-    articles: [usingForecasts],
+    articles: [rulesOfAnalysis, usingForecasts],
   },
   {
     id: 'cycles',
@@ -377,7 +493,7 @@ export const categories: KbCategory[] = [
     id: 'approaches',
     title: 'Two ways to forecast',
     description: 'Analytical / decomposition (Fourier series, spectral analysis, wave mechanics) versus synthesis / pattern recognition — what each one costs and why the course picks synthesis.',
-    articles: [],
+    articles: [waveMechanics],
   },
   {
     id: 'slide',

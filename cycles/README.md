@@ -9,8 +9,13 @@ Two scripts, standard library only, no pip install:
 ```bash
 python3 cycles/update_prices.py                      # refresh cycles/data/*.csv
 python3 cycles/find_cycles.py --preset course        # the lectures' cycle set
+python3 cycles/composite.py --symbol ^GSPC --preset sp500   # where cycles agree
 python3 cycles/election_cycle.py --symbol ^DJI       # the four-year cycle statistic
 ```
+
+**[METHOD.md](METHOD.md) is the method in rules** — the lectures distilled to
+R1–R10, the table of every cycle they name, and the scoring order. Read that
+first; this file is the tooling.
 
 ## update_prices.py
 
@@ -100,6 +105,37 @@ over twelve thousand hypotheses does by construction.
 **Gate on `heldMin` and `swingCorr`, not on `corr`.** And prefer
 `--lag-years 60` over a search when you already have a cycle in mind: naming
 the hypothesis in advance removed the false positive entirely (0.086).
+
+## composite.py
+
+Rule R5: no single cycle is the forecast. This runs every named interval,
+projects each forward, and takes a weighted vote at 1, 3, 6 and 12 months.
+
+```bash
+python3 cycles/composite.py --symbol ^GSPC --preset sp500
+python3 cycles/composite.py --all --json
+```
+
+A cycle's vote is weighted by its **swing correlation and worst epoch**, never
+by its price correlation — weighting the headline number would hand the
+loudest vote to whichever coincidence scored highest. A cycle below the floors
+gets a weight of zero and does not vote at all. Cycles pointing opposite ways
+cancel, so a split reports "no agreement", which is the forecast of chop the
+lectures describe rather than a missing answer.
+
+Note that **the window belongs to the cycle, not to the run**. The course uses
+230–400 days for the 11.65-year interval, 260 for the 22-year and 440 for the
+60-year. Running them all at one window is convenient and is not what they
+claim; `--window` per cycle is the honest way to test them individually.
+
+## Checking a published claim: `--as-of`
+
+A claim made in April 2022 is about the window ending in April 2022. Scoring
+it against today tests something else entirely, so `find_cycles.py --as-of
+2022-04-28` truncates the series and re-runs the scan as it would have stood
+that day. This is what turned the lectures' S&P claims from anecdotes into
+three checkable results — one of which reproduced at 0.962 against a quoted
+96%, and one of which did not reproduce at all.
 
 ## election_cycle.py
 
