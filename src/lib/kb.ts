@@ -189,18 +189,17 @@ const sixtyYear: KbArticle = {
   body: [
     {
       kind: 'overlay',
-      series: 'DJI',
+      series: 'GSPC',
       label: 'The 60-year overlay',
       lagYears: 60,
     },
     {
       kind: 'rules',
       items: [
-        { rule: 'Market', detail: 'Dow Jones Industrial Average, daily closes.' },
+        { rule: 'Market', detail: 'The course shows the Dow. Yahoo\u2019s Dow record starts in 1992, so 60 years cannot be measured on it — everything here is the S\u0026P, whose record reaches 1927. Switch the figure to the Dow and it says so.' },
         { rule: 'Window', detail: '440 trading days — about 22 months.' },
         { rule: 'Offset', detail: '60 years, named in advance rather than searched for.' },
-        { rule: 'Command', detail: 'find_cycles.py --symbol ^DJI --lag-years 60 --window 440' },
-        { rule: 'Measurable on', detail: 'The S\u0026P, not the Dow. Yahoo\u2019s Dow record starts in 1992, so 60 years cannot be measured on it and the figure above says so. The S\u0026P reaches 1927.' },
+        { rule: 'Command', detail: 'find_cycles.py --symbol ^GSPC --lag-years 60 --window 440' },
       ],
     },
     {
