@@ -17,7 +17,7 @@
 // the next turn is due.
 
 indicator("Summation Series Cycle Finder", shorttitle="Summation", overlay=true,
-     max_labels_count=500, max_lines_count=500, max_boxes_count=50, max_bars_back=4000)
+     max_labels_count=500, max_lines_count=500, max_boxes_count=50, max_bars_back=5000)
 
 string G_PIVOT  = "1 · Pivots"
 string G_ANCHOR = "2 · Anchor"
@@ -33,8 +33,8 @@ rightBars  = input.int(5, "right", minval=1, maxval=50, inline="piv", group=G_PI
 usePivotHighs = input.bool(true, "Count pivot highs", inline="kind", group=G_PIVOT)
 usePivotLows  = input.bool(true, "and lows", inline="kind", group=G_PIVOT,
      tooltip="The count can run over highs, lows, or both. The slide counts both.")
-maxPivots  = input.int(40, "Pivots to keep", minval=6, maxval=120, group=G_PIVOT,
-     tooltip="Only the most recent N pivots are counted and searched. Keeps the chart readable and the search bounded.")
+maxPivots  = input.int(80, "Pivots to keep", minval=6, maxval=150, group=G_PIVOT,
+     tooltip="How far back the count reaches: the most recent N pivots are kept and everything older is dropped. The course labels out past 130, 180, even a couple of hundred bars, so raise this if the numbers stop too early — but note the chain search grows with the square of it, and pivot strength is the better lever because it controls how dense the pivots are in the first place.")
 
 // ── 2 · Anchor ──
 anchorMode = input.string("Auto — recent important pivot", "Anchor (labelled 0)",
@@ -145,7 +145,7 @@ windowVals(startBar, len) =>
     array<float> out = array.new<float>()
     for i = 0 to len - 1
         int off = bar_index - (startBar + i)
-        if off >= 0 and off < 4000
+        if off >= 0 and off < 5000
             array.push(out, close[off])
     out
 
@@ -240,7 +240,10 @@ if barstate.islast
         // ── Step 1b: count backwards ──
         array<int>  counts  = array.new<int>()
         array<int>  cIdx    = array.new<int>()
-        for i = 0 to n - 1
+        // Newest pivot first, so the distance from the anchor grows as we go:
+        // `counts` comes out ascending, which is the order a series is read in
+        // and what the pair loop below assumes.
+        for i = n - 1 to 0
             int d = anchorBar - array.get(pvBar, i)
             if d > 0
                 array.push(counts, d)
@@ -252,12 +255,13 @@ if barstate.islast
         if m >= 2
             for a = 0 to m - 2
                 for b = a + 1 to m - 1
+                    int x = array.get(counts, a)
+                    int y = array.get(counts, b)
                     array<int> chain = array.new<int>()
                     array.push(chain, a)
                     array.push(chain, b)
-                    int x = array.get(counts, a)
-                    int y = array.get(counts, b)
-                    bool extending = true
+                    // A summation series grows, so a pair that does not is not a start.
+                    bool extending = y > x
                     while extending
                         int k = nearestIdx(counts, x + y)
                         if k >= 0 and array.get(counts, k) > y
@@ -310,7 +314,7 @@ if barstate.islast
                         int atNow = candBar + nowOffset
                         int offNow = bar_index - atNow
                         int offFut = bar_index - (atNow + projHorizon)
-                        if offNow >= 0 and offNow < 4000 and offFut >= 0
+                        if offNow >= 0 and offNow < 5000 and offFut >= 0
                             float a0 = close[offNow]
                             float a1 = close[offFut]
                             if a0 > 0
@@ -375,7 +379,7 @@ if barstate.islast
                 // A historical reference beyond max_bars_back is a runtime
                 // error, and a long chain term can reach past it.
                 int cbOff = bar_index - cb
-                if cbOff >= 0 and cbOff < 4000
+                if cbOff >= 0 and cbOff < 5000
                     line cline = line.new(cb, close[cbOff], anchorBar, close[bar_index - anchorBar],
                          xloc=xloc.bar_index, color=color.new(color.lime, 60), style=line.style_dotted)
                     array.push(drawnLines, cline)

@@ -59,7 +59,8 @@ counts before it, never from the predicted value, so drift cannot accumulate.
 
 | Setting | Why it matters |
 | --- | --- |
-| **Pivot strength** | The single biggest lever. Higher = fewer, more important pivots, which is what "primary pivot" means. Low values find a chain in noise. |
+| **Pivot strength** | The single biggest lever, for reach as well as quality. Higher = fewer, more important pivots, which is what "primary pivot" means, and fewer pivots means each one kept reaches further back. Low values find a chain in noise and run out of history early. |
+| **Pivots to keep** | How far back the count reaches. The most recent N are kept and older ones dropped, so if the numbers stop too early raise this — the course labels out past 130, 180, sometimes a couple of hundred. Default 80, up to 150. The chain search grows with the square of it. |
 | **Tolerance** | How far a pivot may sit from the exact sum. The larger of *n* bars or *x* %, so small terms get the bar allowance and large ones the percentage. |
 | **Shortest chain** | 3 is one addition and happens constantly by chance. 4–5 is where it starts to mean something. |
 
