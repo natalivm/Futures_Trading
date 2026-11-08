@@ -186,6 +186,50 @@ are close-based. The date agreement is real; the direction agreement is not.
 Future dates are extrapolated from the last bar's spacing, so on a weekly
 chart a label can sit a few days off a real session.
 
+## The "Projection step" row lands at chance
+
+The panel's one forward-looking number projects turn dates. It does not work,
+and the measurement is in `cycles/backtest_projection.py`.
+
+Two readings of how to project were in the code and its comment at the same
+time. The comment claimed the chain was **mirrored** around the anchor —
+turns at anchor + 11, +27, +38, +64 — while the code repeated a **constant**
+step, the widest gap in the chain. Both were scored, walking forward so
+nothing is fitted on data it then predicts.
+
+The control has to be matched on **tolerance**, and that is the whole story.
+A hit allows 2% of the offset, so a 427-bar projection gets a ±8-bar window
+while an 11-bar one gets ±1. With a strength-5 pivot every nine bars the wide
+window catches something almost regardless — which is how the constant step
+first measured **89%** and looked superb. Against random future bars judged
+at the same tolerance, chance is 90%.
+
+Pooled over four indices and four definitions of what counts as a turn:
+
+| projection | hit rate | chance, same tolerances | edge | n |
+|---|---|---|---|---|
+| constant step | 55.9% | 56.4% | **−0.5 pts** | 9,940 |
+| mirrored chain | 36.5% | 36.9% | **−0.4 pts** | 20,672 |
+
+Sixteen cells, edges scattering from −3.9 to +3.1 with no pattern by symbol or
+by how major a turn has to be. One intermediate result looked promising — ES
+at +8.1 points against major turns — and it was an artifact of using a single
+random draw per projection as the control; at 25 draws the same cell reads
++3.1 and its neighbours go negative.
+
+So the row still prints its number and draws its dashed lines, because a date
+to watch costs nothing, but it is printed in plain grey rather than the
+projection colour and carries **`· lands at chance`**. The comment that
+claimed a mirror has been corrected to describe what the code does, and why
+the series cannot in fact be continued forward: the gaps contract into the
+anchor (166, 97, 64, 36, 26, 11, 16, 11) and the recursion collapses one step
+past it.
+
+Note what this does **not** touch: the confirm-level and chain machinery above
+are scored separately, and the agreement ribbon below projects dates by a
+different mechanism — analog pivots carried forward — which is not what was
+measured here.
+
 ## The agreement ribbon
 
 The forward band is the part to read. Walking the two confirmed cycles forward

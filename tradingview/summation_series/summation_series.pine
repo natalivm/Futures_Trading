@@ -804,8 +804,18 @@ if barstate.islast
             int x2 = array.get(counts, array.get(bestChain, sz - 2))
             int y2 = array.get(counts, array.get(bestChain, sz - 1))
             // The chain grows backwards in time, so each new term is further
-            // into the past. Forward projection mirrors it around the anchor:
-            // the same intervals, counted forward instead of back.
+            // into the past, and the gaps between turns CONTRACT toward the
+            // anchor — on a chain of 11, 27, 38, 64, 100, 164, 261, 427 they
+            // run 166, 97, 64, 36, 26, 11, 16, 11. The series cannot be
+            // continued forward in count space (it collapses: 27 = 11 + 16,
+            // then 11 = 16 + -5), so the step repeated here is the widest
+            // gap, between the two oldest terms.
+            //
+            // This comment used to claim the projection mirrored the chain
+            // around the anchor, which is not what the code does and was
+            // never what it did. Both were measured against later pivots —
+            // see cycles/backtest_projection.py — and the honest summary of
+            // that result is in the README, beside this row's output.
             array<int> fwd = array.new<int>()
             int step = y2 - x2
             for k = 1 to projTerms
@@ -822,7 +832,13 @@ if barstate.islast
                              xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_none,
                              textcolor=projCol, size=size.tiny)
                         array.push(drawnLabels, fl)
-            nextText := str.tostring(step) + " bars → +" + str.tostring(step * projTerms) + " max"
+            // Measured: these dates land on later turns no more often than a
+            // random future bar judged at the same tolerance. Pooled over
+            // four indices and four definitions of a turn, -0.5 points on
+            // 9,940 projections. So the row is printed plainly rather than
+            // in the projection colour, and says so.
+            nextText := str.tostring(step) + " bars → +" + str.tostring(step * projTerms) +
+                 " max  ·  lands at chance"
 
         // ── The classic series, for reference ──
         string presetText = "—"
@@ -1033,7 +1049,7 @@ if barstate.islast
             table.cell(info, 0, 7, "Classic series", text_color=color.gray, text_size=size.tiny)
             table.cell(info, 1, 7, presetText, text_color=color.white, text_size=size.tiny)
             table.cell(info, 0, 8, "Projection step", text_color=color.gray, text_size=size.tiny)
-            table.cell(info, 1, 8, nextText, text_color=projCol, text_size=size.tiny)
+            table.cell(info, 1, 8, nextText, text_color=color.gray, text_size=size.tiny)
             int nb = noiseBar(array.size(counts), tolBars, tolPct)
             int chainLen = array.size(bestChain)
             bool beatsNoise = chainLen > nb

@@ -959,6 +959,58 @@ const moonCycles: KbArticle = {
   ],
 };
 
+/**
+ * The forward-looking row, scored. Separate article because it is a result
+ * about the tool rather than about the course.
+ */
+const projectionScored: KbArticle = {
+  id: 'projection-at-chance',
+  title: 'The projected turn dates land at chance',
+  summary: 'The indicator\u2019s one forward-looking number, measured against later turns on four indices.',
+  source: 'cycles/backtest_projection.py',
+  updated: TODAY,
+  body: [
+    'Everything else the panel shows describes the past. One row does not: the projection step, which names the bar where the next turn is due. It was never measured. It is now.',
+    { kind: 'heading', text: 'The control is the whole test' },
+    {
+      kind: 'list',
+      items: [
+        'A hit allows 2% of the offset, so a 427-bar projection gets a \u00b18-bar window and an 11-bar one gets \u00b11.',
+        'A strength-5 pivot turns up every nine bars, so the wide window catches one almost regardless.',
+        'Measured that way the projection scores 89%, which looks superb. Random future bars judged at the same tolerance score 90%.',
+        'So every projection is compared against random bars at its own tolerance \u2014 not against a single flat baseline.',
+      ],
+    },
+    {
+      kind: 'table',
+      caption: 'Pooled over four indices and four definitions of what counts as a turn, walking forward so nothing is fitted on data it then predicts.',
+      head: ['Projection', 'Hit rate', 'Chance, same tolerances', 'Edge', 'n'],
+      rows: [
+        ['Constant step (what the code does)', '55.9%', '56.4%', '\u22120.5 pts', '9,940'],
+        ['Mirrored chain (what its comment claimed)', '36.5%', '36.9%', '\u22120.4 pts', '20,672'],
+      ],
+    },
+    {
+      kind: 'callout',
+      tone: 'warn',
+      title: 'One cell looked promising and was the control being too thin',
+      text: 'ES against major turns came in at +8.1 points, which would have been the best forward result in this whole project. It was an artifact of drawing a single random bar per projection as the control. At 25 draws the same cell reads +3.1 and its neighbours go negative, and the pooled figure is \u22120.5 on nearly ten thousand projections. A noisy control does not bias a comparison on average \u2014 it just scatters it, and scatter is what gets read as a finding.',
+    },
+    {
+      kind: 'callout',
+      tone: 'key',
+      title: 'What happens to the row',
+      text: 'It still prints its number and still draws its dashed lines, because a date to watch costs nothing. It is printed in plain grey rather than the projection colour and carries \u201c\u00b7 lands at chance\u201d, so the one unscored thing on the panel is no longer the one thing that looks like a forecast. The chain scoring and the agreement ribbon are measured separately and are not what this touches.',
+    },
+    {
+      kind: 'callout',
+      tone: 'note',
+      title: 'Why the series cannot simply be run forward',
+      text: 'The counts measure back from the anchor and the gaps between turns contract into it \u2014 on a chain of 11, 27, 38, 64, 100, 164, 261, 427 they run 166, 97, 64, 36, 26, 11, 16, 11. Read forward the recursion collapses one step past the anchor: 27 = 11 + 16, then 11 = 16 + (\u22125). There is no next term, which is why the code repeats the widest gap instead, and why its comment claiming a mirror was describing something that was never implemented.',
+    },
+  ],
+};
+
 // ── Using a forecast ──
 
 const rulesOfAnalysis: KbArticle = {
@@ -1152,7 +1204,7 @@ export const categories: KbCategory[] = [
     id: 'cycles',
     title: 'Technique 1 — locating cycles',
     description: 'The scanner that searches every offset for the one today’s market rhymes with, and the controls that say which scores to believe.',
-    articles: [cycleScanner, multiplesRule, moonCycles],
+    articles: [cycleScanner, multiplesRule, moonCycles, projectionScored],
   },
   {
     id: 'catalogue',
