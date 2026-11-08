@@ -35,7 +35,9 @@ jobs:
           python-version: '3.12'
 
       - name: Refresh daily closes
-        run: python3 cycles/update_prices.py 2>&1 | tee /tmp/fetch.log
+        # --full because the incremental path cannot grow a file backwards:
+        # the S&P files written before the range=max fix start at 1970.
+        run: python3 cycles/update_prices.py --full 2>&1 | tee /tmp/fetch.log
 
       - name: Run the analysis and write the report
         run: |

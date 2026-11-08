@@ -23,10 +23,22 @@ Daily closes for `^DJI`, `^GSPC`, `^IXIC`, `^NDX`, `^RUT` and `ES=F` into
 `cycles/data/<SLUG>.csv` (`date,close`, oldest first).
 
 Stooq first, because it is the only free source with the history this work
-needs — DJIA back to 1896, where Yahoo only serves `^DJI` from 1992, and a
-60-year cycle cannot be measured in 33 years of data. Yahoo then tops the file
-up with the most recent sessions. Either source can fail without failing the
-run; the other one's rows still land.
+needs — DJIA back to 1896, where Yahoo only serves `^DJI` from 1992. Yahoo
+then tops the file up with the most recent sessions. Either source can fail
+without failing the run; the other one's rows still land.
+
+**Stooq does not answer GitHub's runners.** Both of its hosts return an HTML
+bot-challenge page (`robots: noindex,nofollow` plus a `<noscript>`) instead of
+the CSV. That is an IP-reputation block on datacenter ranges, not a rate
+limit, so no header or retry gets past it — but it still serves a home
+connection, so running `python3 cycles/update_prices.py` locally and
+committing `cycles/data/` is the way to get the Dow back to 1896.
+
+Without it the deepest history available is Yahoo's **S&P 500 from 1927**,
+which is still enough to test a 60-year interval with room for epoch checks.
+Reaching it needs `--full`: the incremental path only fetches the recent tail,
+so a file written before the `range=max` fix starts at 1970 and will never
+grow backwards on its own. The workflow passes `--full` every run.
 
 ## find_cycles.py
 
