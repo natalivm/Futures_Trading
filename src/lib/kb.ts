@@ -1,5 +1,3 @@
-import type { Page } from './nav';
-
 /** One knowledge-base article. `body` holds plain paragraphs; a `> ` prefix marks a quote. */
 export interface KbArticle {
   id: string;
@@ -272,12 +270,6 @@ export const categories: KbCategory[] = [
     articles: [],
   },
   {
-    id: 'matrixchannel',
-    title: 'Matrixchannel & the live desk',
-    description: 'The execution side: the Matrixchannel lines, cloud and moving average, the setups, and how the Live desk checklist applies them to @ES.',
-    articles: [],
-  },
-  {
     id: 'risk',
     title: 'Risk & position sizing',
     description: 'Stops, targets, R:R, costs per contract and how much of the account a single trade is allowed to risk.',
@@ -291,8 +283,8 @@ export const categories: KbCategory[] = [
   },
   {
     id: 'review',
-    title: 'Journal & review',
-    description: 'How a signal is logged, what to fill in once a trade closes, and the weekly review that turns the log into an edge.',
+    title: 'Forecast journal & review',
+    description: 'Recording a forecast on the day it is made, scoring it once the window has passed, and the review that turns a run of calls into a measured hit rate.',
     articles: [],
   },
   {
@@ -300,20 +292,6 @@ export const categories: KbCategory[] = [
     title: 'Glossary',
     description: 'Plain definitions for every term used across the desk and the course.',
     articles: [cycleGlossary],
-  },
-];
-
-/** Pages of the app that belong in the knowledge base even though they live elsewhere. */
-export const relatedPages: { page: Page; title: string; summary: string }[] = [
-  {
-    page: 'rules',
-    title: 'How and when to buy or sell',
-    summary: 'The full rule set behind the Live desk checklist — the routine, every setup, the candlestick patterns and the open questions.',
-  },
-  {
-    page: 'log',
-    title: 'Signal log',
-    summary: 'Every logged decision with its chart observation, plan and result. The dataset the knowledge base is written against.',
   },
 ];
 

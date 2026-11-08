@@ -1,12 +1,10 @@
 import { useState } from 'react';
-import { articleCount, categories, categoryOf, relatedPages, type KbArticle } from '../lib/kb';
-import type { Page } from '../lib/nav';
+import { articleCount, categories, categoryOf, type KbArticle } from '../lib/kb';
 
-interface Props {
-  onGo: (page: Page) => void;
-}
-
-export default function KnowledgeBase({ onGo }: Props) {
+// The knowledge base is the course: Market Forecast Mastery and the cycles.
+// It deliberately links nowhere else in the app — the trading desk is a
+// separate subject, reached from the landing page, not from in here.
+export default function KnowledgeBase() {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState<KbArticle | null>(null);
 
@@ -20,7 +18,6 @@ export default function KnowledgeBase({ onGo }: Props) {
     .filter(c => !q || c.articles.length > 0 || match(c.title) || match(c.description));
   const written = shelves.filter(c => c.articles.length > 0);
   const planned = shelves.filter(c => c.articles.length === 0);
-  const related = relatedPages.filter(r => !q || match(r.title) || match(r.summary));
 
   if (open) {
     return (
@@ -43,8 +40,8 @@ export default function KnowledgeBase({ onGo }: Props) {
     <section className="kb">
       <h1>Knowledge base</h1>
       <p className="muted lead">
-        Market Forecast Mastery lesson by lesson, plus the Matrixchannel rules, the risk limits and the
-        tools behind the desk — written down so a decision never depends on memory. {articleCount > 0
+        Market Forecast Mastery lesson by lesson: the premise, the cycles, and how to read a forecast
+        without fooling yourself — written down so a decision never depends on memory. {articleCount > 0
           ? `${articleCount} article${articleCount === 1 ? '' : 's'} across ${categories.length} sections.`
           : `${categories.length} sections are mapped out below; the articles are being written now.`}
       </p>
@@ -58,7 +55,7 @@ export default function KnowledgeBase({ onGo }: Props) {
         aria-label="Search the knowledge base"
       />
 
-      {written.length + related.length > 0 && <h2>Read now</h2>}
+      {written.length > 0 && <h2>Read now</h2>}
       <div className="kb-grid">
         {written.map(c => (
           <section key={c.id} className="kb-card live">
@@ -73,17 +70,10 @@ export default function KnowledgeBase({ onGo }: Props) {
             </ul>
           </section>
         ))}
-        {related.map(r => (
-          <button type="button" key={r.page} className="kb-card live" onClick={() => onGo(r.page)}>
-            <h3>{r.title}</h3>
-            <p className="muted small">{r.summary}</p>
-            <span className="kb-meta ready">Open →</span>
-          </button>
-        ))}
       </div>
 
       {planned.length > 0 && <h2>Sections being written</h2>}
-      {shelves.length === 0 && related.length === 0 && <p className="muted">Nothing matches “{query}”.</p>}
+      {shelves.length === 0 && <p className="muted">Nothing matches “{query}”.</p>}
       <div className="kb-grid">
         {planned.map(c => (
           <section key={c.id} className="kb-card">

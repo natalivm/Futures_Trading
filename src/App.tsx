@@ -12,7 +12,7 @@ import {
   type AiCheck, type AiSettings, type SnapshotImage,
 } from './lib/ai';
 import { TabCapture } from './lib/capture';
-import { NAV, pageFromHash, type Page } from './lib/nav';
+import { NAV, pageFromHash, sectionOf, sectionTag, type Page } from './lib/nav';
 import { evaluate, freshObservation, riskPlan, verdict, type ObsField, type Observation } from './lib/rules';
 import { SCHEMA_VERSION, useStored, type Decision, type LogEntry } from './lib/store';
 import { streams, type Timeframe } from './lib/streams';
@@ -254,10 +254,11 @@ export default function App() {
       <header className="top">
         <a className="brand" href="#home" onClick={() => go('home')}>
           <span className="mark">M</span>
-          <span className="label">Futures Desk<small>Matrixchannel · {draft.symbol || '@ES'}</small></span>
+          <span className="label">Futures Desk<small>{sectionTag(page, draft.symbol || '@ES')}</small></span>
         </a>
         <nav>
-          {NAV.map(({ id, label }) => (
+          {/* Only the section you are in: the desk and the knowledge base never link to each other. */}
+          {NAV.filter(n => n.section === sectionOf(page)).map(({ id, label }) => (
             <button key={id} className={id === page ? 'nav on' : 'nav'} onClick={() => go(id)}>
               {label}
               {id === 'log' && log.length > 0 && <span className="count">{log.length}</span>}
@@ -329,7 +330,7 @@ export default function App() {
       )}
       {page === 'kb' && (
         <main className="page">
-          <KnowledgeBase onGo={go} />
+          <KnowledgeBase />
         </main>
       )}
       {page === 'rules' && (
