@@ -1546,15 +1546,6 @@ td input.note {
   border-radius: 4px;
 }
 
-.kb-tv-frame {
-  height: 460px;
-}
-
-.kb-tv-frame > div,
-.kb-tv-frame .tradingview-widget-container__widget {
-  height: 100%;
-}
-
 .kb-figure-toggle {
   margin-left: auto;
   display: flex;
@@ -1748,28 +1739,11 @@ td input.note {
 
 @media (max-width: 720px) {
   .kb-demo-body { grid-template-columns: 1fr; }
-  .kb-tv-frame { height: 340px; }
   .kb-timeline li { grid-template-columns: 72px minmax(0, 1fr); }
 }
 
 .kb-demo-scores .mid dd { color: var(--warn); }
 
-.kb-tv-frame {
-  position: relative;
-}
-
-.kb-tv-idle {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  pointer-events: none;
-}
-
-.kb-tv-frame > .tradingview-widget-container {
-  position: relative;
-  background: var(--surface);
-}
 
 /* Quotes inside an article */
 .kb-quote {
@@ -1864,4 +1838,11 @@ td input.note {
 .kb-rules dd {
   color: var(--muted);
   margin-top: 2px;
+}
+
+.kb-offset-note {
+  margin: 0;
+  padding: 10px 14px 0;
+  font-size: 13px;
+  color: var(--warn);
 }

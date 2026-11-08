@@ -85,6 +85,16 @@ jobs:
             python3 cycles/find_cycles.py --symbol GC=F --preset gold --window 1800 --epochs 4
           run_section "Open search, every market" \
             python3 cycles/find_cycles.py --all --min-years 3 --max-years 100 --top 5
+          # Named-cycle overlays for the knowledge base, kept separate from the
+          # open search so the articles can show the interval they discuss.
+          run_section "Named-cycle overlays (equities)" \
+            python3 cycles/find_cycles.py --symbol ^DJI --preset equities --window "$WINDOW" --json-suffix _named
+          run_section "Named-cycle overlays (S&P)" \
+            python3 cycles/find_cycles.py --symbol ^GSPC --preset sp500 --window "$WINDOW" --json-suffix _named
+          run_section "Named-cycle overlays (crude)" \
+            python3 cycles/find_cycles.py --symbol CL=F --preset crude --window 650 --json-suffix _named
+          run_section "Named-cycle overlays (gold)" \
+            python3 cycles/find_cycles.py --symbol GC=F --preset gold --window 1800 --epochs 4 --json-suffix _named
           run_section "Composite — where the named cycles agree" \
             python3 cycles/composite.py --all --preset course --json
           run_section "Four-year election cycle" \

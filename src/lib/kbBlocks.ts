@@ -9,20 +9,14 @@ export type KbBlock =
   | string
   | { kind: 'heading'; text: string }
   | { kind: 'callout'; tone?: 'note' | 'warn' | 'key'; title?: string; text: string }
-  /** A live TradingView chart, opened on the timeframe the passage is about. */
-  | {
-      kind: 'chart';
-      /** TradingView symbol, e.g. `TVC:DJI`. */
-      symbol: string;
-      /** What to call it in the caption and the fallback card. */
-      label: string;
-      interval: 'D' | 'W' | 'M';
-      /** Span the chart opens on, e.g. `60M`, `ALL`. */
-      range?: string;
-      caption?: string;
-    }
-  /** The present window against its analog, drawn from cycles/*.json. */
-  | { kind: 'overlay'; series: string; label: string; caption?: string }
+  /**
+   * The present window against its analog, drawn from cycles/*.json.
+   *
+   * `lagYears` asks for the interval the passage is about. The component
+   * prefers <slug>_named.json, where the pre-specified runs land, and says
+   * so plainly when that offset could not be tested.
+   */
+  | { kind: 'overlay'; series: string; label: string; lagYears?: number; caption?: string }
   /** Plain bullets, or numbered steps. */
   | { kind: 'list'; items: string[]; ordered?: boolean; tight?: boolean }
   /** A term or rule in bold, with the explanation after it. */
@@ -54,8 +48,6 @@ export function blockText(block: KbBlock): string {
       return block.text;
     case 'callout':
       return `${block.title ?? ''} ${block.text}`;
-    case 'chart':
-      return `${block.label} ${block.caption ?? ''}`;
     case 'overlay':
       return `${block.label} ${block.caption ?? ''}`;
     case 'list':

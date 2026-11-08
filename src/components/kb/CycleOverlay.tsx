@@ -51,28 +51,66 @@ function path(series: number[], w: number, h: number, pad: number, span: number,
  * Until that has run for a market there is nothing to draw, and saying so
  * plainly beats an empty frame or an illustration mistakable for history.
  */
-export default function CycleOverlay({ series, label, caption }: { series: string; label: string; caption?: string }) {
+interface Props {
+  series: string;
+  label: string;
+  /** The interval the surrounding passage is about, if it has one. */
+  lagYears?: number;
+  caption?: string;
+}
+
+/** Closest match to the requested interval, if the scan contains one near it. */
+function nearest(matches: Match[], lagYears?: number) {
+  if (lagYears === undefined) return { index: 0, exact: true };
+  let best = 0;
+  matches.forEach((m, i) => {
+    if (Math.abs(m.lagYears - lagYears) < Math.abs(matches[best].lagYears - lagYears)) best = i;
+  });
+  // Within 5% of the asked-for interval counts as the same cycle.
+  return { index: best, exact: Math.abs(matches[best].lagYears - lagYears) <= lagYears * 0.05 };
+}
+
+export default function CycleOverlay({ series, label, lagYears, caption }: Props) {
   const [slug, setSlug] = useState(series);
   const [report, setReport] = useState<Report | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'missing'>('loading');
   const [view, setView] = useState<'overlay' | 'forecast'>('overlay');
   const [pick, setPick] = useState(0);
+  const [exact, setExact] = useState(true);
 
   useEffect(() => {
     let live = true;
     setState('loading');
-    setPick(0);
-    fetch(`${import.meta.env.BASE_URL}cycles/${slug}.json`)
-      .then(r => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((data: Report) => {
-        if (!live) return;
-        if (!data?.matches?.length) { setState('missing'); return; }
-        setReport(data);
-        setState('ready');
-      })
-      .catch(() => live && setState('missing'));
+    const base = import.meta.env.BASE_URL;
+    // Prefer the pre-specified run: a passage about the 17-year cycle should
+    // open on the 17-year overlay, not on whatever the open search liked best.
+    const sources = lagYears !== undefined
+      ? [`${base}cycles/${slug}_named.json`, `${base}cycles/${slug}.json`]
+      : [`${base}cycles/${slug}.json`];
+
+    (async () => {
+      for (const url of sources) {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) continue;
+          const data: Report = await res.json();
+          if (!data?.matches?.length) continue;
+          const { index, exact: hit } = nearest(data.matches, lagYears);
+          if (lagYears !== undefined && !hit && url.endsWith('_named.json')) continue;
+          if (!live) return;
+          setReport(data);
+          setPick(index);
+          setExact(hit);
+          setState('ready');
+          return;
+        } catch {
+          // try the next source
+        }
+      }
+      if (live) setState('missing');
+    })();
     return () => { live = false; };
-  }, [slug]);
+  }, [slug, lagYears]);
 
   const picker = (
     <label className="kb-figure-pick">
@@ -139,11 +177,20 @@ export default function CycleOverlay({ series, label, caption }: { series: strin
         </div>
       </div>
 
+      {!exact && lagYears !== undefined && (
+        <p className="kb-offset-note">
+          No {lagYears}-year overlay for {marketLabel(slug)} yet — the history on file is too short to
+          measure that interval. Showing the scanner’s nearest match, {match.lagYears.toFixed(1)} years,
+          which is a different claim.
+        </p>
+      )}
+
       {report.matches.length > 1 && (
         <div className="kb-offsets" role="group" aria-label="Matched offsets">
           <span className="muted small">Offset:</span>
           {report.matches.map((m, i) => (
-            <button key={m.lagYears} className={i === pick ? 'on' : ''} onClick={() => setPick(i)}>
+            <button key={m.lagYears} className={i === pick ? 'on' : ''}
+                    onClick={() => { setPick(i); setExact(true); }}>
               {m.lagYears.toFixed(1)}y
             </button>
           ))}
