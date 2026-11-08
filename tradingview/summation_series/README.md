@@ -8,6 +8,14 @@ Open the Pine editor, clear it, paste the whole file, Save, Add to chart.
 
 ## The method it automates
 
+**Counting convention:** a label is the **span**, counted inclusively — the
+first candle back is already one — so a pivot six bars before the anchor is
+labelled 7. This matters: run the chain search on the course's published gold
+labels (6, 12, 16, 23, 30, 40, 52, 61, 66, 83, 103, 104, 132) and it returns
+6, 23, 30, 52, 83, 132, which is the series the course names. Shift them all
+down by one, as gap-counting would, and the chain degrades to five terms that
+match nothing published. The labels in the course are spans.
+
 1. **Pick the zero point.** An important high or low: either a recent one
    20 to 70 bars back — a *high* if the market has fallen since, a *low* if it
    has risen — or simply the highest high / lowest low, which is how the course
@@ -16,7 +24,7 @@ Open the Pine editor, clear it, paste the whole file, Save, Add to chart.
 2. **Count backwards.** Walk back from the zero point and label every pivot
    with its distance in bars. The numbers get large — 130, 180, 192 — and that
    is fine, the course says the bigger the better.
-3. **Find a summation series in those numbers.** A chain where each term is
+3. **Find a summation series in those numbers — skipping freely.** A chain where each term is
    the sum of the two before it: 3, 4, 7, 11, 18, 29, 47, 76. It may use any
    *subset* of the pivots; skipping most of them is expected. Fibonacci is one
    such series and the course's point is that it is not the only one.
@@ -38,6 +46,12 @@ Open the Pine editor, clear it, paste the whole file, Save, Add to chart.
    aside; when they agree again you act again. The course takes *three*
    separate trades out of the same pair that way, re-entering each time the two
    paths re-converge.
+
+**This is a time-only technique.** No volume, no magnitude. Asked whether the
+size of the move can be derived, the answer is that it needs other tools —
+and the Bitcoin case makes the point: the analog's rally was huge and the
+repeat was small, but the *dates* were right. "Even if you don't have the
+magnitude right, you have the dates right."
 
 What a window tells you is **direction and a minimum duration**, never the
 size. In the course's third trade one analog ran three weeks and the other
@@ -74,6 +88,30 @@ counts before it, never from the predicted value, so drift cannot accumulate.
 | **Pivots to keep** | How far back the count reaches. The most recent N are kept and older ones dropped, so if the numbers stop too early raise this — the course labels out past 130, 180, sometimes a couple of hundred. Default 80, up to 150. The chain search grows with the square of it. |
 | **Tolerance** | How far a pivot may sit from the exact sum. The larger of *n* bars or *x* %, so small terms get the bar allowance and large ones the percentage. |
 | **Shortest chain** | 3 is one addition and happens constantly by chance. 4–5 is where it starts to mean something. |
+
+## Which chain wins: exactness, not length
+
+The class offered 0, 3, 7, 10, 16, 26, 42 and was corrected: *"your intention
+was to include everything, but if you leave out the three, the thing works
+perfectly."* The answer was **7, 9, 16, 25, 41, 66, 107, 173** — every sum
+exact, and the 3 simply dropped.
+
+That rules out ranking by length. Searching those counts, the longest chain
+*includes* the 3 and runs nine terms with one bar of error; the course prefers
+the eight-term chain with none.
+
+The rule implemented: take the longest chain, **allow one term shorter**, and
+among those prefer the lowest mean error per link.
+
+| slack allowed | Bitcoin | gold |
+| --- | --- | --- |
+| 0 terms | 9 terms incl. the 3 ✗ | 6, 23, 30, 52, 83, 132 ✓ |
+| **1 term** | **7, 9, 16, 25, 41, 66, 107, 173 ✓** | **6, 23, 30, 52, 83, 132 ✓** |
+| 2 terms | ✓ | 6, 16, 23, 40 ✗ |
+
+One term is the only value that reproduces both published answers. The table
+shows the chain's fit — "(exact)" or "(±n)" — so a chain bought with slack is
+visibly not the same thing as one that sums cleanly.
 
 ## Projected turn dates
 
@@ -165,6 +203,10 @@ But random numbers produce chains too, and that is the number to know:
 | 20 | 4 | 5 | 6 | 6 |
 | 30 | 4 | 6 | 7 | 7 |
 | 40 | 4 | 7 | 8 | 8 |
+| 60 | 5 | 7 | 8 | 9 |
+| 80 | 5 | 8 | 9 | 10 |
+| 110 | 5 | 9 | 10 | 10 |
+| 150 | 5 | 9 | 10 | 11 |
 
 *The longest chain random pivot counts reach 95% of the time.* Anything at or
 below that line is what noise produces.
@@ -186,6 +228,26 @@ Three things follow, and they set the defaults:
 The indicator reports this itself: the **Noise bar** row compares the chain it
 found against the random baseline for your pivot count and tolerance, and says
 plainly whether it clears it.
+
+### A worked reading
+
+A live Bitcoin daily chart, 73 pivots at the defaults, reported:
+
+```
+Chain               18, 62, 82, 145, 227, 368, 595     (7 terms)
+Cycle candidates    18, 62, 368  (highs)
+Confirmed by shape  none
+Agreement now       needs two confirmed cycles
+Noise bar           7 vs 8  — random reaches this
+```
+
+Seven terms looks like a result and is not one: random pivots of that count
+reach eight. Nothing then confirmed by shape, so there were no cycles and no
+agreement to read. That is the tool answering honestly, and the correct
+response is to change the inputs rather than the conclusion — raise the pivot
+strength so the pivots that remain are the important ones, or move to a
+weekly chart, which is where the course starts and where 73 daily pivots
+become perhaps a dozen weekly ones.
 
 ## Before trusting a chain
 

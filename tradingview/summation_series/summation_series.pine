@@ -124,61 +124,36 @@ tolFor(expected) =>
     math.max(tolBars, math.round(expected * tolPct / 100.0))
 
 // The longest chain random pivot counts reach 95% of the time, measured over
-// 600 trials per cell on uniformly spaced random pivots. A chain at or below
-// this is what noise produces — it is the bar a real one has to clear.
+// 200-600 trials per cell on uniformly spaced random pivots. A chain at or
+// below this is what noise produces — it is the bar a real one has to clear.
 //
 //   pivots   exact   1b/2%   2b/4%   3b/6%
 //       12       3       4       5       5
 //       20       4       5       6       6
 //       30       4       6       7       7
 //       40       4       7       8       8
+//       60       5       7       8       9
+//       80       5       8       9      10
+//      110       5       9      10      10
+//      150       5       9      10      11
+//
+// The grid used to stop at 40, which under-reported the bar for anyone
+// running the default 80 pivots: a 73-pivot Bitcoin chart was told 7 when
+// the real figure is 8, turning a chain that loses to noise into one that
+// appears to tie it.
 noiseBar(int pivots, int tb, float tp) =>
     int band = tb <= 0 and tp <= 0 ? 0 : (tb <= 1 and tp <= 2.0 ? 1 : (tb <= 2 and tp <= 4.0 ? 2 : 3))
-    int row = pivots <= 15 ? 0 : (pivots <= 25 ? 1 : (pivots <= 35 ? 2 : 3))
+    int row = pivots <= 15 ? 0 : (pivots <= 25 ? 1 : (pivots <= 35 ? 2 : (pivots <= 50 ? 3 : (pivots <= 70 ? 4 : (pivots <= 95 ? 5 : 6)))))
     int v = 4
     if band == 0
-        v := row == 0 ? 3 : 4
+        v := row <= 0 ? 3 : (row <= 3 ? 4 : 5)
     else if band == 1
-        v := row == 0 ? 4 : (row == 1 ? 5 : (row == 2 ? 6 : 7))
+        v := row == 0 ? 4 : (row == 1 ? 5 : (row == 2 ? 6 : (row <= 4 ? 7 : (row == 5 ? 8 : 9))))
     else if band == 2
-        v := row == 0 ? 5 : (row == 1 ? 6 : (row == 2 ? 7 : 8))
+        v := row == 0 ? 5 : (row == 1 ? 6 : (row == 2 ? 7 : (row <= 4 ? 8 : (row == 5 ? 9 : 10))))
     else
-        v := row == 0 ? 5 : (row == 1 ? 6 : (row == 2 ? 7 : 8))
+        v := row == 0 ? 5 : (row == 1 ? 6 : (row == 2 ? 7 : (row == 3 ? 8 : (row == 4 ? 9 : 10))))
     v
-
-// Closes over [startBar, startBar+len), oldest first.
-windowVals(startBar, len) =>
-    array<float> out = array.new<float>()
-    for i = 0 to len - 1
-        int off = bar_index - (startBar + i)
-        if off >= 0 and off < 5000
-            array.push(out, close[off])
-    out
-
-// Pearson between two equal-length float arrays, on their shapes rather than
-// their levels — gold at 1,800 and gold at 1,200 should still match.
-corrArr(a, b) =>
-    int n2 = math.min(array.size(a), array.size(b))
-    float r = na
-    if n2 >= 3
-        float ma = 0.0
-        float mb = 0.0
-        for i = 0 to n2 - 1
-            ma += array.get(a, i)
-            mb += array.get(b, i)
-        ma /= n2
-        mb /= n2
-        float num = 0.0
-        float va = 0.0
-        float vb = 0.0
-        for i = 0 to n2 - 1
-            float da = array.get(a, i) - ma
-            float db = array.get(b, i) - mb
-            num += da * db
-            va += da * da
-            vb += db * db
-        r := va > 0 and vb > 0 ? num / math.sqrt(va * vb) : na
-    r
 
 // Index of the count nearest `target`, or -1 if nothing is within tolerance.
 nearestIdx(counts, target) =>
@@ -264,34 +239,83 @@ if barstate.islast
         // `counts` comes out ascending, which is the order a series is read in
         // and what the pair loop below assumes.
         for i = n - 1 to 0
-            int d = anchorBar - array.get(pvBar, i)
-            if d > 0
-                array.push(counts, d)
+            int gap = anchorBar - array.get(pvBar, i)
+            if gap > 0
+                // Counted inclusively: the first candle back is already one,
+                // so the label is the span, not the gap between bars.
+                array.push(counts, gap + 1)
                 array.push(cIdx, i)
 
-        // ── Step 2: find the longest summation chain among those counts ──
-        array<int> bestChain = array.new<int>()      // indices into `counts`
+        // ── Step 2: find the best summation chain among those counts ──
+        // Not simply the longest. The course picks the chain that "works
+        // perfectly" over a longer one that needs slack — told to include a
+        // 3 that forced a one-bar error, the answer was to leave it out and
+        // keep 7, 9, 16, 25, 41, 66, 107, 173, which sums exactly.
+        //
+        // So: take the longest, allow one term shorter, and among those
+        // prefer the lowest mean error per link. One term of slack is the
+        // only value that reproduces BOTH published answers — the Bitcoin
+        // chain above and the gold 6, 23, 30, 52, 83, 132. Zero loses
+        // Bitcoin, two loses gold.
+        int MAXL = 24
+        array<int>   bestA = array.new<int>(MAXL, -1)
+        array<int>   bestB = array.new<int>(MAXL, -1)
+        array<float> bestM = array.new<float>(MAXL, 1e9)
+        array<int> bestChain = array.new<int>()
+        float chainErr = 0.0
+
         int m = array.size(counts)
         if m >= 2
             for a = 0 to m - 2
                 for b = a + 1 to m - 1
                     int x = array.get(counts, a)
                     int y = array.get(counts, b)
-                    array<int> chain = array.new<int>()
-                    array.push(chain, a)
-                    array.push(chain, b)
-                    // A summation series grows, so a pair that does not is not a start.
-                    bool extending = y > x
-                    while extending
-                        int k = nearestIdx(counts, x + y)
-                        if k >= 0 and array.get(counts, k) > y
-                            array.push(chain, k)
-                            x := y
-                            y := array.get(counts, k)
-                        else
-                            extending := false
-                    if array.size(chain) > array.size(bestChain)
-                        bestChain := chain
+                    if y > x
+                        int len = 2
+                        float err = 0.0
+                        bool extending = true
+                        while extending
+                            int k = nearestIdx(counts, x + y)
+                            if k >= 0 and array.get(counts, k) > y
+                                err += math.abs(array.get(counts, k) - (x + y))
+                                len += 1
+                                x := y
+                                y := array.get(counts, k)
+                            else
+                                extending := false
+                        if len >= 3 and len < MAXL
+                            float meanErr = err / (len - 2)
+                            if meanErr < array.get(bestM, len)
+                                array.set(bestM, len, meanErr)
+                                array.set(bestA, len, a)
+                                array.set(bestB, len, b)
+
+        int longest = 0
+        for L = 3 to MAXL - 1
+            if array.get(bestA, L) >= 0
+                longest := L
+        int pickL = longest
+        if longest >= 4
+            if array.get(bestA, longest - 1) >= 0 and array.get(bestM, longest - 1) < array.get(bestM, longest)
+                pickL := longest - 1
+
+        if pickL >= 3
+            int a2 = array.get(bestA, pickL)
+            int b2 = array.get(bestB, pickL)
+            array.push(bestChain, a2)
+            array.push(bestChain, b2)
+            int x2 = array.get(counts, a2)
+            int y2 = array.get(counts, b2)
+            bool ext2 = true
+            while ext2
+                int k2 = nearestIdx(counts, x2 + y2)
+                if k2 >= 0 and array.get(counts, k2) > y2
+                    chainErr += math.abs(array.get(counts, k2) - (x2 + y2))
+                    array.push(bestChain, k2)
+                    x2 := y2
+                    y2 := array.get(counts, k2)
+                else
+                    ext2 := false
 
         bool haveChain = array.size(bestChain) >= minChain
 
@@ -428,7 +452,7 @@ if barstate.islast
         if array.size(confCount) > 0
             for i = 0 to array.size(confCount) - 1
                 int c = array.get(confCount, i)
-                int cb = anchorBar - c
+                int cb = anchorBar - (c - 1)       // the count is a span
                 label confL = label.new(cb, array.get(pvPrice, anchorIdx),
                      "cycle " + str.tostring(c),
                      xloc=xloc.bar_index, yloc=anchorIsHigh ? yloc.abovebar : yloc.belowbar,
@@ -625,8 +649,15 @@ if barstate.islast
                  bgcolor=color.new(color.black, 20), text_color=color.white, text_size=size.small)
             table.cell(info, 0, 1, "Pivots counted", text_color=color.gray, text_size=size.tiny)
             table.cell(info, 1, 1, str.tostring(array.size(counts)), text_color=color.white, text_size=size.tiny)
-            table.cell(info, 0, 2, "Chain", text_color=color.gray, text_size=size.tiny)
-            table.cell(info, 1, 2, chainText, text_color=haveChain ? chainCol : color.gray, text_size=size.tiny)
+            table.cell(info, 0, 2, "Chain" + (haveChain ? (chainErr == 0 ? " (exact)" :
+                 " (±" + str.tostring(chainErr, "#.#") + ")") : ""),
+                 text_color=color.gray, text_size=size.tiny)
+            // Greyed when it does not clear the noise bar: a chain that random
+            // data reaches is not a finding, and should not be coloured as one.
+            bool chainReal = array.size(bestChain) > noiseBar(array.size(counts), tolBars, tolPct)
+            table.cell(info, 1, 2, chainText,
+                 text_color=haveChain ? (chainReal ? chainCol : color.gray) : color.gray,
+                 text_size=size.tiny)
             table.cell(info, 0, 3, "Cycle candidates", text_color=color.gray, text_size=size.tiny)
             table.cell(info, 1, 3, cycleText, text_color=color.white, text_size=size.tiny)
             table.cell(info, 0, 4, "Recurring interval", text_color=color.gray, text_size=size.tiny)
