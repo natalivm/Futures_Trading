@@ -115,6 +115,23 @@ elongation(float jd) =>
     float sunL = L0 + C
     ((moonL - sunL) % 360 + 540) % 360 - 180
 
+// ── The timeframe has to be able to hold the cycle ──
+//
+// A 27.21-day cycle sampled once every 30.44 days does not come out slow, it
+// comes out ALIASED: the sign of the latitude read at monthly intervals flips
+// on a beat period of 1 / |1/27.21 - 1/30.44| = 257 days, about 8.4 months.
+// Run on a monthly chart this script used to mark "Rahu" every eight or nine
+// months and fill the table with confident nonsense — measured gaps of 8.1,
+// 8.9, 8.0, 8.0, 9.0, 9.0 months against the 8.4 the arithmetic predicts.
+//
+// Nyquist wants two samples per cycle, so 13.6-day bars is the theoretical
+// floor. Weekly clears that and is allowed, though a crossing can then only
+// be placed to the week. Anything coarser is refused outright: a wrong answer
+// delivered confidently is worse than no answer.
+float barDays  = timeframe.in_seconds() / 86400.0
+bool  tfUsable = barDays <= 7.5
+bool  tfCoarse = barDays > 1.5
+
 jd  = julian(time)
 lat = moonLat(jd)
 elo = elongation(jd)
@@ -122,14 +139,14 @@ elo = elongation(jd)
 // A crossing is a sign change between this bar and the last. Rahu is the one
 // going north. On a daily chart that dates the conjunction to the bar it
 // falls in, which is all a daily bar can resolve anyway.
-crossRahu = not na(lat[1]) and lat[1] < 0 and lat >= 0
-crossKetu = not na(lat[1]) and lat[1] > 0 and lat <= 0
+crossRahu = tfUsable and not na(lat[1]) and lat[1] < 0 and lat >= 0
+crossKetu = tfUsable and not na(lat[1]) and lat[1] > 0 and lat <= 0
 
 // The fold makes elongation jump from +180 to -180 at full moon, so a plain
 // sign change finds the full moon as well as the new one. Both tests require
 // the values to be small, which is what tells a zero from the cliff.
-newMoon  = showPhase and not na(elo[1]) and elo[1] < 0 and elo >= 0 and math.abs(elo) < 90
-fullMoon = showPhase and not na(elo[1]) and elo[1] > 0 and elo < 0 and math.abs(elo) > 90
+newMoon  = showPhase and tfUsable and not na(elo[1]) and elo[1] < 0 and elo >= 0 and math.abs(elo) < 90
+fullMoon = showPhase and tfUsable and not na(elo[1]) and elo[1] > 0 and elo < 0 and math.abs(elo) > 90
 
 if showNodes and crossRahu
     label.new(bar_index, high, "Rahu", yloc=yloc.abovebar, style=label.style_label_down,
@@ -172,10 +189,17 @@ if barstate.islast and showTable
          text_color=color.white, text_size=size.small)
     table.cell(info, 2, 0, "move", bgcolor=color.new(color.black, 20),
          text_color=color.white, text_size=size.small)
-    table.cell(info, 3, 0, "vs now", bgcolor=color.new(color.black, 20),
-         text_color=color.white, text_size=size.small)
+    table.cell(info, 3, 0, tfCoarse and tfUsable ? "vs now (bar-resolution only)" : "vs now",
+         bgcolor=color.new(color.black, 20), text_color=color.white, text_size=size.small)
 
-    if sz >= 2
+    if not tfUsable
+        table.cell(info, 0, 1, "timeframe too coarse", text_color=color.red, text_size=size.tiny)
+        table.cell(info, 1, 1, str.tostring(barDays, "#.#") + "-day bars",
+             text_color=color.red, text_size=size.tiny)
+        table.cell(info, 2, 1, "aliases to ~257 d", text_color=color.red, text_size=size.tiny)
+        table.cell(info, 3, 1, "use daily, or weekly at a push",
+             text_color=color.red, text_size=size.tiny)
+    else if sz >= 2
         // Month 0 is Rahu-to-now; month k is the kth completed one back.
         float nowMove = na
         for k = 0 to monthsBack

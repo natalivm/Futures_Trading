@@ -83,3 +83,40 @@ Nothing here scores a setup, and nothing colours a conjunction as a signal.
 Start on a daily chart. A node crossing is dated to the bar it falls in, so a
 daily bar resolves it to the day and an hourly bar to the hour, which is as
 fine as the course works.
+
+## Daily or finer — the script refuses anything coarser than weekly
+
+A 27.21-day cycle sampled once every 30.44 days does not come out slow, it
+comes out **aliased**. The beat period is
+
+    1 / |1/27.21 − 1/30.44| = 257 days ≈ 8.4 months
+
+and that is exactly what the first version did on a monthly chart: it marked
+"Rahu" every eight or nine months and filled the table with confident
+nonsense. Measured gaps were 8.1, 8.9, 8.0, 8.0, 9.0, 9.0 months against the
+8.4 the arithmetic predicts — the diagnosis to a tenth of a month.
+
+Nyquist wants two samples per cycle, so 13.6-day bars is the theoretical
+floor. Weekly clears it and is allowed, with the header saying the comparison
+is bar-resolution only. Monthly and above are refused and the table says why.
+A wrong answer delivered confidently is worse than no answer.
+
+## How often does the panel read 6/6, and does it mean anything
+
+Six rows all matching the odd/opposite, even/same rule looks like 1-in-64.
+It is not, because the rows are not independent — consecutive months share a
+boundary — and the measured distribution is squeezed toward the middle:
+
+| rows matching | share of days (S&P 1928–2026) | if the rows were coin flips |
+|---|---|---|
+| 0/6 | 1.0% | 1.6% |
+| 3/6 | 30.7% | 31.2% |
+| **6/6** | **1.1%** | **1.6%** |
+
+A full house is **rarer** than chance, not commoner, and a panel cut at an
+arbitrary phase reaches it as often or oftener 40% of the time. Forward
+returns after a 6/6 day are not distinguishable from any other day at n=252,
+and the 2010–2026 subsample that looks dramatic (12.5% win rate over ten
+bars) rests on 24 days.
+
+`python3 cycles/backtest_moon.py --symbol GSPC` prints all of it.

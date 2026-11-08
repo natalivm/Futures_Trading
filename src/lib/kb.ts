@@ -940,6 +940,18 @@ const moonCycles: KbArticle = {
     },
     {
       kind: 'callout',
+      tone: 'warn',
+      title: 'Six rows out of six is rarer than a coin, and still means nothing',
+      text: 'The panel marks each earlier month same or opposite against the rule, and a full house of six looks like a 1-in-64 event. It is not, because the rows share boundaries and are not independent: measured across the S&P from 1928, 6/6 turns up on 1.1% of days against the 1.6% coin flips would give, and 0/6 on 1.0% against 1.6% \u2014 the whole distribution is squeezed toward the middle. A panel cut at an arbitrary phase reaches a full house as often or oftener 40% of the time, and what follows a 6/6 day is not distinguishable from what follows any other day. It is a striking thing to look at and it is not a signal.',
+    },
+    {
+      kind: 'callout',
+      tone: 'warn',
+      title: 'Daily or finer \u2014 a monthly chart aliases this cycle into fiction',
+      text: 'A 27.21-day cycle sampled once every 30.44 days does not come out slow, it comes out aliased: the beat period is 1 \u00f7 |1/27.21 \u2212 1/30.44| = 257 days, about 8.4 months. Run on a monthly chart the first version of the indicator duly marked \u201cRahu\u201d every eight or nine months \u2014 measured gaps of 8.1, 8.9, 8.0, 8.0, 9.0, 9.0 \u2014 and filled its table with confident nonsense. It now refuses anything coarser than weekly and says why. Nyquist wants two samples per cycle, so 13.6-day bars is the floor; weekly clears it and can only place a crossing to the week.',
+    },
+    {
+      kind: 'callout',
       tone: 'note',
       title: 'Why the ephemeris can be trusted here',
       text: 'cycles/moon.py is checked against five published solar eclipses \u2014 a solar eclipse is a new moon at a node, so both routines have to land together. Every new moon comes within nine minutes of the catalogued time and every eclipse carries a node crossing within hours. Measured back from its own roots the draconic month reads 27.2141 days against the book\u2019s 27.2122, and the synodic 29.530567 against 29.530588.',

@@ -189,7 +189,70 @@ def main():
              [("1 week", 5), ("2 weeks", 10), ("to next node", 14), ("4 weeks", 20)],
              args.trials, args.symbol)
     claim_3(dates, closes, cr, args.trials, args.symbol)
+    claim_table(dates, closes, cr, args.trials, args.symbol)
 
+
+
+
+def table_score(dates, closes, bounds, t, back=6):
+    """The indicator's own table, scored. Month 0 runs from the last boundary
+    to `t` and is partial, exactly as the panel shows it; month k is the kth
+    completed month before that. A row matches when an even lag is the same
+    sign as month 0 and an odd lag is the opposite — the lecture's rule."""
+    i = bisect.bisect_right(bounds, t) - 1
+    if i - back < 0 or bounds[i] >= t:
+        return None
+    r0 = bounds[i]
+    now = closes[t] - closes[r0]
+    if now == 0:
+        return None
+    hits = 0
+    for k in range(1, back + 1):
+        a, b = bounds[i - k], bounds[i - k + 1]
+        mv = closes[b] - closes[a]
+        if mv == 0:
+            return None
+        same = (mv > 0) == (now > 0)
+        if same == (k % 2 == 0):
+            hits += 1
+    return hits
+
+
+def claim_table(dates, closes, crossings, trials, label, back=6):
+    rahu = entries(dates, crossings, "rahu")
+    scores = [s for s in (table_score(dates, closes, rahu, t, back)
+                          for t in range(len(closes))) if s is not None]
+    n = len(scores)
+    print(f"\n=== {label}: how often does the panel read {back}/{back}? ===")
+    print(f"scored on {n} trading days\n")
+    print(f"{'rows matching':>14} {'days':>7} {'share':>8}   {'if coins':>9}")
+    for v in range(back + 1):
+        c = scores.count(v)
+        binom = math.comb(back, v) / 2 ** back * 100
+        print(f"{v:>10}/{back} {c:>7} {100*c/n:>7.1f}%   {binom:>8.1f}%")
+    perfect = 100 * scores.count(back) / n
+    print(f"\n   all {back} matching: {perfect:.1f}% of days, against {100/2**back:.1f}% for coin flips")
+
+    # The control that settled the lag-1 question: the same panel cut at an
+    # arbitrary phase. If the moon is doing the work, this should be worse.
+    rnd = random.Random(17)
+    blk = int(round(len(closes) / max(1, len(rahu))))
+    ctl = []
+    for _ in range(max(40, trials // 50)):
+        off = rnd.randrange(blk)
+        edges = list(range(off, len(closes), blk))
+        sc = [s for s in (table_score(dates, closes, edges, t, back)
+                          for t in range(len(closes))) if s is not None]
+        if sc:
+            ctl.append(100 * sc.count(back) / len(sc))
+    ctl.sort()
+    if ctl:
+        beaten = 100 * sum(1 for v in ctl if v >= perfect) / len(ctl)
+        print(f"   same panel on {blk}-bar blocks cut at an arbitrary phase: "
+              f"median {statistics.median(ctl):.1f}%, "
+              f"95% band [{ctl[int(0.025*len(ctl))]:.1f}%, {ctl[int(0.975*len(ctl))]:.1f}%]")
+        print(f"   an arbitrary phase matches or beats the lunar one "
+              f"{beaten:.0f}% of the time")
 
 if __name__ == "__main__":
     main()
