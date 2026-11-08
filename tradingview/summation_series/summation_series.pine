@@ -1,0 +1,373 @@
+//@version=6
+// Summation Series Cycle Finder
+//
+// An implementation of the Summation Series technique for locating cycles,
+// from Market Forecast Mastery (Allen Reminick). Not his code.
+//
+// The method, in three steps:
+//   1. Pick an important pivot, label it 0, then count bars back in time and
+//      label every earlier pivot with its distance from the anchor.
+//   2. Look for a summation series in those numbers — each term the sum of
+//      the two before it, as in 3,4,7,11,18,29,47,76 or 4,8,12,20,32,52,84.
+//   3. Look for high-to-high and low-to-low intervals that recur.
+//
+// What it adds to the manual method: the counting and the series search are
+// done for you, every candidate chain is scored rather than eyeballed, and
+// the next term of the winning chain is projected forward as the bar where
+// the next turn is due.
+
+indicator("Summation Series Cycle Finder", shorttitle="Summation", overlay=true,
+     max_labels_count=500, max_lines_count=500, max_boxes_count=50)
+
+string G_PIVOT  = "1 · Pivots"
+string G_ANCHOR = "2 · Anchor"
+string G_SERIES = "3 · Series search"
+string G_PROJ   = "4 · Projection"
+string G_VIEW   = "5 · Display"
+
+// ── 1 · Pivots ──
+leftBars   = input.int(5, "Pivot strength — left", minval=1, maxval=50, inline="piv", group=G_PIVOT)
+rightBars  = input.int(5, "right", minval=1, maxval=50, inline="piv", group=G_PIVOT,
+     tooltip="How many bars either side a pivot must dominate. Higher = fewer, more important pivots, which is what the method calls a primary pivot. A pivot is only confirmed once 'right' bars have closed after it.")
+usePivotHighs = input.bool(true, "Count pivot highs", inline="kind", group=G_PIVOT)
+usePivotLows  = input.bool(true, "and lows", inline="kind", group=G_PIVOT,
+     tooltip="The count can run over highs, lows, or both. The slide counts both.")
+maxPivots  = input.int(40, "Pivots to keep", minval=6, maxval=120, group=G_PIVOT,
+     tooltip="Only the most recent N pivots are counted and searched. Keeps the chart readable and the search bounded.")
+
+// ── 2 · Anchor ──
+anchorMode = input.string("Auto — recent important pivot", "Anchor (labelled 0)",
+     options=["Auto — recent important pivot", "Most recent pivot", "Most recent pivot high", "Most recent pivot low", "Manual date"],
+     group=G_ANCHOR,
+     tooltip="Step 1: the pivot you count back from. Auto follows the course — a decent high or low in the recent window below, a high if the market has been falling since and a low if it has been rising. Deliberately not the highest high or lowest low in the history.")
+anchorMin  = input.int(20, "Auto window — from", minval=2, maxval=300, inline="aw", group=G_ANCHOR)
+anchorMax  = input.int(70, "to (bars back)", minval=5, maxval=500, inline="aw", group=G_ANCHOR,
+     tooltip="The course picks a zero point roughly 20 to 70 weeks back on a weekly chart: recent enough to connect to the present, old enough to have pivots behind it.")
+anchorTime = input.time(timestamp("01 Jan 2024 00:00 +0000"), "Manual anchor date", group=G_ANCHOR,
+     tooltip="Used only when Anchor is set to Manual date. The nearest pivot at or before this date becomes 0.")
+
+// ── 3 · Series search ──
+minChain   = input.int(5, "Shortest chain to report", minval=3, maxval=12, group=G_SERIES,
+     tooltip="Set from the random-data baseline, not by taste: with 20 pivots at the default tolerance, random counts reach 5 about as often as not. See the Noise bar row in the table — a chain at or below it is worth nothing.")
+tolBars    = input.int(1, "Tolerance — bars", minval=0, maxval=20, inline="tol", group=G_SERIES)
+tolPct     = input.float(2.0, "or %", minval=0, maxval=25, step=0.5, inline="tol", group=G_SERIES,
+     tooltip="How far a pivot may sit from the exact sum and still count. The larger of the two is used, so small terms get the bar allowance and large ones the percentage. Loosen this and the search will find a chain in anything.")
+showPresets = input.bool(true, "Also test the classic series", group=G_SERIES,
+     tooltip="Marks pivots whose count matches Fibonacci (2,3,5,8,13,21…), Lucas (1,3,4,7,11,18,29,47,76…) or the 4,8,12,20,32,52,84,136 series from the slide.")
+
+// ── 4 · Projection ──
+showProjection = input.bool(true, "Project the next terms", group=G_PROJ,
+     tooltip="Where the chain says the next turns are due, counted forward from the anchor.")
+projTerms  = input.int(3, "How many terms ahead", minval=1, maxval=6, group=G_PROJ)
+showIntervals = input.bool(true, "Report recurring H-H / L-L intervals", group=G_PROJ,
+     tooltip="Step 3: intervals between consecutive same-type pivots that keep repeating.")
+
+// ── 5 · Display ──
+showCounts = input.bool(true, "Label every pivot with its count", group=G_VIEW)
+showTable  = input.bool(true, "Show the summary table", group=G_VIEW)
+chainCol   = input.color(color.new(color.aqua, 0), "Chain", inline="col", group=G_VIEW)
+plainCol   = input.color(color.new(color.gray, 30), "Other pivots", inline="col", group=G_VIEW)
+projCol    = input.color(color.new(color.orange, 0), "Projection", inline="col", group=G_VIEW)
+
+// ── Pivot collection ──
+var array<int>   pvBar   = array.new<int>()
+var array<float> pvPrice = array.new<float>()
+var array<bool>  pvHigh  = array.new<bool>()
+var array<int>   pvTime  = array.new<int>()
+
+ph = ta.pivothigh(leftBars, rightBars)
+pl = ta.pivotlow(leftBars, rightBars)
+
+if usePivotHighs and not na(ph)
+    array.push(pvBar, bar_index - rightBars)
+    array.push(pvPrice, ph)
+    array.push(pvHigh, true)
+    array.push(pvTime, time[rightBars])
+if usePivotLows and not na(pl)
+    array.push(pvBar, bar_index - rightBars)
+    array.push(pvPrice, pl)
+    array.push(pvHigh, false)
+    array.push(pvTime, time[rightBars])
+
+// Keep the array bounded — the search is O(n^3) in the worst case.
+while array.size(pvBar) > maxPivots
+    array.shift(pvBar)
+    array.shift(pvPrice)
+    array.shift(pvHigh)
+    array.shift(pvTime)
+
+// ── Helpers ──
+
+// The slack allowed around an expected term: the larger of the two settings,
+// so a 7 gets the bar allowance and a 136 gets the percentage.
+tolFor(expected) =>
+    math.max(tolBars, math.round(expected * tolPct / 100.0))
+
+// The longest chain random pivot counts reach 95% of the time, measured over
+// 600 trials per cell on uniformly spaced random pivots. A chain at or below
+// this is what noise produces — it is the bar a real one has to clear.
+//
+//   pivots   exact   1b/2%   2b/4%   3b/6%
+//       12       3       4       5       5
+//       20       4       5       6       6
+//       30       4       6       7       7
+//       40       4       7       8       8
+noiseBar(int pivots, int tb, float tp) =>
+    int band = tb <= 0 and tp <= 0 ? 0 : (tb <= 1 and tp <= 2.0 ? 1 : (tb <= 2 and tp <= 4.0 ? 2 : 3))
+    int row = pivots <= 15 ? 0 : (pivots <= 25 ? 1 : (pivots <= 35 ? 2 : 3))
+    int v = 4
+    if band == 0
+        v := row == 0 ? 3 : 4
+    else if band == 1
+        v := row == 0 ? 4 : (row == 1 ? 5 : (row == 2 ? 6 : 7))
+    else if band == 2
+        v := row == 0 ? 5 : (row == 1 ? 6 : (row == 2 ? 7 : 8))
+    else
+        v := row == 0 ? 5 : (row == 1 ? 6 : (row == 2 ? 7 : 8))
+    v
+
+// Index of the count nearest `target`, or -1 if nothing is within tolerance.
+nearestIdx(counts, target) =>
+    int best = -1
+    float bestDist = 1e9
+    float tol = tolFor(target)
+    for i = 0 to array.size(counts) - 1
+        float d = math.abs(array.get(counts, i) - target)
+        if d <= tol and d < bestDist
+            bestDist := d
+            best := i
+    best
+
+
+// ── Analysis, redrawn on the last bar ──
+var array<label> drawnLabels = array.new<label>()
+var array<line>  drawnLines  = array.new<line>()
+var table info = na
+
+if barstate.islast
+    for i = 0 to array.size(drawnLabels) - 1
+        label.delete(array.get(drawnLabels, i))
+    array.clear(drawnLabels)
+    for i = 0 to array.size(drawnLines) - 1
+        line.delete(array.get(drawnLines, i))
+    array.clear(drawnLines)
+
+    int n = array.size(pvBar)
+    if n >= minChain
+
+        // ── Step 1: choose the zero point ──
+        int anchorIdx = n - 1
+        if anchorMode == "Most recent pivot high" or anchorMode == "Most recent pivot low"
+            bool wantHigh = anchorMode == "Most recent pivot high"
+            for i = n - 1 to 0
+                if array.get(pvHigh, i) == wantHigh
+                    anchorIdx := i
+                    break
+        else if anchorMode == "Manual date"
+            for i = n - 1 to 0
+                if array.get(pvTime, i) <= anchorTime
+                    anchorIdx := i
+                    break
+        else if anchorMode == "Auto — recent important pivot"
+            // The course's rule: a high if the market has fallen since, a low
+            // if it has risen. "Since" is measured over the auto window.
+            float then = close[math.min(bar_index, anchorMax)]
+            bool wantHigh = close < then
+            float bestScore = -1e9
+            for i = 0 to n - 1
+                int back = bar_index - array.get(pvBar, i)
+                if back >= anchorMin and back <= anchorMax and array.get(pvHigh, i) == wantHigh
+                    // Prefer the most extreme pivot inside the window.
+                    float sc = wantHigh ? array.get(pvPrice, i) : -array.get(pvPrice, i)
+                    if sc > bestScore
+                        bestScore := sc
+                        anchorIdx := i
+
+        int anchorBar = array.get(pvBar, anchorIdx)
+        bool anchorIsHigh = array.get(pvHigh, anchorIdx)
+
+        // ── Step 1b: count backwards ──
+        array<int>  counts  = array.new<int>()
+        array<int>  cIdx    = array.new<int>()
+        for i = 0 to n - 1
+            int d = anchorBar - array.get(pvBar, i)
+            if d > 0
+                array.push(counts, d)
+                array.push(cIdx, i)
+
+        // ── Step 2: find the longest summation chain among those counts ──
+        array<int> bestChain = array.new<int>()      // indices into `counts`
+        int m = array.size(counts)
+        if m >= 2
+            for a = 0 to m - 2
+                for b = a + 1 to m - 1
+                    array<int> chain = array.new<int>()
+                    array.push(chain, a)
+                    array.push(chain, b)
+                    int x = array.get(counts, a)
+                    int y = array.get(counts, b)
+                    bool extending = true
+                    while extending
+                        int k = nearestIdx(counts, x + y)
+                        if k >= 0 and array.get(counts, k) > y
+                            array.push(chain, k)
+                            x := y
+                            y := array.get(counts, k)
+                        else
+                            extending := false
+                    if array.size(chain) > array.size(bestChain)
+                        bestChain := chain
+
+        bool haveChain = array.size(bestChain) >= minChain
+
+        // ── Step 3: among the chain, the pivots matching the anchor's type
+        //    are the cycle candidates — high to high, low to low.
+        array<int> cycleCounts = array.new<int>()
+        if haveChain
+            for i = 0 to array.size(bestChain) - 1
+                int ci = array.get(bestChain, i)
+                int pi = array.get(cIdx, ci)
+                if array.get(pvHigh, pi) == anchorIsHigh
+                    array.push(cycleCounts, array.get(counts, ci))
+
+        // ── Draw ──
+        label anchorLbl = label.new(anchorBar, array.get(pvPrice, anchorIdx), "0",
+             xloc=xloc.bar_index, yloc=anchorIsHigh ? yloc.abovebar : yloc.belowbar,
+             style=anchorIsHigh ? label.style_label_down : label.style_label_up,
+             color=color.new(color.yellow, 20), textcolor=color.black, size=size.small)
+        array.push(drawnLabels, anchorLbl)
+
+        if showCounts
+            for i = 0 to array.size(counts) - 1
+                int ci = array.get(cIdx, i)
+                bool inChain = false
+                if haveChain
+                    for j = 0 to array.size(bestChain) - 1
+                        if array.get(bestChain, j) == i
+                            inChain := true
+                            break
+                bool isHigh = array.get(pvHigh, ci)
+                label cl = label.new(array.get(pvBar, ci), array.get(pvPrice, ci),
+                     str.tostring(array.get(counts, i)),
+                     xloc=xloc.bar_index, yloc=isHigh ? yloc.abovebar : yloc.belowbar,
+                     style=label.style_none,
+                     textcolor=inChain ? chainCol : plainCol,
+                     size=inChain ? size.normal : size.tiny)
+                array.push(drawnLabels, cl)
+
+        // ── Projection: where the chain says the next turns are due ──
+        string nextText = "—"
+        if haveChain and showProjection
+            int sz = array.size(bestChain)
+            int x2 = array.get(counts, array.get(bestChain, sz - 2))
+            int y2 = array.get(counts, array.get(bestChain, sz - 1))
+            // The chain grows backwards in time, so each new term is further
+            // into the past. Forward projection mirrors it around the anchor:
+            // the same intervals, counted forward instead of back.
+            array<int> fwd = array.new<int>()
+            int step = y2 - x2
+            for k = 1 to projTerms
+                array.push(fwd, anchorBar + step * k)
+            for k = 0 to array.size(fwd) - 1
+                int bx = array.get(fwd, k)
+                if bx > bar_index - 1 and bx < bar_index + 500
+                    line pl2 = line.new(bx, low, bx, high, xloc=xloc.bar_index,
+                         extend=extend.both, color=color.new(projCol, 55),
+                         style=line.style_dashed, width=1)
+                    array.push(drawnLines, pl2)
+                    label fl = label.new(bx, high, "+" + str.tostring(step * (k + 1)),
+                         xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_none,
+                         textcolor=projCol, size=size.tiny)
+                    array.push(drawnLabels, fl)
+            nextText := str.tostring(step) + " bars → +" + str.tostring(step * projTerms) + " max"
+
+        // ── The classic series, for reference ──
+        string presetText = "—"
+        if showPresets
+            array<int> fib = array.from(2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377)
+            array<int> luc = array.from(3, 4, 7, 11, 18, 29, 47, 76, 123, 199, 322)
+            array<int> slide = array.from(4, 8, 12, 20, 32, 52, 84, 136, 220, 356)
+            int fibHits = 0
+            int lucHits = 0
+            int slideHits = 0
+            for i = 0 to array.size(counts) - 1
+                int c = array.get(counts, i)
+                for j = 0 to array.size(fib) - 1
+                    if math.abs(c - array.get(fib, j)) <= tolFor(array.get(fib, j))
+                        fibHits += 1
+                        break
+                for j = 0 to array.size(luc) - 1
+                    if math.abs(c - array.get(luc, j)) <= tolFor(array.get(luc, j))
+                        lucHits += 1
+                        break
+                for j = 0 to array.size(slide) - 1
+                    if math.abs(c - array.get(slide, j)) <= tolFor(array.get(slide, j))
+                        slideHits += 1
+                        break
+            presetText := "Fib " + str.tostring(fibHits) + " · Lucas " + str.tostring(lucHits) +
+                 " · 4-8-12 " + str.tostring(slideHits) + "  of " + str.tostring(array.size(counts))
+
+        // ── Step 3: recurring same-type intervals ──
+        string intervalText = "—"
+        if showIntervals
+            array<int> gaps = array.new<int>()
+            for i = 0 to n - 2
+                for j = i + 1 to n - 1
+                    if array.get(pvHigh, i) == array.get(pvHigh, j) and array.get(pvHigh, i) == anchorIsHigh
+                        array.push(gaps, array.get(pvBar, j) - array.get(pvBar, i))
+                        break
+            if array.size(gaps) >= 3
+                int bestGap = 0
+                int bestCount = 0
+                for i = 0 to array.size(gaps) - 1
+                    int g = array.get(gaps, i)
+                    int c = 0
+                    for j = 0 to array.size(gaps) - 1
+                        if math.abs(array.get(gaps, j) - g) <= tolFor(g)
+                            c += 1
+                    if c > bestCount
+                        bestCount := c
+                        bestGap := g
+                intervalText := str.tostring(bestGap) + " bars, seen " + str.tostring(bestCount) +
+                     " of " + str.tostring(array.size(gaps))
+
+        // ── Summary ──
+        if showTable
+            string chainText = "none ≥ " + str.tostring(minChain)
+            if haveChain
+                chainText := ""
+                for i = 0 to array.size(bestChain) - 1
+                    chainText += (i > 0 ? ", " : "") + str.tostring(array.get(counts, array.get(bestChain, i)))
+            string cycleText = "—"
+            if array.size(cycleCounts) > 0
+                cycleText := ""
+                for i = 0 to array.size(cycleCounts) - 1
+                    cycleText += (i > 0 ? ", " : "") + str.tostring(array.get(cycleCounts, i))
+                cycleText += anchorIsHigh ? "  (highs)" : "  (lows)"
+
+            if na(info)
+                info := table.new(position.top_right, 2, 8, border_width=1,
+                     frame_color=color.new(color.gray, 50), frame_width=1)
+            table.cell(info, 0, 0, "Summation series", bgcolor=color.new(color.black, 20),
+                 text_color=color.white, text_size=size.small)
+            table.cell(info, 1, 0, anchorIsHigh ? "anchor: high" : "anchor: low",
+                 bgcolor=color.new(color.black, 20), text_color=color.white, text_size=size.small)
+            table.cell(info, 0, 1, "Pivots counted", text_color=color.gray, text_size=size.tiny)
+            table.cell(info, 1, 1, str.tostring(array.size(counts)), text_color=color.white, text_size=size.tiny)
+            table.cell(info, 0, 2, "Chain", text_color=color.gray, text_size=size.tiny)
+            table.cell(info, 1, 2, chainText, text_color=haveChain ? chainCol : color.gray, text_size=size.tiny)
+            table.cell(info, 0, 3, "Cycle candidates", text_color=color.gray, text_size=size.tiny)
+            table.cell(info, 1, 3, cycleText, text_color=color.white, text_size=size.tiny)
+            table.cell(info, 0, 4, "Recurring interval", text_color=color.gray, text_size=size.tiny)
+            table.cell(info, 1, 4, intervalText, text_color=color.white, text_size=size.tiny)
+            table.cell(info, 0, 5, "Classic series", text_color=color.gray, text_size=size.tiny)
+            table.cell(info, 1, 5, presetText, text_color=color.white, text_size=size.tiny)
+            table.cell(info, 0, 6, "Projection step", text_color=color.gray, text_size=size.tiny)
+            table.cell(info, 1, 6, nextText, text_color=projCol, text_size=size.tiny)
+            int nb = noiseBar(array.size(counts), tolBars, tolPct)
+            int chainLen = array.size(bestChain)
+            bool beatsNoise = chainLen > nb
+            table.cell(info, 0, 7, "Noise bar", text_color=color.gray, text_size=size.tiny)
+            table.cell(info, 1, 7, str.tostring(chainLen) + " vs " + str.tostring(nb) +
+                 (beatsNoise ? "  clears it" : "  random reaches this"),
+                 text_color=beatsNoise ? color.lime : color.red, text_size=size.tiny)
