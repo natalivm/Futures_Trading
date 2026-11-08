@@ -155,6 +155,16 @@ confirmed.
 
 ## Status
 
-Written against the method as described in the course transcript and slide.
-**Not yet compile-checked on TradingView** — there is no Pine compiler in the
-environment it was written in, so the first paste may turn up syntax to fix.
+Compiles on TradingView. The first run threw `RE10045` — `array.get()` index 0
+on an array of size 0 — and the cause is a Pine trap worth knowing:
+
+```pine
+for i = 0 to array.size(x) - 1   // x is empty, so this is `0 to -1`
+```
+
+Pine decides the direction of a `for` from its bounds, so when the end is
+below the start it counts **down**. An empty array does not skip the loop; it
+runs the body with `i = 0` and then `i = -1`. Every cleanup and reporting
+loop here had that shape. All fourteen are now wrapped in
+`if array.size(x) > 0`, and one history lookup that a long chain term could
+push beyond `max_bars_back` is bounds-checked as well.

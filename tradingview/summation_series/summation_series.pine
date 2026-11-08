@@ -179,11 +179,12 @@ nearestIdx(counts, target) =>
     int best = -1
     float bestDist = 1e9
     float tol = tolFor(target)
-    for i = 0 to array.size(counts) - 1
-        float d = math.abs(array.get(counts, i) - target)
-        if d <= tol and d < bestDist
-            bestDist := d
-            best := i
+    if array.size(counts) > 0
+        for i = 0 to array.size(counts) - 1
+            float d = math.abs(array.get(counts, i) - target)
+            if d <= tol and d < bestDist
+                bestDist := d
+                best := i
     best
 
 
@@ -193,11 +194,13 @@ var array<line>  drawnLines  = array.new<line>()
 var table info = na
 
 if barstate.islast
-    for i = 0 to array.size(drawnLabels) - 1
-        label.delete(array.get(drawnLabels, i))
+    if array.size(drawnLabels) > 0
+        for i = 0 to array.size(drawnLabels) - 1
+            label.delete(array.get(drawnLabels, i))
     array.clear(drawnLabels)
-    for i = 0 to array.size(drawnLines) - 1
-        line.delete(array.get(drawnLines, i))
+    if array.size(drawnLines) > 0
+        for i = 0 to array.size(drawnLines) - 1
+            line.delete(array.get(drawnLines, i))
     array.clear(drawnLines)
 
     int n = array.size(pvBar)
@@ -272,11 +275,12 @@ if barstate.islast
         //    are the cycle candidates — high to high, low to low.
         array<int> cycleCounts = array.new<int>()
         if haveChain
-            for i = 0 to array.size(bestChain) - 1
-                int ci = array.get(bestChain, i)
-                int pi = array.get(cIdx, ci)
-                if array.get(pvHigh, pi) == anchorIsHigh
-                    array.push(cycleCounts, array.get(counts, ci))
+            if array.size(bestChain) > 0
+                for i = 0 to array.size(bestChain) - 1
+                    int ci = array.get(bestChain, i)
+                    int pi = array.get(cIdx, ci)
+                    if array.get(pvHigh, pi) == anchorIsHigh
+                        array.push(cycleCounts, array.get(counts, ci))
 
         // ── Step 4: confirm a candidate by its shape, and look for consensus ──
         // A candidate is only a cycle if the same thing happened into it and
@@ -290,40 +294,42 @@ if barstate.islast
         array<float> anchorIn  = windowVals(anchorBar - inBars, inBars)
         array<float> anchorOut = windowVals(anchorBar, outBars)
 
-        for i = 0 to array.size(cycleCounts) - 1
-            int c = array.get(cycleCounts, i)
-            int candBar = anchorBar - c
-            array<float> candIn  = windowVals(candBar - inBars, inBars)
-            array<float> candOut = windowVals(candBar, outBars)
-            float rIn  = corrArr(anchorIn, candIn)
-            float rOut = corrArr(anchorOut, candOut)
-            if not na(rIn) and not na(rOut)
-                float score = math.min(rIn, rOut)
-                if score >= shapeMin
-                    // Where the analog stood at the point we are at now, and
-                    // what it did over the next `projHorizon` bars.
-                    int atNow = candBar + nowOffset
-                    int offNow = bar_index - atNow
-                    int offFut = bar_index - (atNow + projHorizon)
-                    if offNow >= 0 and offNow < 4000 and offFut >= 0
-                        float a0 = close[offNow]
-                        float a1 = close[offFut]
-                        if a0 > 0
-                            array.push(confCount, c)
-                            array.push(confScore, score)
-                            array.push(confNext, (a1 / a0 - 1) * 100)
+        if array.size(cycleCounts) > 0
+            for i = 0 to array.size(cycleCounts) - 1
+                int c = array.get(cycleCounts, i)
+                int candBar = anchorBar - c
+                array<float> candIn  = windowVals(candBar - inBars, inBars)
+                array<float> candOut = windowVals(candBar, outBars)
+                float rIn  = corrArr(anchorIn, candIn)
+                float rOut = corrArr(anchorOut, candOut)
+                if not na(rIn) and not na(rOut)
+                    float score = math.min(rIn, rOut)
+                    if score >= shapeMin
+                        // Where the analog stood at the point we are at now, and
+                        // what it did over the next `projHorizon` bars.
+                        int atNow = candBar + nowOffset
+                        int offNow = bar_index - atNow
+                        int offFut = bar_index - (atNow + projHorizon)
+                        if offNow >= 0 and offNow < 4000 and offFut >= 0
+                            float a0 = close[offNow]
+                            float a1 = close[offFut]
+                            if a0 > 0
+                                array.push(confCount, c)
+                                array.push(confScore, score)
+                                array.push(confNext, (a1 / a0 - 1) * 100)
 
         // Consensus: two or more confirmed cycles pointing the same way.
         int upVotes = 0
         int downVotes = 0
         float meanMove = 0.0
-        for i = 0 to array.size(confNext) - 1
-            float mv = array.get(confNext, i)
-            meanMove += mv
-            if mv > 0
-                upVotes += 1
-            else
-                downVotes += 1
+        if array.size(confNext) > 0
+            for i = 0 to array.size(confNext) - 1
+                float mv = array.get(confNext, i)
+                meanMove += mv
+                if mv > 0
+                    upVotes += 1
+                else
+                    downVotes += 1
         if array.size(confNext) > 0
             meanMove /= array.size(confNext)
         bool consensus = (upVotes >= 2 and downVotes == 0) or (downVotes >= 2 and upVotes == 0)
@@ -336,37 +342,43 @@ if barstate.islast
         array.push(drawnLabels, anchorLbl)
 
         if showCounts
-            for i = 0 to array.size(counts) - 1
-                int ci = array.get(cIdx, i)
-                bool inChain = false
-                if haveChain
-                    for j = 0 to array.size(bestChain) - 1
-                        if array.get(bestChain, j) == i
-                            inChain := true
-                            break
-                bool isHigh = array.get(pvHigh, ci)
-                label cl = label.new(array.get(pvBar, ci), array.get(pvPrice, ci),
-                     str.tostring(array.get(counts, i)),
-                     xloc=xloc.bar_index, yloc=isHigh ? yloc.abovebar : yloc.belowbar,
-                     style=label.style_none,
-                     textcolor=inChain ? chainCol : plainCol,
-                     size=inChain ? size.normal : size.tiny)
-                array.push(drawnLabels, cl)
+            if array.size(counts) > 0
+                for i = 0 to array.size(counts) - 1
+                    int ci = array.get(cIdx, i)
+                    bool inChain = false
+                    if haveChain
+                        for j = 0 to array.size(bestChain) - 1
+                            if array.get(bestChain, j) == i
+                                inChain := true
+                                break
+                    bool isHigh = array.get(pvHigh, ci)
+                    label cl = label.new(array.get(pvBar, ci), array.get(pvPrice, ci),
+                         str.tostring(array.get(counts, i)),
+                         xloc=xloc.bar_index, yloc=isHigh ? yloc.abovebar : yloc.belowbar,
+                         style=label.style_none,
+                         textcolor=inChain ? chainCol : plainCol,
+                         size=inChain ? size.normal : size.tiny)
+                    array.push(drawnLabels, cl)
 
         // Confirmed cycles get their own marker — these are the ones the
         // course would act on, not every chain member.
-        for i = 0 to array.size(confCount) - 1
-            int c = array.get(confCount, i)
-            int cb = anchorBar - c
-            label confL = label.new(cb, array.get(pvPrice, anchorIdx),
-                 "cycle " + str.tostring(c),
-                 xloc=xloc.bar_index, yloc=anchorIsHigh ? yloc.abovebar : yloc.belowbar,
-                 style=anchorIsHigh ? label.style_label_down : label.style_label_up,
-                 color=color.new(color.lime, 30), textcolor=color.black, size=size.tiny)
-            array.push(drawnLabels, confL)
-            line cline = line.new(cb, close[bar_index - cb], anchorBar, close[bar_index - anchorBar],
-                 xloc=xloc.bar_index, color=color.new(color.lime, 60), style=line.style_dotted)
-            array.push(drawnLines, cline)
+        if array.size(confCount) > 0
+            for i = 0 to array.size(confCount) - 1
+                int c = array.get(confCount, i)
+                int cb = anchorBar - c
+                label confL = label.new(cb, array.get(pvPrice, anchorIdx),
+                     "cycle " + str.tostring(c),
+                     xloc=xloc.bar_index, yloc=anchorIsHigh ? yloc.abovebar : yloc.belowbar,
+                     style=anchorIsHigh ? label.style_label_down : label.style_label_up,
+                     color=color.new(color.lime, 30), textcolor=color.black, size=size.tiny)
+                array.push(drawnLabels, confL)
+                // A historical reference beyond max_bars_back is a runtime
+                // error, and a long chain term can reach past it.
+                int cbOff = bar_index - cb
+                if cbOff >= 0 and cbOff < 4000
+                    line cline = line.new(cb, close[cbOff], anchorBar, close[bar_index - anchorBar],
+                         xloc=xloc.bar_index, color=color.new(color.lime, 60), style=line.style_dotted)
+                    array.push(drawnLines, cline)
 
         if consensus
             label call = label.new(bar_index + projHorizon, close,
@@ -392,17 +404,18 @@ if barstate.islast
             int step = y2 - x2
             for k = 1 to projTerms
                 array.push(fwd, anchorBar + step * k)
-            for k = 0 to array.size(fwd) - 1
-                int bx = array.get(fwd, k)
-                if bx > bar_index - 1 and bx < bar_index + 500
-                    line pl2 = line.new(bx, low, bx, high, xloc=xloc.bar_index,
-                         extend=extend.both, color=color.new(projCol, 55),
-                         style=line.style_dashed, width=1)
-                    array.push(drawnLines, pl2)
-                    label fl = label.new(bx, high, "+" + str.tostring(step * (k + 1)),
-                         xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_none,
-                         textcolor=projCol, size=size.tiny)
-                    array.push(drawnLabels, fl)
+            if array.size(fwd) > 0
+                for k = 0 to array.size(fwd) - 1
+                    int bx = array.get(fwd, k)
+                    if bx > bar_index - 1 and bx < bar_index + 500
+                        line pl2 = line.new(bx, low, bx, high, xloc=xloc.bar_index,
+                             extend=extend.both, color=color.new(projCol, 55),
+                             style=line.style_dashed, width=1)
+                        array.push(drawnLines, pl2)
+                        label fl = label.new(bx, high, "+" + str.tostring(step * (k + 1)),
+                             xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_none,
+                             textcolor=projCol, size=size.tiny)
+                        array.push(drawnLabels, fl)
             nextText := str.tostring(step) + " bars → +" + str.tostring(step * projTerms) + " max"
 
         // ── The classic series, for reference ──
@@ -414,20 +427,21 @@ if barstate.islast
             int fibHits = 0
             int lucHits = 0
             int slideHits = 0
-            for i = 0 to array.size(counts) - 1
-                int c = array.get(counts, i)
-                for j = 0 to array.size(fib) - 1
-                    if math.abs(c - array.get(fib, j)) <= tolFor(array.get(fib, j))
-                        fibHits += 1
-                        break
-                for j = 0 to array.size(luc) - 1
-                    if math.abs(c - array.get(luc, j)) <= tolFor(array.get(luc, j))
-                        lucHits += 1
-                        break
-                for j = 0 to array.size(slide) - 1
-                    if math.abs(c - array.get(slide, j)) <= tolFor(array.get(slide, j))
-                        slideHits += 1
-                        break
+            if array.size(counts) > 0
+                for i = 0 to array.size(counts) - 1
+                    int c = array.get(counts, i)
+                    for j = 0 to array.size(fib) - 1
+                        if math.abs(c - array.get(fib, j)) <= tolFor(array.get(fib, j))
+                            fibHits += 1
+                            break
+                    for j = 0 to array.size(luc) - 1
+                        if math.abs(c - array.get(luc, j)) <= tolFor(array.get(luc, j))
+                            lucHits += 1
+                            break
+                    for j = 0 to array.size(slide) - 1
+                        if math.abs(c - array.get(slide, j)) <= tolFor(array.get(slide, j))
+                            slideHits += 1
+                            break
             presetText := "Fib " + str.tostring(fibHits) + " · Lucas " + str.tostring(lucHits) +
                  " · 4-8-12 " + str.tostring(slideHits) + "  of " + str.tostring(array.size(counts))
 
@@ -443,15 +457,16 @@ if barstate.islast
             if array.size(gaps) >= 3
                 int bestGap = 0
                 int bestCount = 0
-                for i = 0 to array.size(gaps) - 1
-                    int g = array.get(gaps, i)
-                    int c = 0
-                    for j = 0 to array.size(gaps) - 1
-                        if math.abs(array.get(gaps, j) - g) <= tolFor(g)
-                            c += 1
-                    if c > bestCount
-                        bestCount := c
-                        bestGap := g
+                if array.size(gaps) > 0
+                    for i = 0 to array.size(gaps) - 1
+                        int g = array.get(gaps, i)
+                        int c = 0
+                        for j = 0 to array.size(gaps) - 1
+                            if math.abs(array.get(gaps, j) - g) <= tolFor(g)
+                                c += 1
+                        if c > bestCount
+                            bestCount := c
+                            bestGap := g
                 intervalText := str.tostring(bestGap) + " bars, seen " + str.tostring(bestCount) +
                      " of " + str.tostring(array.size(gaps))
 
@@ -460,13 +475,15 @@ if barstate.islast
             string chainText = "none ≥ " + str.tostring(minChain)
             if haveChain
                 chainText := ""
-                for i = 0 to array.size(bestChain) - 1
-                    chainText += (i > 0 ? ", " : "") + str.tostring(array.get(counts, array.get(bestChain, i)))
+                if array.size(bestChain) > 0
+                    for i = 0 to array.size(bestChain) - 1
+                        chainText += (i > 0 ? ", " : "") + str.tostring(array.get(counts, array.get(bestChain, i)))
             string cycleText = "—"
             if array.size(cycleCounts) > 0
                 cycleText := ""
-                for i = 0 to array.size(cycleCounts) - 1
-                    cycleText += (i > 0 ? ", " : "") + str.tostring(array.get(cycleCounts, i))
+                if array.size(cycleCounts) > 0
+                    for i = 0 to array.size(cycleCounts) - 1
+                        cycleText += (i > 0 ? ", " : "") + str.tostring(array.get(cycleCounts, i))
                 cycleText += anchorIsHigh ? "  (highs)" : "  (lows)"
 
             if na(info)
@@ -494,9 +511,10 @@ if barstate.islast
             string confText = "none"
             if array.size(confCount) > 0
                 confText := ""
-                for i = 0 to array.size(confCount) - 1
-                    confText += (i > 0 ? ", " : "") + str.tostring(array.get(confCount, i)) +
-                         " (" + str.tostring(array.get(confScore, i), "#.##") + ")"
+                if array.size(confCount) > 0
+                    for i = 0 to array.size(confCount) - 1
+                        confText += (i > 0 ? ", " : "") + str.tostring(array.get(confCount, i)) +
+                             " (" + str.tostring(array.get(confScore, i), "#.##") + ")"
             table.cell(info, 0, 7, "Confirmed by shape", text_color=color.gray, text_size=size.tiny)
             table.cell(info, 1, 7, confText,
                  text_color=array.size(confCount) > 0 ? color.lime : color.gray, text_size=size.tiny)
