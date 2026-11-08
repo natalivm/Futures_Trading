@@ -732,6 +732,87 @@ const invertedCycles: KbArticle = {
   ],
 };
 
+/**
+ * The one lecture that can be scored.
+ *
+ * Almost every claim in this course is shown on a chart that already
+ * happened. This one is not: the slide's own quote line dates the recording,
+ * and it ends with a forecast. Four years of data have arrived since.
+ */
+const bondBacktest: KbArticle = {
+  id: 'bond-216-backtest',
+  title: 'Scoring the bond lecture, four years on',
+  summary: 'The 216-week chain, the 246-week mirror and the six-month call, each tested against what happened.',
+  source: 'Backtest: cycles/backtest_interval.py against ZB=F weekly',
+  updated: TODAY,
+  body: [
+    {
+      kind: 'callout',
+      tone: 'key',
+      title: 'The lecture was recorded on 18 November 2022',
+      text: 'Not a guess. The slide leaves its quote line visible — O=125 29/32, Hi=126 12/32, Lo=125 9/32 — and exactly one bar in the bond record carries those three numbers. That fixes the date and makes everything said after it a forecast with four years of out-of-sample data behind it.',
+    },
+    { kind: 'heading', text: 'The call itself: right' },
+    {
+      kind: 'rules',
+      items: [
+        { rule: '"We are basically at a low"', detail: 'Correct. The swing low was 117.59 on 24 October 2022, four weeks before he spoke.' },
+        { rule: '"It should go up for about six months"', detail: 'Broadly correct. Bonds ran from 125.44 to 134.44 by 3 April 2023 — +7.2% over 4.6 months — and were still +1.4% at the six-month mark.' },
+        { rule: '"The market\u2019s about to go down hard again"', detail: 'Correct, and hard: from that April peak to roughly 105 by October 2023. Four years on the contract is \u221213.5%, having set a new low at 101.16 on 5 October 2026.' },
+      ],
+    },
+    {
+      kind: 'callout',
+      tone: 'warn',
+      title: 'One call is one call',
+      text: 'A direction, a rough duration and a sequel, all of them right, on a single trade. That is worth noting and it is not evidence of a method. What follows is the evidence he offered for it, which is testable at a sample size above one.',
+    },
+    { kind: 'heading', text: 'The 216-week chain: real on his chart, and it broke' },
+    {
+      kind: 'list',
+      items: [
+        'On the chart he had, pivot highs 216 weeks apart run six deep: 2001-01-01, 2005-02-07, 2009-03-16, 2013-04-29, 2017-06-19, 2021-07-19. Every link inside \u00b14 weeks. It is a striking picture and it is really there.',
+        'It is there at one pivot definition. Swept across fifteen pivot strengths, the chain is six long at strengths 5 and 7 and collapses to one to three everywhere else. That is a result selected by how hard you squint.',
+        'The out-of-sample term was due the week of 8 September 2025. The nearest pivot high came on 20 October 2025 \u2014 six weeks late, outside the \u00b14 every earlier link held to. The chain did not continue.',
+        'The claim that each decline is bigger than the last does not hold either: the 216-week highs gave \u221221.0%, \u221227.8%, \u221220.5%. Up, then down.',
+      ],
+    },
+    {
+      kind: 'table',
+      caption: 'The control holds the real pivots fixed \u2014 same count, same types, same distribution of gaps \u2014 and shuffles only their order, so anything left is alignment.',
+      head: ['Test', 'Longest run', 'Random reaches it'],
+      rows: [
+        ['216w highs, his chart, strength 7', '6', '3% of runs'],
+        ['\u2026 corrected for the 15 strengths tried', '6', '\u224836%'],
+        ['216w highs, full series, strength 7', '6', '12.3%'],
+        ['216w highs, full series, strength 13', '3', '58.7%'],
+      ],
+    },
+    { kind: 'heading', text: 'The 246-week mirror: one good pair, no edge' },
+    {
+      kind: 'list',
+      items: [
+        'The specific pair holds. 246 weeks before the lecture is late February 2018, and the chart carries a pivot high there against the low he was pointing at. The mirror he described is in the data.',
+        'Across the whole series it is a coin flip with a lean. Of all pivot pairs 246 weeks apart, 56\u201367% are mirrored depending on pivot strength, against the 50% you get for nothing.',
+        'The daily scan agrees. Pre-specified at 1.57, 3.14 and 4.72 years, swing correlation reads 0.11 to 0.24 \u2014 well under the 0.449 a random walk scores on the same measure.',
+      ],
+    },
+    {
+      kind: 'callout',
+      tone: 'key',
+      title: 'What this case is actually worth',
+      text: 'He made a good call and the reasoning he gave for it does not survive a control. Those are two separate findings and neither cancels the other. The useful lesson is the one the rest of this page keeps arriving at from other directions: a chain of six intervals that looks undeniable on the chart is the kind of thing shuffled pivots produce often enough that you cannot tell them apart \u2014 and the way you find out is to write down the next date and wait, which is exactly what the 8 September 2025 term did for us.',
+    },
+    {
+      kind: 'rules',
+      items: [
+        { rule: 'Reproduce it', detail: 'python3 cycles/backtest_interval.py --interval 216 --type high --strength 7 --until 2022-11-18' },
+        { rule: 'And out of sample', detail: 'python3 cycles/backtest_interval.py --interval 216 --type high --strength 7 --as-of 2022-11-18' },
+      ],
+    },
+  ],
+};
+
 // ── Using a forecast ──
 
 const rulesOfAnalysis: KbArticle = {
@@ -931,7 +1012,7 @@ export const categories: KbCategory[] = [
     id: 'catalogue',
     title: 'The cycle catalogue',
     description: 'The specific cycles the course works with — equities, crude and gold — the evidence for each, and where each points.',
-    articles: [sixtyYear, seventyEightYear, spShortCycles, electionCycle, crudeCycles, metonicCycle, goldCycle, invertedCycles, composite],
+    articles: [sixtyYear, seventyEightYear, spShortCycles, electionCycle, crudeCycles, metonicCycle, goldCycle, invertedCycles, bondBacktest, composite],
   },
   {
     id: 'using',
