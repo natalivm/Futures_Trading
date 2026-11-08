@@ -155,6 +155,40 @@ noiseBar(int pivots, int tb, float tp) =>
         v := row == 0 ? 5 : (row == 1 ? 6 : (row == 2 ? 7 : (row == 3 ? 8 : (row == 4 ? 9 : 10))))
     v
 
+// Closes over [startBar, startBar+len), oldest first.
+windowVals(startBar, len) =>
+    array<float> out = array.new<float>()
+    for i = 0 to len - 1
+        int off = bar_index - (startBar + i)
+        if off >= 0 and off < 5000
+            array.push(out, close[off])
+    out
+
+// Pearson between two equal-length float arrays, on their shapes rather than
+// their levels — gold at 1,800 and gold at 1,200 should still match.
+corrArr(a, b) =>
+    int n2 = math.min(array.size(a), array.size(b))
+    float r = na
+    if n2 >= 3
+        float ma = 0.0
+        float mb = 0.0
+        for i = 0 to n2 - 1
+            ma += array.get(a, i)
+            mb += array.get(b, i)
+        ma /= n2
+        mb /= n2
+        float num = 0.0
+        float va = 0.0
+        float vb = 0.0
+        for i = 0 to n2 - 1
+            float da = array.get(a, i) - ma
+            float db = array.get(b, i) - mb
+            num += da * db
+            va += da * da
+            vb += db * db
+        r := va > 0 and vb > 0 ? num / math.sqrt(va * vb) : na
+    r
+
 // Index of the count nearest `target`, or -1 if nothing is within tolerance.
 nearestIdx(counts, target) =>
     int best = -1
@@ -397,6 +431,7 @@ if barstate.islast
         int runDir = array.size(agreeDir) > 0 ? array.get(agreeDir, 0) : 0
         int runLen = 0
         if runDir != 0
+            // safe: runDir is only non-zero when agreeDir has entries
             for k = 0 to array.size(agreeDir) - 1
                 if array.get(agreeDir, k) == runDir
                     runLen += 1
@@ -434,6 +469,7 @@ if barstate.islast
                     int ci = array.get(cIdx, i)
                     bool inChain = false
                     if haveChain
+                        // safe: haveChain means bestChain holds at least minChain
                         for j = 0 to array.size(bestChain) - 1
                             if array.get(bestChain, j) == i
                                 inChain := true
