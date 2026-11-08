@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Fetch daily closing prices for the major indexes and keep cycles/data/*.csv up to date.
+Fetch daily closing prices for the major indexes, crude and gold, and keep
+cycles/data/*.csv up to date.
 
 No external dependencies — standard library only, same approach as the
 IsItaBUY_helper price updater.
@@ -42,6 +43,9 @@ HEADERS = {
 }
 
 # symbol -> (display name, stooq code or None)
+# Commodities are here because the cycles the course demonstrates are
+# market-specific: 60 and 78.5 years are equity cycles, 17 and 19 belong to
+# crude, 24.5 to gold. A cycle is a property of a market, not of time.
 INDEXES = {
     "^DJI":  ("Dow Jones Industrial Average", "^dji"),
     "^GSPC": ("S&P 500", "^spx"),
@@ -49,6 +53,8 @@ INDEXES = {
     "^NDX":  ("Nasdaq 100", "^ndx"),
     "^RUT":  ("Russell 2000", "^rut"),
     "ES=F":  ("E-mini S&P 500 continuous futures", "es.f"),
+    "CL=F":  ("WTI crude oil continuous futures", "cl.f"),
+    "GC=F":  ("Gold continuous futures", "gc.f"),
 }
 
 

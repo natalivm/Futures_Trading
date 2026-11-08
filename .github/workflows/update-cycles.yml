@@ -1,4 +1,8 @@
-name: Update index prices and rescan cycles
+name: Update prices and rescan cycles
+
+# Runs the whole cycle pipeline on GitHub's runners, which have the network
+# access to reach Stooq and Yahoo. Everything it finds is committed back:
+# the price files, the JSON the site reads, and a readable report.
 
 on:
   schedule:
@@ -7,15 +11,15 @@ on:
     - cron: '13 7 * * 6'
   workflow_dispatch:
     inputs:
+      symbol:
+        description: 'One symbol for an extra ad-hoc test, e.g. ^DJI (blank to skip)'
+        default: '^DJI'
+      lag_years:
+        description: 'Cycle length(s) for that test, e.g. 60 or 60,78.5'
+        default: '60'
       window:
-        description: 'Trading days in the comparison window'
-        default: '250'
-      min_years:
-        description: 'Shortest cycle to scan for, in years'
-        default: '3'
-      max_years:
-        description: 'Longest cycle to scan for, in years'
-        default: '100'
+        description: 'Trading days compared in the ad-hoc test'
+        default: '440'
 
 permissions:
   contents: write
@@ -33,22 +37,60 @@ jobs:
       - name: Refresh daily closes
         run: python3 cycles/update_prices.py
 
-      - name: Rescan for repeating cycles
+      - name: Run the analysis and write the report
         run: |
-          python3 cycles/find_cycles.py --all \
-            --window "${{ inputs.window || '250' }}" \
-            --min-years "${{ inputs.min_years || '3' }}" \
-            --max-years "${{ inputs.max_years || '100' }}"
+          SYMBOL="${{ inputs.symbol }}"
+          LAGS="${{ inputs.lag_years || '60' }}"
+          WINDOW="${{ inputs.window || '440' }}"
+          {
+            echo "# Cycle report"
+            echo
+            echo "Generated $(date -u '+%Y-%m-%d %H:%M UTC') from commit ${GITHUB_SHA:0:7}."
+            echo
+            echo '## Price files'
+            echo
+            echo '| file | bars | from | to |'
+            echo '| --- | --- | --- | --- |'
+            for f in cycles/data/*.csv; do
+              [ -e "$f" ] || continue
+              n=$(( $(wc -l < "$f") - 1 ))
+              first=$(sed -n '2p' "$f" | cut -d, -f1)
+              last=$(tail -1 "$f" | cut -d, -f1)
+              echo "| $(basename "$f") | $n | $first | $last |"
+            done
+          } > cycles/REPORT.md
 
-      - name: Recompute the election-cycle table
-        run: python3 cycles/election_cycle.py --all --json
+          run_section () {   # $1 heading, rest = command
+            local title="$1"; shift
+            { echo; echo "## $title"; echo; echo '```'; } >> cycles/REPORT.md
+            "$@" 2>&1 | tee -a cycles/REPORT.md
+            echo '```' >> cycles/REPORT.md
+          }
 
-      - name: Commit if changed
+          run_section "Equity cycles — named offsets" \
+            python3 cycles/find_cycles.py --symbol ^DJI --preset equities --window "$WINDOW"
+          run_section "S&P 500 — named offsets" \
+            python3 cycles/find_cycles.py --symbol ^GSPC --preset equities --window "$WINDOW"
+          run_section "Crude oil — 17, 19.08, 27 years" \
+            python3 cycles/find_cycles.py --symbol CL=F --preset crude --window 650
+          run_section "Gold — 24.5 years" \
+            python3 cycles/find_cycles.py --symbol GC=F --preset gold --window 1800 --epochs 4
+          run_section "Open search, every market" \
+            python3 cycles/find_cycles.py --all --min-years 3 --max-years 100 --top 5
+          run_section "Four-year election cycle" \
+            python3 cycles/election_cycle.py --all --json
+
+          if [ -n "$SYMBOL" ]; then
+            run_section "Ad-hoc: $SYMBOL at $LAGS year(s), window $WINDOW" \
+              python3 cycles/find_cycles.py --symbol "$SYMBOL" --lag-years "$LAGS" --window "$WINDOW"
+          fi
+
+      - name: Commit the data, the JSON and the report
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add cycles/data public/cycles
+          git add cycles/data public/cycles cycles/REPORT.md
           git diff --cached --quiet && echo "No change" && exit 0
-          LAST=$(ls cycles/data/*.csv | head -1 | xargs tail -1 | cut -d, -f1)
-          git commit -m "Update index closes through ${LAST} and rescan cycles"
+          LAST=$(ls cycles/data/*.csv 2>/dev/null | head -1 | xargs -r tail -1 | cut -d, -f1)
+          git commit -m "Update prices through ${LAST:-today} and rescan cycles"
           git push

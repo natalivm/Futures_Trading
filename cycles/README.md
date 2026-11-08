@@ -122,6 +122,17 @@ the rate by four points, so read it as a tilt rather than a law.
 
 ## Automation
 
-`.github/workflows/update-cycles.yml` refreshes the prices, rescans and
-recomputes the election-cycle table every Saturday, and on demand from the
-Actions tab. It commits `cycles/data/` and `public/cycles/` when they change.
+`.github/workflows/update-cycles.yml` runs the whole pipeline on GitHub's
+runners, which can reach Stooq and Yahoo. It runs every Saturday and on demand
+from the Actions tab, where it takes a symbol, cycle length and window for one
+extra ad-hoc test.
+
+Each run refreshes the price files, tests the named cycles for equities, crude
+and gold, runs an open search across every market, recomputes the election
+table, and writes everything it printed to **`cycles/REPORT.md`** — committed
+alongside `cycles/data/` and `public/cycles/`, so the results are readable in
+the repo without opening the Actions log.
+
+Note that GitHub only shows the "Run workflow" button for workflows that exist
+on the default branch, so this has to be merged to `main` before it can be
+triggered by hand.

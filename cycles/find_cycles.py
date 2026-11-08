@@ -47,6 +47,17 @@ WEB_DIR = os.path.join(os.path.dirname(HERE), "public", "cycles")
 
 TRADING_DAYS_PER_YEAR = 252
 
+# The cycle lengths the lectures demonstrate, by market. A cycle belongs to a
+# market: 60 and 78.5 years are the equity clocks, 17 and 19 are crude's,
+# 24.5 is gold's. 19.08 is "19 years and 1 month" — the Metonic cycle, after
+# which the solar and lunar calendars realign.
+PRESETS = {
+    "course":   [4, 17, 19.08, 24.5, 27, 28, 56, 60, 78.5, 157, 314],
+    "equities": [4, 28, 56, 60, 78.5, 157, 314],
+    "crude":    [17, 19.08, 27],
+    "gold":     [24.5],
+}
+
 
 # ── Data ──
 
@@ -401,7 +412,8 @@ def main():
     ap.add_argument("--all", action="store_true", help="every series in cycles/data")
     ap.add_argument("--window", type=int, default=440, help="trading days compared (default 440 ≈ 22 months, the span on the DJIA slide)")
     ap.add_argument("--lag-years", help="test named cycle length(s) instead of searching, e.g. 60 or 60,78.5,28")
-    ap.add_argument("--preset", choices=["course"], help="course = the cycle set from the lectures: 4, 28, 56, 60, 78.5, 157, 314 years")
+    ap.add_argument("--preset", choices=sorted(PRESETS),
+                    help="a named cycle set from the lectures: course (all), equities, crude, gold")
     ap.add_argument("--swing", type=int, default=21, help="bars per swing-return block (default 21 ≈ monthly)")
     ap.add_argument("--epochs", type=int, default=5, help="earlier anchor points used to check the cycle held")
     ap.add_argument("--epoch-years", type=float, default=5, help="years between those anchor points")
@@ -416,10 +428,8 @@ def main():
     ap.add_argument("--json-dir", default=WEB_DIR, help="where the JSON goes (default public/cycles)")
     args = ap.parse_args()
 
-    # The cycle set the lectures work with. 78.5 is half of 157, which is half
-    # of 314 — the harmonic chain back to the 1720 tulip top.
-    if args.preset == "course" and not args.lag_years:
-        args.lag_years = "4,28,56,60,78.5,157,314"
+    if args.preset and not args.lag_years:
+        args.lag_years = ",".join(str(x) for x in PRESETS[args.preset])
     args.lags = [float(x) for x in args.lag_years.split(",")] if args.lag_years else []
 
     if args.all:
