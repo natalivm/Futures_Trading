@@ -8,10 +8,11 @@ Open the Pine editor, clear it, paste the whole file, Save, Add to chart.
 
 ## The method it automates
 
-1. **Pick the zero point.** An important high or low, recent but not the
-   extreme of the whole history — the course suggests 20 to 70 weeks back. Use
-   a *high* if the market has been falling since, a *low* if it has been
-   rising. Label it 0.
+1. **Pick the zero point.** An important high or low: either a recent one
+   20 to 70 bars back — a *high* if the market has fallen since, a *low* if it
+   has risen — or simply the highest high / lowest low, which is how the course
+   anchors the Bitcoin chart. "Not that near, but not that far either, and
+   obviously important." Label it 0.
 2. **Count backwards.** Walk back from the zero point and label every pivot
    with its distance in bars. The numbers get large — 130, 180, 192 — and that
    is fine, the course says the bigger the better.
@@ -73,6 +74,27 @@ counts before it, never from the predicted value, so drift cannot accumulate.
 | **Pivots to keep** | How far back the count reaches. The most recent N are kept and older ones dropped, so if the numbers stop too early raise this — the course labels out past 130, 180, sometimes a couple of hundred. Default 80, up to 150. The chain search grows with the square of it. |
 | **Tolerance** | How far a pivot may sit from the exact sum. The larger of *n* bars or *x* %, so small terms get the bar allowance and large ones the percentage. |
 | **Shortest chain** | 3 is one addition and happens constantly by chance. 4–5 is where it starts to mean something. |
+
+## Projected turn dates
+
+The method does not only call direction, it calls **dates**. On the gold chart
+the course names a high on 10 March 2023 and lows on 7 July and 6 October,
+each one because *both* cycles put a turn there.
+
+That is now computed. A projected turn is a pivot in an analog's own future,
+carried forward onto today's timeline; where two analogs land the same kind of
+turn within a couple of bars, the chart marks the date with a dotted line and
+a label — red for a projected high, lime for a low.
+
+Run on real gold from July 2022 with the two cycles that confirmed by shape,
+the clustering produces three agreed dates, and one of them is **2023-03-10** —
+the date the course calls. Worth stating what that does and does not show: the
+mechanism finds the date, but labels it a low where the course has a high,
+because this run's pair is 83 and 400 rather than 83 and 135 and the pivots
+are close-based. The date agreement is real; the direction agreement is not.
+
+Future dates are extrapolated from the last bar's spacing, so on a weekly
+chart a label can sit a few days off a real session.
 
 ## The agreement ribbon
 

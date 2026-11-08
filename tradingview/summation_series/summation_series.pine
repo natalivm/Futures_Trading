@@ -38,9 +38,9 @@ maxPivots  = input.int(80, "Pivots to keep", minval=6, maxval=150, group=G_PIVOT
 
 // ── 2 · Anchor ──
 anchorMode = input.string("Auto — recent important pivot", "Anchor (labelled 0)",
-     options=["Auto — recent important pivot", "Most recent pivot", "Most recent pivot high", "Most recent pivot low", "Manual date"],
+     options=["Auto — recent important pivot", "Most recent pivot", "Most recent pivot high", "Most recent pivot low", "Highest high", "Lowest low", "Manual date"],
      group=G_ANCHOR,
-     tooltip="Step 1: the pivot you count back from. Auto follows the course — a decent high or low in the recent window below, a high if the market has been falling since and a low if it has been rising. Deliberately not the highest high or lowest low in the history.")
+     tooltip="Step 1: the pivot you count back from. Auto follows the course — a decent high or low in the recent window below, a high if the market has been falling since and a low if it has been rising. Highest high / lowest low is the other way the course does it, as on the Bitcoin chart: not that near, not that far, but obviously important.")
 anchorMin  = input.int(20, "Auto window — from", minval=2, maxval=300, inline="aw", group=G_ANCHOR)
 anchorMax  = input.int(70, "to (bars back)", minval=5, maxval=500, inline="aw", group=G_ANCHOR,
      tooltip="The course picks a zero point roughly 20 to 70 weeks back on a weekly chart: recent enough to connect to the present, old enough to have pivots behind it.")
@@ -73,6 +73,8 @@ showProjection = input.bool(true, "Project the next terms", group=G_PROJ,
 projTerms  = input.int(3, "How many terms ahead", minval=1, maxval=6, group=G_PROJ)
 projHorizon = input.int(26, "Agreement schedule (bars)", minval=2, maxval=104, group=G_PROJ,
      tooltip="How far forward to walk the confirmed cycles, bar by bar, asking whether they still say the same thing. Drawn as a ribbon: a band where they agree, a gap where they diverge. Cycles drift in and out of sync, and the gaps are as much the point as the bands — the course takes three separate trades from one pair that way.")
+turnTol    = input.int(2, "Turn date tolerance (bars)", minval=0, maxval=10, group=G_PROJ,
+     tooltip="How close two analogs must land a turn for it to count as the same date. The course names a turn when both cycles agree on it.")
 showIntervals = input.bool(true, "Report recurring H-H / L-L intervals", group=G_PROJ,
      tooltip="Step 3: intervals between consecutive same-type pivots that keep repeating.")
 
@@ -228,6 +230,15 @@ if barstate.islast
                 if array.get(pvTime, i) <= anchorTime
                     anchorIdx := i
                     break
+        else if anchorMode == "Highest high" or anchorMode == "Lowest low"
+            bool wantTop = anchorMode == "Highest high"
+            float bestPx = wantTop ? -1e18 : 1e18
+            for i = 0 to n - 1
+                if array.get(pvHigh, i) == wantTop
+                    float v = array.get(pvPrice, i)
+                    if (wantTop and v > bestPx) or (not wantTop and v < bestPx)
+                        bestPx := v
+                        anchorIdx := i
         else if anchorMode == "Auto — recent important pivot"
             // The course's rule: a high if the market has fallen since, a low
             // if it has risen. "Since" is measured over the auto window.
@@ -431,6 +442,55 @@ if barstate.islast
                     line cline = line.new(cb, close[cbOff], anchorBar, close[bar_index - anchorBar],
                          xloc=xloc.bar_index, color=color.new(color.lime, 60), style=line.style_dotted)
                     array.push(drawnLines, cline)
+
+        // ── Projected turning points ──
+        // The course does not only call direction, it calls dates: the
+        // 3/10/23 high, then the July and October lows, each named because
+        // BOTH cycles put a turn there. A projected turn is a pivot in an
+        // analog's own future, carried forward to today's timeline; when two
+        // analogs land the same kind of turn on the same bar, it is a date.
+        array<int>  turnBar   = array.new<int>()
+        array<bool> turnHigh  = array.new<bool>()
+        array<int>  turnVotes = array.new<int>()
+        if array.size(confOff) >= 2
+            for i = 0 to array.size(confOff) - 1
+                int atNow = bar_index - array.get(confOff, i)
+                for q = 0 to n - 1
+                    int pb = array.get(pvBar, q)
+                    if pb > atNow and pb <= atNow + projHorizon
+                        int fb = bar_index + (pb - atNow)
+                        bool isH = array.get(pvHigh, q)
+                        int match = -1
+                        if array.size(turnBar) > 0
+                            for t = 0 to array.size(turnBar) - 1
+                                bool sameKind = array.get(turnHigh, t) == isH
+                                if sameKind and math.abs(array.get(turnBar, t) - fb) <= turnTol
+                                    match := t
+                        if match >= 0
+                            array.set(turnVotes, match, array.get(turnVotes, match) + 1)
+                        else
+                            array.push(turnBar, fb)
+                            array.push(turnHigh, isH)
+                            array.push(turnVotes, 1)
+
+        if array.size(turnBar) > 0 and showProjection
+            for t = 0 to array.size(turnBar) - 1
+                if array.get(turnVotes, t) >= 2
+                    int tb = array.get(turnBar, t)
+                    if tb > bar_index and tb < bar_index + 500
+                        bool isH = array.get(turnHigh, t)
+                        line tl = line.new(tb, low, tb, high, xloc=xloc.bar_index,
+                             extend=extend.both, color=color.new(isH ? color.red : color.lime, 35),
+                             style=line.style_dotted, width=1)
+                        array.push(drawnLines, tl)
+                        label tlab = label.new(tb, isH ? high : low,
+                             (isH ? "high  " : "low  ") + str.format_time(
+                                 time + (tb - bar_index) * (time - time[1]), "d MMM yy"),
+                             xloc=xloc.bar_index, yloc=isH ? yloc.abovebar : yloc.belowbar,
+                             style=isH ? label.style_label_down : label.style_label_up,
+                             color=color.new(isH ? color.red : color.lime, 25),
+                             textcolor=color.white, size=size.tiny)
+                        array.push(drawnLabels, tlab)
 
         // The agreement schedule, drawn forward as a ribbon: a band where the
         // confirmed cycles say the same thing, a gap where they do not.
