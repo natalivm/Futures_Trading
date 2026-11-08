@@ -820,6 +820,65 @@ const bondBacktest: KbArticle = {
   ],
 };
 
+/**
+ * The step between finding a series and having a cycle.
+ *
+ * Kept separate from the two bond articles in the catalogue: they are the
+ * worked example and its score, this is the rule they are examples of.
+ */
+const multiplesRule: KbArticle = {
+  id: 'multiples-rule',
+  title: 'The series is the middle of the work, not the end',
+  summary: 'Counting pivots gives you numbers. Multiples of the numbers over 50 are where a cycle length comes from.',
+  source: 'Market Forecast Mastery \u2014 Allen Reminick',
+  updated: TODAY,
+  body: [
+    'A summation chain is not a set of cycle lengths. It is a set of candidates to multiply.',
+    {
+      kind: 'rules',
+      items: [
+        { rule: 'Take the terms over 50', detail: 'Below that the interval is too short to repeat enough times to be worth measuring. Smaller terms stay in the chain; they just are not multiplied.' },
+        { rule: 'Multiply each by 1, 2, 3, 4, 5', detail: 'The term itself counts as x1 \u2014 sometimes the count already is the cycle.' },
+        { rule: 'Test each product as an interval', detail: 'Does it recur high to high, or low to low? That is the only question the multiple has to answer.' },
+        { rule: 'Accept a half as well as a whole', detail: 'A product that lands a high on a low is half of the real cycle, so the real one is twice it. Polarity tells you which you have.' },
+        { rule: 'Confirm by watching it repeat', detail: 'The multiple is a hypothesis until the chart has done it more than twice.' },
+      ],
+    },
+    { kind: 'heading', text: 'Why a half cycle is still a cycle' },
+    {
+      kind: 'list',
+      items: [
+        'The 246-week bond interval is about 4.7 years. Double it and you get 9.3; double again and you get 18.6 \u2014 the lunar nodal period the course ties to the real-estate cycle.',
+        'So one interval inverted and another upright can be the same cycle seen at two scales, and when both point the same way that is agreement rather than coincidence.',
+        'The ratio of consecutive terms approaches the golden ratio as they grow: 216 \u00f7 134 is 1.612. You cannot see that at the start of a chain \u2014 4, 8, 12, 20 shows nothing \u2014 which is why the course works forward from counts rather than starting from a ratio.',
+      ],
+    },
+    { kind: 'heading', text: 'Start big, then tighten' },
+    {
+      kind: 'list',
+      tight: true,
+      items: [
+        'Monthly \u2014 whether the next five years go up or down.',
+        'Weekly \u2014 where the method starts, and where the big picture is readable.',
+        'Daily \u2014 the trading level: up thirteen days, down twelve.',
+        'Hourly and below \u2014 swing and intraday, by which point a lot of cycle structure is already in hand.',
+      ],
+    },
+    {
+      kind: 'callout',
+      tone: 'warn',
+      title: 'Multiplying is the widest search in this whole method',
+      text: 'Four chain terms over the floor, times five, tested upright and mirrored, is forty hypotheses \u2014 against a noise bar measured for one. The indicator prints the candidate count beside whatever it finds for exactly this reason, and colours the row as a lead rather than a finding. What that costs is measured on a real case in \u201cScoring the bond lecture, four years on\u201d.',
+    },
+    {
+      kind: 'callout',
+      tone: 'note',
+      title: 'The indicator does not reproduce the lecture\u2019s own series',
+      text: 'Run on the same weekly bond chart truncated to the day of the lecture, the mechanical chain reads 43, 91, 136, 227, 363, 591 \u2014 not 82, 134, 216. The 134 turns up at most pivot settings and 82 at none of the eight tried. A hand-marked chart and a pivot rule do not pick the same swings, and the gap has been left visible rather than tuned away: fitting the pivot settings until a published answer falls out is how you end up measuring your own assumptions.',
+    },
+  ],
+};
+
 // ── Using a forecast ──
 
 const rulesOfAnalysis: KbArticle = {
@@ -1013,7 +1072,7 @@ export const categories: KbCategory[] = [
     id: 'cycles',
     title: 'Technique 1 — locating cycles',
     description: 'The scanner that searches every offset for the one today’s market rhymes with, and the controls that say which scores to believe.',
-    articles: [cycleScanner],
+    articles: [cycleScanner, multiplesRule],
   },
   {
     id: 'catalogue',
