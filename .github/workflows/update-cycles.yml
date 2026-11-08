@@ -95,6 +95,10 @@ jobs:
             python3 cycles/find_cycles.py --symbol CL=F --preset crude --window 650 --json-suffix _named
           run_section "Named-cycle overlays (gold)" \
             python3 cycles/find_cycles.py --symbol GC=F --preset gold --window 1800 --epochs 4 --json-suffix _named
+          # QQQ starts in 1999, so 28 years and up are out of reach; these
+          # four are the course's named intervals a 27-year record covers.
+          run_section "Named-cycle overlays (QQQ)" \
+            python3 cycles/find_cycles.py --symbol QQQ --lag-years 4,6.8,11.65,22 --window "$WINDOW" --json-suffix _named
           # Tesla listed in 2010, so no preset applies: 60, 78.5 and even 22
           # need more history than exists. These three are the course's named
           # intervals that a 16-year record can actually reach.
