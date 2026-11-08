@@ -1,0 +1,51 @@
+name: Update index prices and rescan cycles
+
+on:
+  schedule:
+    # Saturday 07:13 UTC — after Friday's close everywhere, and off the hour
+    # because GitHub throttles scheduled jobs hardest at :00 and :30.
+    - cron: '13 7 * * 6'
+  workflow_dispatch:
+    inputs:
+      window:
+        description: 'Trading days in the comparison window'
+        default: '250'
+      min_years:
+        description: 'Shortest cycle to scan for, in years'
+        default: '3'
+      max_years:
+        description: 'Longest cycle to scan for, in years'
+        default: '100'
+
+permissions:
+  contents: write
+
+jobs:
+  cycles:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Refresh daily closes
+        run: python3 cycles/update_prices.py
+
+      - name: Rescan for repeating cycles
+        run: |
+          python3 cycles/find_cycles.py --all \
+            --window "${{ inputs.window || '250' }}" \
+            --min-years "${{ inputs.min_years || '3' }}" \
+            --max-years "${{ inputs.max_years || '100' }}"
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add cycles/data public/cycles
+          git diff --cached --quiet && echo "No change" && exit 0
+          LAST=$(ls cycles/data/*.csv | head -1 | xargs tail -1 | cut -d, -f1)
+          git commit -m "Update index closes through ${LAST} and rescan cycles"
+          git push

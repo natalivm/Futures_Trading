@@ -35,6 +35,22 @@ const lesson1: KbArticle = {
   ],
 };
 
+const cycleScanner: KbArticle = {
+  id: 'cycle-scanner',
+  title: 'Finding repeating cycles in the indexes',
+  summary: 'The scanner in cycles/ reproduces the 60-year-cycle slide mechanically \u2014 and the controls say which of its four scores to believe.',
+  source: 'Market Forecast Mastery, Lesson 1 \u2014 Allen Reminick; cycles/README.md',
+  body: [
+    'The slide shows the DJIA 60-year cycle: 1962 in grey, 2022 in blue, 93% correlated over about 440 trading days \u2014 22 months, not five \u2014 ending April 2022. The lecture\u2019s point is that nobody trading today is looking at 1962, so the repeat cannot be reflexive, and that it held up when checked 25 years back against 60 years before that. What happened next is the test that matters: in June 2022 the market was falling out of bed on rate rises, while 1962 said up into August, down into mid-October, then away. That is what happened.',
+    'The scanner in the repo does this mechanically. It takes the last 440 trading days, slides that window back through every earlier offset, scores each fit, and keeps the best. Two scripts, standard library only. `python3 cycles/update_prices.py` refreshes daily closes for the Dow, S&P 500, Nasdaq Composite, Nasdaq 100, Russell 2000 and the E-mini. It reads Stooq first because that is the only free source with the history this needs \u2014 the Dow back to 1896, where Yahoo only serves it from 1992, and a 60-year cycle cannot be measured in 33 years of data. Then `python3 cycles/find_cycles.py --all --svg` scans and draws the overlay and forecast charts.',
+    'Four scores come back per match, and the controls show they do not agree. Two synthetic series were used to calibrate: one with a real 30-year cycle built in, one a pure random walk.',
+    'The uncomfortable result first. The random walk produced a \u201c50-year cycle\u201d correlated 0.947 on closing prices \u2014 a higher price correlation than the genuine cycle scored \u2014 and it ranked in the top 0.01% of twelve thousand offsets. So corr, the number on the slide, cannot by itself tell a cycle from two similar-looking trends, and neither can the ranking: coming first out of twelve thousand bad fits is what a search over twelve thousand hypotheses does by construction.',
+    'What did separate them: swingCorr, the correlation of monthly (21-bar) returns, scored 0.875 on the real cycle against 0.449 on the noise. That measure is also the one that matches what the course actually claims \u2014 the general direction and the general swing, not day by day perfect. And the stability check, re-scoring the same offset at five earlier anchor points five years apart, never dropped below +0.79 on the real cycle while the random walk\u2019s best match sat at \u22120.01. That check is the course\u2019s own: a cycle that only fits the last two years is not a cycle.',
+    'So gate on the swing correlation and on the worst epoch, not on corr. And when a cycle is already in mind, name it \u2014 `--lag-years 60` tests one hypothesis instead of searching, and on the random-walk control that removed the false positive entirely, scoring 0.086. A pre-specified 60-year cycle that still holds is real evidence; the best of a twelve-thousand-offset search is not.',
+    'The forecast is the analog\u2019s own forward path, rescaled to today\u2019s price range and anchored to today\u2019s close: what that stretch of history did next, drawn on today\u2019s chart. A roadmap to trade against with the usual stop and target \u2014 not a prediction.',
+  ],
+};
+
 /**
  * The shelves the articles go on. Drop a KbArticle into the matching
  * `articles` array and it shows up on the page — nothing else needs changing.
@@ -56,7 +72,7 @@ export const categories: KbCategory[] = [
     id: 'cycles',
     title: 'Technique 1 — series & sequences',
     description: 'Locating cycles with series and sequences: which series, how they are counted off a chart, and how a candidate cycle is confirmed.',
-    articles: [],
+    articles: [cycleScanner],
   },
   {
     id: 'slide',
