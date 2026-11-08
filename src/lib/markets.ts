@@ -17,6 +17,9 @@ export const MARKETS: Market[] = [
   { slug: 'CL_F', label: 'WTI crude oil', short: 'Crude' },
   { slug: 'GC_F', label: 'Gold', short: 'Gold' },
   { slug: 'ZB_F', label: 'US 30-year Treasury bonds', short: 'US 30y' },
+  // The one single stock. Listed 2010, so the long equity clocks cannot be
+  // tested on it and the overlay says so when one is asked for.
+  { slug: 'TSLA', label: 'Tesla', short: 'TSLA' },
 ];
 
 export function marketLabel(slug: string): string {
