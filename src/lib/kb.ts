@@ -874,6 +874,144 @@ const multiplesRule: KbArticle = {
   ],
 };
 
+/**
+ * The moon section, with its own numbers attached.
+ *
+ * This one came with a statistic ("you win about 70% of the time"), which is
+ * rare enough in the course to be worth taking literally and testing.
+ */
+const moonCycles: KbArticle = {
+  id: 'moon-node-cycles',
+  title: 'Moon cycles, and the three lengths people confuse',
+  summary: 'Rahu and Ketu conjunctions as swing triggers \u2014 the 70% claim measured, and what survives it.',
+  source: 'Market Forecast Mastery \u2014 Allen Reminick; tested with cycles/backtest_moon.py',
+  updated: TODAY,
+  body: [
+    {
+      kind: 'table',
+      caption: 'Three cycles get called \u201cthe lunar cycle\u201d. A test run on the wrong one tests nothing.',
+      head: ['Cycle', 'Length', 'What it is'],
+      rows: [
+        ['Synodic', '29.53 d', 'New moon to new moon \u2014 what most people mean, because you can see it'],
+        ['Sidereal', '27.32 d', 'The moon once round the zodiac'],
+        ['Draconic', '27.21 d', 'North node to north node \u2014 the one the course trades'],
+      ],
+    },
+    {
+      kind: 'rules',
+      items: [
+        { rule: 'Rahu', detail: 'The north node. Moon conjunct Rahu is the moon crossing the ecliptic going north.' },
+        { rule: 'Ketu', detail: 'The south node, the crossing going south, about a fortnight later.' },
+        { rule: 'Finding them needs no zodiac', detail: 'They are the two zeros of the moon\u2019s ecliptic latitude each draconic month \u2014 arithmetic on a timestamp.' },
+        { rule: 'What they are for', detail: 'A swing-trade trigger: a date to look at, not a direction to take.' },
+      ],
+    },
+    { kind: 'heading', text: 'The three claims, measured' },
+    {
+      kind: 'table',
+      caption: 'S&P 500, 2010\u20132026, held four weeks. The last column is the whole result.',
+      head: ['Horizon', 'Ketu win', 'Rahu win', 'Any day at all'],
+      rows: [
+        ['1 week', '60.6%', '61.5%', '60.1%'],
+        ['2 weeks', '64.2%', '62.8%', '63.5%'],
+        ['To the next node', '65.5%', '67.7%', '66.2%'],
+        ['4 weeks', '67.3%', '67.3%', '67.2%'],
+      ],
+    },
+    {
+      kind: 'list',
+      items: [
+        '\u201cBuy at Ketu and you win about 70% of the time.\u201d The rate is real \u2014 67.3% over four weeks. Buying on any day at all over four weeks wins 67.2%. The number is the market\u2019s drift over a month, measured at the node.',
+        '\u201cRahu is more bearish than bullish.\u201d No. Rahu wins as often as Ketu at every horizon and more at one of them. On the full record since 1928, a randomly-phased schedule beats the real four-week Ketu rate 91% of the time.',
+        '\u201cLast month tends to be the opposite.\u201d True, and not lunar. Draconic-month returns carry a real negative lag-1 autocorrelation \u2014 \u22120.159 on the S&P since 2010, \u22120.109 on ES since 2000 \u2014 but cut the same series into 19-bar blocks at an arbitrary phase and it reads \u22120.162, marginally stronger. It is short-horizon mean reversion. Any block of that length does it.',
+        '\u201cTwo, four, six and eight months back tend to be the same.\u201d Not found. Every even lag sits inside the shuffle band since 2010, and on the full record the pattern is incoherent \u2014 lag 3 holds, lag 4 goes the wrong way.',
+      ],
+    },
+    {
+      kind: 'callout',
+      tone: 'key',
+      title: 'The framing outlives the statistics',
+      text: 'The lecture is explicit that the conjunction is not a direction \u2014 \u201cit isn\u2019t either\u201d, some months bullish, some bearish, no statistical meaning in a normal market. What it asks is whether the market is repeating what it did a month ago. That question costs nothing to ask and the indicator is built for it: each completed draconic month\u2019s move, and whether it matches the one in progress. What does not survive is the part that got turned into a win rate.',
+    },
+    {
+      kind: 'callout',
+      tone: 'warn',
+      title: 'Six rows out of six is rarer than a coin, and still means nothing',
+      text: 'The panel marks each earlier month same or opposite against the rule, and a full house of six looks like a 1-in-64 event. It is not, because the rows share boundaries and are not independent: measured across the S&P from 1928, 6/6 turns up on 1.1% of days against the 1.6% coin flips would give, and 0/6 on 1.0% against 1.6% \u2014 the whole distribution is squeezed toward the middle. A panel cut at an arbitrary phase reaches a full house as often or oftener 40% of the time, and what follows a 6/6 day is not distinguishable from what follows any other day. It is a striking thing to look at and it is not a signal.',
+    },
+    {
+      kind: 'callout',
+      tone: 'warn',
+      title: 'Daily or finer \u2014 a monthly chart aliases this cycle into fiction',
+      text: 'A 27.21-day cycle sampled once every 30.44 days does not come out slow, it comes out aliased: the beat period is 1 \u00f7 |1/27.21 \u2212 1/30.44| = 257 days, about 8.4 months. Run on a monthly chart the first version of the indicator duly marked \u201cRahu\u201d every eight or nine months \u2014 measured gaps of 8.1, 8.9, 8.0, 8.0, 9.0, 9.0 \u2014 and filled its table with confident nonsense. It now refuses anything coarser than weekly and says why. Nyquist wants two samples per cycle, so 13.6-day bars is the floor; weekly clears it and can only place a crossing to the week.',
+    },
+    {
+      kind: 'callout',
+      tone: 'key',
+      title: 'The calendar ahead is the one projection that is not a forecast',
+      text: 'Everything else on this panel that points forward has been measured and lands at chance. A node crossing is different in kind: it is astronomy. The ephemeris is checked against five published solar eclipses and lands within minutes of each, and the indicator\u2019s own root-finder was verified against it to the millisecond across six future crossings. So the dates are not in doubt \u2014 new moon 9 Nov 2026 07:04 UT, Rahu 17 Nov 11:45, full moon 24 Nov 14:58, Ketu 30 Nov 03:39. Both cycles are listed, interleaved in date order and each row naming which it belongs to, because the draconic and synodic months are different lengths and run out of step \u2014 which is the distinction the lecture opens by making. What the market does on them is a separate question with a separate answer, and that answer is still: nothing reliable. The calendar exists so the dates can be seen coming, which is what the lecture uses them for. One caveat: the dates are exact, the chart marks are not, because placing a date on a future bar needs an average bar spacing and holidays make that an estimate.',
+    },
+    {
+      kind: 'callout',
+      tone: 'note',
+      title: 'Why the ephemeris can be trusted here',
+      text: 'cycles/moon.py is checked against five published solar eclipses \u2014 a solar eclipse is a new moon at a node, so both routines have to land together. Every new moon comes within nine minutes of the catalogued time and every eclipse carries a node crossing within hours. Measured back from its own roots the draconic month reads 27.2141 days against the book\u2019s 27.2122, and the synodic 29.530567 against 29.530588.',
+    },
+  ],
+};
+
+/**
+ * The forward-looking row, scored. Separate article because it is a result
+ * about the tool rather than about the course.
+ */
+const projectionScored: KbArticle = {
+  id: 'projection-at-chance',
+  title: 'The projected turn dates land at chance',
+  summary: 'The indicator\u2019s one forward-looking number, measured against later turns on four indices.',
+  source: 'cycles/backtest_projection.py',
+  updated: TODAY,
+  body: [
+    'Everything else the panel shows describes the past. One row does not: the projection step, which names the bar where the next turn is due. It was never measured. It is now.',
+    { kind: 'heading', text: 'The control is the whole test' },
+    {
+      kind: 'list',
+      items: [
+        'A hit allows 2% of the offset, so a 427-bar projection gets a \u00b18-bar window and an 11-bar one gets \u00b11.',
+        'A strength-5 pivot turns up every nine bars, so the wide window catches one almost regardless.',
+        'Measured that way the projection scores 89%, which looks superb. Random future bars judged at the same tolerance score 90%.',
+        'So every projection is compared against random bars at its own tolerance \u2014 not against a single flat baseline.',
+      ],
+    },
+    {
+      kind: 'table',
+      caption: 'Pooled over four indices and four definitions of what counts as a turn, walking forward so nothing is fitted on data it then predicts.',
+      head: ['Projection', 'Hit rate', 'Chance, same tolerances', 'Edge', 'n'],
+      rows: [
+        ['Constant step (what the code does)', '55.9%', '56.4%', '\u22120.5 pts', '9,940'],
+        ['Mirrored chain (what its comment claimed)', '36.5%', '36.9%', '\u22120.4 pts', '20,672'],
+      ],
+    },
+    {
+      kind: 'callout',
+      tone: 'warn',
+      title: 'One cell looked promising and was the control being too thin',
+      text: 'ES against major turns came in at +8.1 points, which would have been the best forward result in this whole project. It was an artifact of drawing a single random bar per projection as the control. At 25 draws the same cell reads +3.1 and its neighbours go negative, and the pooled figure is \u22120.5 on nearly ten thousand projections. A noisy control does not bias a comparison on average \u2014 it just scatters it, and scatter is what gets read as a finding.',
+    },
+    {
+      kind: 'callout',
+      tone: 'key',
+      title: 'What happens to the row',
+      text: 'It still prints its number and still draws its dashed lines, because a date to watch costs nothing. It is printed in plain grey rather than the projection colour and carries \u201c\u00b7 lands at chance\u201d, so the one unscored thing on the panel is no longer the one thing that looks like a forecast. The chain scoring and the agreement ribbon are measured separately and are not what this touches.',
+    },
+    {
+      kind: 'callout',
+      tone: 'note',
+      title: 'Why the series cannot simply be run forward',
+      text: 'The counts measure back from the anchor and the gaps between turns contract into it \u2014 on a chain of 11, 27, 38, 64, 100, 164, 261, 427 they run 166, 97, 64, 36, 26, 11, 16, 11. Read forward the recursion collapses one step past the anchor: 27 = 11 + 16, then 11 = 16 + (\u22125). There is no next term, which is why the code repeats the widest gap instead, and why its comment claiming a mirror was describing something that was never implemented.',
+    },
+  ],
+};
+
 // ── Using a forecast ──
 
 const rulesOfAnalysis: KbArticle = {
@@ -1067,7 +1205,7 @@ export const categories: KbCategory[] = [
     id: 'cycles',
     title: 'Locating cycles',
     description: 'searching every offset for the one today’s market rhymes with, and the controls that say which scores to believe.',
-    articles: [cycleScanner, multiplesRule],
+    articles: [cycleScanner, multiplesRule, moonCycles, projectionScored],
   },
   {
     id: 'catalogue',

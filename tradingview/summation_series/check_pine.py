@@ -13,6 +13,71 @@ import re
 import sys
 
 
+def duplicate_definitions(lines):
+    """Top-level identifiers declared twice.
+
+    Pine refuses a redeclaration, and a merge is exactly how one turns up: a
+    block lifted from another script carries its own copy of something the
+    host file already has. That is how barDays / tfUsable / tfCoarse arrived
+    twice when the moon section was folded into the summation script.
+    """
+    seen, dupes = {}, []
+    pat = re.compile(
+        r"^(?:(?:var\s+)?(?:float|int|bool|string|color|line|label|table|box"
+        r"|array<[^>]+>)\s+)?([A-Za-z_]\w*)\s*(?::?=)(?!=)")
+    for i, raw in enumerate(lines, 1):
+        if not raw or raw[0].isspace() or raw.lstrip().startswith("//"):
+            continue
+        m = pat.match(raw)
+        if not m:
+            continue
+        name = m.group(1)
+        if name in seen:
+            dupes.append(f"line {i}: {name} was already declared at line {seen[name]}")
+        else:
+            seen[name] = i
+    return dupes
+
+
+def tuple_ternaries(lines):
+    """`[a, b] = cond ? f() : g()` — Pine refuses it (CE10163).
+
+    A tuple destructuring has to come from a plain call or an if/switch, and
+    a ternary looks so natural that it gets written anyway. It only fails on
+    paste, which is the worst place to find out.
+    """
+    bad = []
+    joined = []
+    buf = ""
+    for i, raw in enumerate(lines, 1):
+        buf = (buf + " " + raw.strip()) if buf else raw
+        # a continued expression ends where the brackets balance and the
+        # line does not trail an operator
+        if buf.rstrip().endswith((":", "?", "+", "-", "*", "/", ",")):
+            continue
+        joined.append((i, buf))
+        buf = ""
+    for i, line in joined:
+        if not re.match(r"\s*\[[^\]]+\]\s*=", line):
+            continue
+        rhs = line.split("=", 1)[1]
+        # Only a ternary at the TOP level of the right-hand side makes the
+        # tuple. `[a, b] = f(x, c ? 1 : 2)` is a plain call with a ternary
+        # argument and is perfectly legal — the first version of this check
+        # flagged exactly that, on the line written to fix the real one.
+        depth = 0
+        for ch in rhs:
+            if ch in "([":
+                depth += 1
+            elif ch in ")]":
+                depth -= 1
+            elif ch == "?" and depth == 0:
+                bad.append(f"line {i}: tuple destructuring from a ternary — "
+                           f"Pine refuses this (CE10163), use an if or reshape the call")
+                break
+    return bad
+
+
 def check(path):
     lines = open(path).read().split("\n")
     # strip comments so string and comment text cannot trip the checks
@@ -40,7 +105,12 @@ def check(path):
         r"indicator|plot|plotshape|barstate|timestamp|request|alert|fixnan|syminfo|hline)$")
     called = set(re.findall(r"(?<![.\w])([a-z][A-Za-z0-9_]*)\s*\(", src))
     for name in sorted(called - defined):
-        if not builtin.match(name) and f"{name}(" not in strings and name not in strings.split():
+        # The string test has to allow whitespace before the paren: a table
+        # header reading "date (UT)" is prose, and matching only "date(" let
+        # it through as a phantom call. A linter that cries wolf gets ignored,
+        # which costs more than the check is worth.
+        in_prose = re.search(rf"(?<![.\w]){re.escape(name)}\s*\(", strings) is not None
+        if not builtin.match(name) and not in_prose and name not in strings.split():
             bad.append(f"{name}() is called but never defined")
 
     # a user function must sit at global scope
@@ -86,6 +156,9 @@ def check(path):
                 break
         if not guarded:
             bad.append(f"line {i}: unguarded loop over {arr} (empty array runs backwards)")
+
+    bad += duplicate_definitions(lines)
+    bad += tuple_ternaries(lines)
 
     print(f"{path}: {len(lines)} lines")
     for b in bad:
