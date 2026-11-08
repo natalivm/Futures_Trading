@@ -39,6 +39,45 @@ def duplicate_definitions(lines):
     return dupes
 
 
+def tuple_ternaries(lines):
+    """`[a, b] = cond ? f() : g()` — Pine refuses it (CE10163).
+
+    A tuple destructuring has to come from a plain call or an if/switch, and
+    a ternary looks so natural that it gets written anyway. It only fails on
+    paste, which is the worst place to find out.
+    """
+    bad = []
+    joined = []
+    buf = ""
+    for i, raw in enumerate(lines, 1):
+        buf = (buf + " " + raw.strip()) if buf else raw
+        # a continued expression ends where the brackets balance and the
+        # line does not trail an operator
+        if buf.rstrip().endswith((":", "?", "+", "-", "*", "/", ",")):
+            continue
+        joined.append((i, buf))
+        buf = ""
+    for i, line in joined:
+        if not re.match(r"\s*\[[^\]]+\]\s*=", line):
+            continue
+        rhs = line.split("=", 1)[1]
+        # Only a ternary at the TOP level of the right-hand side makes the
+        # tuple. `[a, b] = f(x, c ? 1 : 2)` is a plain call with a ternary
+        # argument and is perfectly legal — the first version of this check
+        # flagged exactly that, on the line written to fix the real one.
+        depth = 0
+        for ch in rhs:
+            if ch in "([":
+                depth += 1
+            elif ch in ")]":
+                depth -= 1
+            elif ch == "?" and depth == 0:
+                bad.append(f"line {i}: tuple destructuring from a ternary — "
+                           f"Pine refuses this (CE10163), use an if or reshape the call")
+                break
+    return bad
+
+
 def check(path):
     lines = open(path).read().split("\n")
     # strip comments so string and comment text cannot trip the checks
@@ -119,6 +158,7 @@ def check(path):
             bad.append(f"line {i}: unguarded loop over {arr} (empty array runs backwards)")
 
     bad += duplicate_definitions(lines)
+    bad += tuple_ternaries(lines)
 
     print(f"{path}: {len(lines)} lines")
     for b in bad:

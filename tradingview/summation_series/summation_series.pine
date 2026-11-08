@@ -1247,8 +1247,11 @@ if barstate.islast and showMoon and (monthsBack > 0 or aheadN > 0)
         float msPerBar = lookback > 0 ? (time - time[lookback]) / lookback : 86400000.0
         float j0 = julian(time) + 0.05
         [njd, nasc] = nextNodes(j0, aheadN, 420)
-        [pjd, pnew] = showPhase ? nextPhases(j0, aheadN, 420)
-             : [array.new<float>(), array.new<bool>()]
+        // Pine will not return a tuple from a ternary (CE10163), so the call
+        // is unconditional and the switch rides on its search window. Not
+        // zero: `for d = 1 to 0` counts DOWN in Pine, which is the same trap
+        // as the empty-array loops this file already guards against.
+        [pjd, pnew] = nextPhases(j0, aheadN, showPhase ? 420 : 1)
         // Merge two already-sorted lists into one calendar. Nodes are the
         // draconic cycle and phases the synodic one — different lengths and
         // different events, so they interleave rather than coincide, and
@@ -1260,7 +1263,7 @@ if barstate.islast and showMoon and (monthsBack > 0 or aheadN > 0)
         int pi = 0
         for _m = 1 to aheadN
             bool haveN = ni < array.size(njd)
-            bool haveP = pi < array.size(pjd)
+            bool haveP = showPhase and pi < array.size(pjd)
             if not haveN and not haveP
                 break
             bool takeNode = haveN and (not haveP or array.get(njd, ni) <= array.get(pjd, pi))
