@@ -19,7 +19,14 @@ export interface KbArticle {
   updated?: string;
 }
 
-/** A chapter. Its articles are sections, rendered in order on one page. */
+/**
+ * A chapter. Its articles are sections, rendered in order on one page.
+ *
+ * `description` is printed on the same line as the title, after an em dash,
+ * so it is written as a continuation of it — lower case, and never repeating
+ * a word the title already said. A chapter holding a single section prints no
+ * section heading, so that chapter's line has to carry what the section is.
+ */
 export interface KbCategory {
   id: string;
   title: string;
@@ -35,10 +42,8 @@ const premise: KbArticle = {
   id: 'mfm-premise',
   title: 'What this is about',
   summary: 'The premise, the sources, the two ways to forecast, and the three techniques.',
-  source: 'Market Forecast Mastery — Allen Reminick',
   updated: TODAY,
   body: [
-    { kind: 'heading', text: 'The premise' },
     {
       kind: 'list',
       items: [
@@ -83,7 +88,6 @@ const waveMechanics: KbArticle = {
   id: 'wave-mechanics',
   title: 'Wave mechanics — the approach we are not using',
   summary: 'Decomposition: find the component cycles, add them, project. Why the course defers it.',
-  source: 'Market Forecast Mastery — Allen Reminick',
   updated: TODAY,
   body: [
     { kind: 'heading', text: 'How it works' },
@@ -120,9 +124,9 @@ const waveMechanics: KbArticle = {
 
 const cycleScanner: KbArticle = {
   id: 'cycle-scanner',
-  title: 'Finding repeating cycles in the indexes',
+  title: 'The scanner, and its four scores',
   summary: 'What the scanner does, and which of its four scores to believe.',
-  source: 'Market Forecast Mastery; cycles/README.md',
+  source: 'cycles/README.md',
   updated: TODAY,
   body: [
     { kind: 'heading', text: 'What it does' },
@@ -181,23 +185,21 @@ const sixtyYear: KbArticle = {
   id: 'cycle-60-year',
   title: 'The 60-year cycle',
   summary: '2022 against 1962 at 93%, the forward call it made, and where it puts 2026.',
-  source: 'Market Forecast Mastery — Allen Reminick',
   updated: TODAY,
   body: [
     {
       kind: 'overlay',
-      series: 'DJI',
+      series: 'GSPC',
       label: 'The 60-year overlay',
       lagYears: 60,
     },
     {
       kind: 'rules',
       items: [
-        { rule: 'Market', detail: 'Dow Jones Industrial Average, daily closes.' },
+        { rule: 'Market', detail: 'The course shows the Dow. Yahoo\u2019s Dow record starts in 1992, so 60 years cannot be measured on it — everything here is the S\u0026P, whose record reaches 1927. Switch the figure to the Dow and it says so.' },
         { rule: 'Window', detail: '440 trading days — about 22 months.' },
         { rule: 'Offset', detail: '60 years, named in advance rather than searched for.' },
-        { rule: 'Command', detail: 'find_cycles.py --symbol ^DJI --lag-years 60 --window 440' },
-        { rule: 'Measurable on', detail: 'The S\u0026P, not the Dow. Yahoo\u2019s Dow record starts in 1992, so 60 years cannot be measured on it and the figure above says so. The S\u0026P reaches 1927.' },
+        { rule: 'Command', detail: 'find_cycles.py --symbol ^GSPC --lag-years 60 --window 440' },
       ],
     },
     {
@@ -264,7 +266,6 @@ const seventyEightYear: KbArticle = {
   id: 'cycle-78-year',
   title: 'The 78.5-year cycle and the 157 / 314 chain',
   summary: 'The Depression against the financial crisis, and the harmonic argument that reaches 2034.',
-  source: 'Market Forecast Mastery — Allen Reminick',
   updated: TODAY,
   body: [
     {
@@ -323,7 +324,7 @@ const spShortCycles: KbArticle = {
   id: 'cycle-sp-short',
   title: 'The S&P short cycles — 11.65, 22 and 6.8 years',
   summary: 'Three claims, each re-measured as of the date it was made. One holds, one does not, one cannot be tested.',
-  source: 'Market Forecast Mastery; measured 2026-11-08',
+  source: 'measured 2026-11-08',
   updated: TODAY,
   body: [
     { kind: 'heading', text: 'What the slides claim' },
@@ -395,7 +396,7 @@ const electionCycle: KbArticle = {
   id: 'cycle-election',
   title: 'The four-year election cycle',
   summary: 'High near the election, low near the midterms, strength in the pre-election year — measured, not quoted.',
-  source: 'Market Forecast Mastery; measured 2026-11-08',
+  source: 'measured 2026-11-08',
   updated: TODAY,
   body: [
     {
@@ -457,7 +458,6 @@ const crudeCycles: KbArticle = {
   id: 'cycle-crude-17',
   title: 'Crude oil: the 17-year cycle',
   summary: '1997–2000 against 2014–2017 at 77% — and why a lower number can be better evidence.',
-  source: 'Market Forecast Mastery — Allen Reminick',
   updated: TODAY,
   body: [
     {
@@ -513,7 +513,6 @@ const metonicCycle: KbArticle = {
   id: 'cycle-metonic-19',
   title: 'The 19-year Metonic cycle — crude oil and war',
   summary: 'Iraq 2003 and Ukraine 2022 lined up in crude, including the ten months before either began.',
-  source: 'Market Forecast Mastery — Allen Reminick',
   updated: TODAY,
   body: [
     {
@@ -578,7 +577,6 @@ const goldCycle: KbArticle = {
   id: 'cycle-gold-24',
   title: 'Gold: the 24.5-year cycle',
   summary: 'Seven years of gold against the same seven years 24.5 years earlier — the longest window in the course.',
-  source: 'Market Forecast Mastery — Allen Reminick',
   updated: TODAY,
   body: [
     {
@@ -620,7 +618,6 @@ const composite: KbArticle = {
   id: 'cycle-composite',
   title: 'Reading cycles together — the composite',
   summary: 'No single cycle is the forecast. Where the clocks agree, and what the course expects from 2027 and 2034.',
-  source: 'Market Forecast Mastery — Allen Reminick',
   updated: TODAY,
   body: [
     {
@@ -684,7 +681,6 @@ const invertedCycles: KbArticle = {
   id: 'cycle-inverted-bonds',
   title: 'Multiples, and cycles that repeat upside down',
   summary: 'US 30-year bonds at 82 × 3 = 246 weeks, where a low lands on a high and every leg mirrors.',
-  source: 'Market Forecast Mastery — Allen Reminick',
   updated: TODAY,
   body: [
     {
@@ -830,7 +826,6 @@ const multiplesRule: KbArticle = {
   id: 'multiples-rule',
   title: 'The series is the middle of the work, not the end',
   summary: 'Counting pivots gives you numbers. Multiples of the numbers over 50 are where a cycle length comes from.',
-  source: 'Market Forecast Mastery \u2014 Allen Reminick',
   updated: TODAY,
   body: [
     'A summation chain is not a set of cycle lengths. It is a set of candidates to multiply.',
@@ -875,86 +870,6 @@ const multiplesRule: KbArticle = {
       tone: 'note',
       title: 'The indicator does not reproduce the lecture\u2019s own series',
       text: 'Run on the same weekly bond chart truncated to the day of the lecture, the mechanical chain reads 43, 91, 136, 227, 363, 591 \u2014 not 82, 134, 216. The 134 turns up at most pivot settings and 82 at none of the eight tried. A hand-marked chart and a pivot rule do not pick the same swings, and the gap has been left visible rather than tuned away: fitting the pivot settings until a published answer falls out is how you end up measuring your own assumptions.',
-    },
-  ],
-};
-
-/**
- * The moon section, with its own numbers attached.
- *
- * This one came with a statistic ("you win about 70% of the time"), which is
- * rare enough in the course to be worth taking literally and testing.
- */
-const moonCycles: KbArticle = {
-  id: 'moon-node-cycles',
-  title: 'Moon cycles, and the three lengths people confuse',
-  summary: 'Rahu and Ketu conjunctions as swing triggers \u2014 the 70% claim measured, and what survives it.',
-  source: 'Market Forecast Mastery \u2014 Allen Reminick; tested with cycles/backtest_moon.py',
-  updated: TODAY,
-  body: [
-    {
-      kind: 'table',
-      caption: 'Three cycles get called \u201cthe lunar cycle\u201d. A test run on the wrong one tests nothing.',
-      head: ['Cycle', 'Length', 'What it is'],
-      rows: [
-        ['Synodic', '29.53 d', 'New moon to new moon \u2014 what most people mean, because you can see it'],
-        ['Sidereal', '27.32 d', 'The moon once round the zodiac'],
-        ['Draconic', '27.21 d', 'North node to north node \u2014 the one the course trades'],
-      ],
-    },
-    {
-      kind: 'rules',
-      items: [
-        { rule: 'Rahu', detail: 'The north node. Moon conjunct Rahu is the moon crossing the ecliptic going north.' },
-        { rule: 'Ketu', detail: 'The south node, the crossing going south, about a fortnight later.' },
-        { rule: 'Finding them needs no zodiac', detail: 'They are the two zeros of the moon\u2019s ecliptic latitude each draconic month \u2014 arithmetic on a timestamp.' },
-        { rule: 'What they are for', detail: 'A swing-trade trigger: a date to look at, not a direction to take.' },
-      ],
-    },
-    { kind: 'heading', text: 'The three claims, measured' },
-    {
-      kind: 'table',
-      caption: 'S&P 500, 2010\u20132026, held four weeks. The last column is the whole result.',
-      head: ['Horizon', 'Ketu win', 'Rahu win', 'Any day at all'],
-      rows: [
-        ['1 week', '60.6%', '61.5%', '60.1%'],
-        ['2 weeks', '64.2%', '62.8%', '63.5%'],
-        ['To the next node', '65.5%', '67.7%', '66.2%'],
-        ['4 weeks', '67.3%', '67.3%', '67.2%'],
-      ],
-    },
-    {
-      kind: 'list',
-      items: [
-        '\u201cBuy at Ketu and you win about 70% of the time.\u201d The rate is real \u2014 67.3% over four weeks. Buying on any day at all over four weeks wins 67.2%. The number is the market\u2019s drift over a month, measured at the node.',
-        '\u201cRahu is more bearish than bullish.\u201d No. Rahu wins as often as Ketu at every horizon and more at one of them. On the full record since 1928, a randomly-phased schedule beats the real four-week Ketu rate 91% of the time.',
-        '\u201cLast month tends to be the opposite.\u201d True, and not lunar. Draconic-month returns carry a real negative lag-1 autocorrelation \u2014 \u22120.159 on the S&P since 2010, \u22120.109 on ES since 2000 \u2014 but cut the same series into 19-bar blocks at an arbitrary phase and it reads \u22120.162, marginally stronger. It is short-horizon mean reversion. Any block of that length does it.',
-        '\u201cTwo, four, six and eight months back tend to be the same.\u201d Not found. Every even lag sits inside the shuffle band since 2010, and on the full record the pattern is incoherent \u2014 lag 3 holds, lag 4 goes the wrong way.',
-      ],
-    },
-    {
-      kind: 'callout',
-      tone: 'key',
-      title: 'The framing outlives the statistics',
-      text: 'The lecture is explicit that the conjunction is not a direction \u2014 \u201cit isn\u2019t either\u201d, some months bullish, some bearish, no statistical meaning in a normal market. What it asks is whether the market is repeating what it did a month ago. That question costs nothing to ask and the indicator is built for it: each completed draconic month\u2019s move, and whether it matches the one in progress. What does not survive is the part that got turned into a win rate.',
-    },
-    {
-      kind: 'callout',
-      tone: 'warn',
-      title: 'Six rows out of six is rarer than a coin, and still means nothing',
-      text: 'The panel marks each earlier month same or opposite against the rule, and a full house of six looks like a 1-in-64 event. It is not, because the rows share boundaries and are not independent: measured across the S&P from 1928, 6/6 turns up on 1.1% of days against the 1.6% coin flips would give, and 0/6 on 1.0% against 1.6% \u2014 the whole distribution is squeezed toward the middle. A panel cut at an arbitrary phase reaches a full house as often or oftener 40% of the time, and what follows a 6/6 day is not distinguishable from what follows any other day. It is a striking thing to look at and it is not a signal.',
-    },
-    {
-      kind: 'callout',
-      tone: 'warn',
-      title: 'Daily or finer \u2014 a monthly chart aliases this cycle into fiction',
-      text: 'A 27.21-day cycle sampled once every 30.44 days does not come out slow, it comes out aliased: the beat period is 1 \u00f7 |1/27.21 \u2212 1/30.44| = 257 days, about 8.4 months. Run on a monthly chart the first version of the indicator duly marked \u201cRahu\u201d every eight or nine months \u2014 measured gaps of 8.1, 8.9, 8.0, 8.0, 9.0, 9.0 \u2014 and filled its table with confident nonsense. It now refuses anything coarser than weekly and says why. Nyquist wants two samples per cycle, so 13.6-day bars is the floor; weekly clears it and can only place a crossing to the week.',
-    },
-    {
-      kind: 'callout',
-      tone: 'note',
-      title: 'Why the ephemeris can be trusted here',
-      text: 'cycles/moon.py is checked against five published solar eclipses \u2014 a solar eclipse is a new moon at a node, so both routines have to land together. Every new moon comes within nine minutes of the catalogued time and every eclipse carries a node crossing within hours. Measured back from its own roots the draconic month reads 27.2141 days against the book\u2019s 27.2122, and the synodic 29.530567 against 29.530588.',
     },
   ],
 };
@@ -1012,9 +927,9 @@ const rulesOfAnalysis: KbArticle = {
 
 const usingForecasts: KbArticle = {
   id: 'using-a-cycle-forecast',
-  title: 'Using a cycle forecast correctly',
+  title: 'What a forecast can and cannot do',
   summary: 'What a roadmap can and cannot tell you, and the traps — statistical and emotional.',
-  source: 'Market Forecast Mastery, plus the control runs in cycles/README.md',
+  source: 'the control runs in cycles/README.md',
   updated: TODAY,
   body: [
     { kind: 'heading', text: 'What it is' },
@@ -1138,68 +1053,68 @@ const cycleGlossary: KbArticle = {
 export const categories: KbCategory[] = [
   {
     id: 'course',
-    title: 'Market Forecast Mastery — the course',
-    description: 'The premise, the law of periodicity, and where the knowledge comes from — Gann, Baumring, Reminick.',
+    title: 'Market Forecast Mastery',
+    description: 'the law of periodicity, and where the knowledge comes from — Gann, Baumring, Reminick.',
     articles: [premise],
   },
   {
     id: 'approaches',
-    title: 'Two ways to forecast',
-    description: 'Decomposition versus synthesis — what each costs, and why the course picks synthesis.',
+    title: 'Wave mechanics',
+    description: 'decomposition, the approach we are not using — what it costs, and why the course defers it.',
     articles: [waveMechanics],
   },
   {
     id: 'cycles',
-    title: 'Technique 1 — locating cycles',
-    description: 'The scanner that searches every offset for the one today’s market rhymes with, and the controls that say which scores to believe.',
-    articles: [cycleScanner, multiplesRule, moonCycles],
+    title: 'Locating cycles',
+    description: 'searching every offset for the one today’s market rhymes with, and the controls that say which scores to believe.',
+    articles: [cycleScanner, multiplesRule],
   },
   {
     id: 'catalogue',
     title: 'The cycle catalogue',
-    description: 'The specific cycles the course works with — equities, crude and gold — the evidence for each, and where each points.',
+    description: 'equities, crude and gold — the evidence for each cycle the course works with, and where each points.',
     articles: [sixtyYear, seventyEightYear, spShortCycles, electionCycle, crudeCycles, metonicCycle, goldCycle, invertedCycles, bondBacktest, composite],
   },
   {
     id: 'using',
     title: 'Using a forecast',
-    description: 'The rules, the traps, and the checklist before entering.',
+    description: 'the rules, the traps, and the checklist before entering.',
     articles: [rulesOfAnalysis, usingForecasts],
   },
   {
     id: 'glossary',
     title: 'Glossary',
-    description: 'Plain definitions for every term used across these pages.',
+    description: 'plain definitions for every cycle term used across these pages.',
     articles: [cycleGlossary],
   },
   {
     id: 'slide',
-    title: 'Technique 2 — the Slide Technique',
-    description: 'Forecasting by locating the intervals of repetition: sliding past data forward to find where history lines up with the present.',
+    title: 'The Slide Technique',
+    description: 'forecasting by locating the intervals of repetition: sliding past data forward to find where history lines up with the present.',
     articles: [],
   },
   {
     id: 'momentum',
-    title: 'Technique 3 — Momentum Balance',
-    description: 'Reading when a move is more likely to continue, and projecting price targets for it.',
+    title: 'Momentum Balance',
+    description: 'reading when a move is more likely to continue, and projecting price targets for it.',
     articles: [],
   },
   {
     id: 'risk',
     title: 'Risk & position sizing',
-    description: 'Stops, targets, R:R, costs per contract and how much of the account a single trade is allowed to risk.',
+    description: 'stops, targets, R:R, costs per contract and how much of the account a single trade is allowed to risk.',
     articles: [],
   },
   {
     id: 'market',
     title: 'Market structure & sessions',
-    description: 'Contract specs, roll dates, cash and overnight sessions, the economic calendar, and the hours the method is meant to be traded in.',
+    description: 'contract specs, roll dates, cash and overnight sessions, the economic calendar, and the hours the method is meant to be traded in.',
     articles: [],
   },
   {
     id: 'review',
     title: 'Forecast journal & review',
-    description: 'Recording a forecast on the day it is made, scoring it once the window has passed, and the review that turns a run of calls into a measured hit rate.',
+    description: 'recording a forecast on the day it is made, scoring it once the window has passed, and the review that turns a run of calls into a measured hit rate.',
     articles: [],
   },
 ];

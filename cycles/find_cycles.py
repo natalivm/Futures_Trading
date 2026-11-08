@@ -57,7 +57,10 @@ PRESETS = {
     # The S&P examples: 22 years (2000 against 2022, the run that also repeated
     # the Fed's first 50bp rise in 22 years), 11.65 (230 and ~400-day windows)
     # and 6.8, which the course demonstrates on four-hour bars.
-    "sp500":    [4, 6.8, 11.65, 22, 28],
+    # 60 and 78.5 are equity clocks, but Yahoo's Dow record starts in 1992 and
+    # cannot reach either, so the S&P is where they get measured — and where
+    # the knowledge base's overlays for them have to come from.
+    "sp500":    [4, 6.8, 11.65, 22, 28, 60, 78.5],
     "crude":    [17, 19.08, 27],
     "gold":     [24.5],
     # 82 weeks is the bond base count; the course's working interval is
