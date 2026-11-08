@@ -182,9 +182,9 @@ export default function CycleOverlay({ series, label, caption }: { series: strin
         </p>
         <dl className="kb-demo-scores">
           <div><dt>Price</dt><dd>{match.corr.toFixed(3)}</dd></div>
+          {/* The random-walk control scored 0.449 on swing, so anything under
+              that is not a pass — it is the band where noise lives. */}
           {match.swingCorr !== undefined && (
-            {/* The random-walk control scored 0.449 on swing, so anything
-                under that is not a pass — it is the band where noise lives. */}
             <div className={match.swingCorr < 0.15 ? 'bad' : match.swingCorr < 0.5 ? 'mid' : 'good'}>
               <dt>Swing</dt><dd>{match.swingCorr.toFixed(3)}</dd>
             </div>
