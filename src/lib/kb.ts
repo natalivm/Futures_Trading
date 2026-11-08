@@ -31,11 +31,11 @@ const TODAY = '2026-11-08';
 
 // ── The course ──
 
-const lesson1: KbArticle = {
-  id: 'mfm-lesson-1',
-  title: 'Lesson 1 — What this course is about',
+const premise: KbArticle = {
+  id: 'mfm-premise',
+  title: 'What this is about',
   summary: 'The premise, the sources, the two ways to forecast, and the three techniques.',
-  source: 'Market Forecast Mastery, Lesson 1 — Allen Reminick',
+  source: 'Market Forecast Mastery — Allen Reminick',
   updated: TODAY,
   body: [
     { kind: 'heading', text: 'The premise' },
@@ -73,7 +73,7 @@ const lesson1: KbArticle = {
         'The Momentum Balance Technique — proprietary; when a move is likely to continue, and the price target for it.',
       ],
     },
-    'The rest of the course applies those three to live charts, lesson by lesson.',
+    'Everything that follows applies those three to live charts.',
   ],
 };
 
@@ -83,7 +83,7 @@ const waveMechanics: KbArticle = {
   id: 'wave-mechanics',
   title: 'Wave mechanics — the approach we are not using',
   summary: 'Decomposition: find the component cycles, add them, project. Why the course defers it.',
-  source: 'Market Forecast Mastery, Lesson 1 — Allen Reminick',
+  source: 'Market Forecast Mastery — Allen Reminick',
   updated: TODAY,
   body: [
     { kind: 'heading', text: 'How it works' },
@@ -122,7 +122,7 @@ const cycleScanner: KbArticle = {
   id: 'cycle-scanner',
   title: 'Finding repeating cycles in the indexes',
   summary: 'What the scanner does, and which of its four scores to believe.',
-  source: 'Market Forecast Mastery, Lesson 1; cycles/README.md',
+  source: 'Market Forecast Mastery; cycles/README.md',
   updated: TODAY,
   body: [
     { kind: 'heading', text: 'What it does' },
@@ -181,7 +181,7 @@ const sixtyYear: KbArticle = {
   id: 'cycle-60-year',
   title: 'The 60-year cycle',
   summary: '2022 against 1962 at 93%, the forward call it made, and where it puts 2026.',
-  source: 'Market Forecast Mastery, Lesson 1 — Allen Reminick',
+  source: 'Market Forecast Mastery — Allen Reminick',
   updated: TODAY,
   body: [
     { kind: 'heading', text: 'The claim' },
@@ -256,7 +256,7 @@ const seventyEightYear: KbArticle = {
   id: 'cycle-78-year',
   title: 'The 78.5-year cycle and the 157 / 314 chain',
   summary: 'The Depression against the financial crisis, and the harmonic argument that reaches 2034.',
-  source: 'Market Forecast Mastery, Lesson 1 — Allen Reminick',
+  source: 'Market Forecast Mastery — Allen Reminick',
   updated: TODAY,
   body: [
     { kind: 'heading', text: 'The claim' },
@@ -314,7 +314,7 @@ const spShortCycles: KbArticle = {
   id: 'cycle-sp-short',
   title: 'The S&P short cycles — 11.65, 22 and 6.8 years',
   summary: 'Three claims, each re-measured as of the date it was made. One holds, one does not, one cannot be tested.',
-  source: 'Market Forecast Mastery, Lesson 1; measured 2026-11-08',
+  source: 'Market Forecast Mastery; measured 2026-11-08',
   updated: TODAY,
   body: [
     { kind: 'heading', text: 'What the slides claim' },
@@ -386,7 +386,7 @@ const electionCycle: KbArticle = {
   id: 'cycle-election',
   title: 'The four-year election cycle',
   summary: 'High near the election, low near the midterms, strength in the pre-election year — measured, not quoted.',
-  source: 'Market Forecast Mastery, Lesson 1; measured 2026-11-08',
+  source: 'Market Forecast Mastery; measured 2026-11-08',
   updated: TODAY,
   body: [
     {
@@ -448,7 +448,7 @@ const crudeCycles: KbArticle = {
   id: 'cycle-crude-17',
   title: 'Crude oil: the 17-year cycle',
   summary: '1997–2000 against 2014–2017 at 77% — and why a lower number can be better evidence.',
-  source: 'Market Forecast Mastery, Lesson 1 — Allen Reminick',
+  source: 'Market Forecast Mastery — Allen Reminick',
   updated: TODAY,
   body: [
     {
@@ -503,7 +503,7 @@ const metonicCycle: KbArticle = {
   id: 'cycle-metonic-19',
   title: 'The 19-year Metonic cycle — crude oil and war',
   summary: 'Iraq 2003 and Ukraine 2022 lined up in crude, including the ten months before either began.',
-  source: 'Market Forecast Mastery, Lesson 1 — Allen Reminick',
+  source: 'Market Forecast Mastery — Allen Reminick',
   updated: TODAY,
   body: [
     {
@@ -566,13 +566,13 @@ const goldCycle: KbArticle = {
   id: 'cycle-gold-24',
   title: 'Gold: the 24.5-year cycle',
   summary: 'Seven years of gold against the same seven years 24.5 years earlier — the longest window in the course.',
-  source: 'Market Forecast Mastery, Lesson 1 — Allen Reminick',
+  source: 'Market Forecast Mastery — Allen Reminick',
   updated: TODAY,
   body: [
     {
       kind: 'list',
       items: [
-        '1,800 trading days — about seven years. The longest window of any example in the lesson.',
+        '1,800 trading days — about seven years. The longest window of any example in the course.',
         'Present market 1 May 2010 to 11 July 2017, against the same span 24.5 years earlier.',
         'The two hug each other for roughly seven years: up move, down move, up, down. Not perfect, high correlation.',
         'The practical claim: knowing gold’s general direction, you would have been out of it in 2011 and short afterwards.',
@@ -607,7 +607,7 @@ const composite: KbArticle = {
   id: 'cycle-composite',
   title: 'Reading cycles together — the composite',
   summary: 'No single cycle is the forecast. Where the clocks agree, and what the course expects from 2027 and 2034.',
-  source: 'Market Forecast Mastery, Lesson 1 — Allen Reminick',
+  source: 'Market Forecast Mastery — Allen Reminick',
   updated: TODAY,
   body: [
     {
@@ -673,7 +673,7 @@ const rulesOfAnalysis: KbArticle = {
   id: 'rules-of-analysis',
   title: 'The rules, in order',
   summary: 'The whole method as ten rules.',
-  source: 'Distilled from the lessons; the long form is cycles/METHOD.md',
+  source: 'Distilled from the course; the long form is cycles/METHOD.md',
   updated: TODAY,
   body: [
     { kind: 'heading', text: 'Finding a cycle' },
@@ -722,7 +722,7 @@ const usingForecasts: KbArticle = {
   id: 'using-a-cycle-forecast',
   title: 'Using a cycle forecast correctly',
   summary: 'What a roadmap can and cannot tell you, and the traps — statistical and emotional.',
-  source: 'Market Forecast Mastery, Lesson 1, plus the control runs in cycles/README.md',
+  source: 'Market Forecast Mastery, plus the control runs in cycles/README.md',
   updated: TODAY,
   body: [
     { kind: 'heading', text: 'What it is' },
@@ -848,7 +848,7 @@ export const categories: KbCategory[] = [
     id: 'course',
     title: 'Market Forecast Mastery — the course',
     description: 'The premise, the law of periodicity, and where the knowledge comes from — Gann, Baumring, Reminick.',
-    articles: [lesson1],
+    articles: [premise],
   },
   {
     id: 'approaches',

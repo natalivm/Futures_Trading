@@ -2,7 +2,7 @@
 
 A distillation of the Market Forecast Mastery lectures (Allen Reminick) into
 the rules the scanner implements and the knowledge base teaches. Written from
-the lesson transcripts and slides — the claims are the course's, the
+the course transcripts and slides — the claims are the course's, the
 measurements and the caveats under them are ours.
 
 ## 1. The premise
