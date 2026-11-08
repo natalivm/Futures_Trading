@@ -1775,3 +1775,45 @@ td input.note {
   border-radius: 0 var(--radius) var(--radius) 0;
   font-style: italic;
 }
+
+/* Market picker and offset chips on a figure */
+.kb-figure-pick select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 5px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  max-width: 220px;
+}
+
+.kb-offsets {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  padding: 10px 14px 0;
+}
+
+.kb-offsets button {
+  font-size: 12px;
+  padding: 3px 9px;
+  background: var(--bg);
+  color: var(--muted);
+}
+
+.kb-offsets button.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #001526;
+  font-weight: 700;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

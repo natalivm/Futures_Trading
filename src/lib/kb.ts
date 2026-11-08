@@ -426,8 +426,8 @@ const cycleScanner: KbArticle = {
     {
       kind: 'overlay',
       series: 'DJI',
-      label: 'Dow — the scanner’s own output',
-      caption: 'Drawn from public/cycles/DJI.json, written by the last workflow run. Switch to “What happened next” for the analog’s forward path laid on today’s price — the course’s forecast chart, from our data.',
+      label: 'The scanner’s own output',
+      caption: 'Pick a market and an offset: every one of these was found by searching, and the scores underneath are the reason to distrust most of them. Switch to “What happened next” for the analog’s forward path laid on today’s price — the course’s forecast chart, from our data.',
     },
     'The forecast is the analog’s own forward path, rescaled to today’s price range and anchored to today’s close: what that stretch of history did next, drawn on today’s chart. A roadmap to trade against with the usual stop and target — not a prediction.',
   ],

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { MARKETS, marketLabel } from '../../lib/markets';
 
 interface Match {
   lagYears: number;
@@ -42,18 +43,26 @@ function path(series: number[], w: number, h: number, pad: number, span: number,
  * The present window against the analog the scanner matched it to — the
  * course's own chart, drawn from our own data rather than from a slide.
  *
- * The data is written by the weekly workflow into public/cycles/<SERIES>.json.
- * Until that has run there is nothing to draw, and saying so plainly beats an
- * empty frame or, worse, an illustration that could be mistaken for history.
+ * The reader picks the market and which of the matched offsets to look at,
+ * because "which index?" is the first question this chart raises and leaving
+ * it fixed to one answer made the figure an illustration rather than a tool.
+ *
+ * Data comes from public/cycles/<SLUG>.json, written by the weekly workflow.
+ * Until that has run for a market there is nothing to draw, and saying so
+ * plainly beats an empty frame or an illustration mistakable for history.
  */
 export default function CycleOverlay({ series, label, caption }: { series: string; label: string; caption?: string }) {
+  const [slug, setSlug] = useState(series);
   const [report, setReport] = useState<Report | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'missing'>('loading');
   const [view, setView] = useState<'overlay' | 'forecast'>('overlay');
+  const [pick, setPick] = useState(0);
 
   useEffect(() => {
     let live = true;
-    fetch(`${import.meta.env.BASE_URL}cycles/${series}.json`)
+    setState('loading');
+    setPick(0);
+    fetch(`${import.meta.env.BASE_URL}cycles/${slug}.json`)
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((data: Report) => {
         if (!live) return;
@@ -63,7 +72,16 @@ export default function CycleOverlay({ series, label, caption }: { series: strin
       })
       .catch(() => live && setState('missing'));
     return () => { live = false; };
-  }, [series]);
+  }, [slug]);
+
+  const picker = (
+    <label className="kb-figure-pick">
+      <span className="visually-hidden">Market</span>
+      <select value={slug} onChange={e => setSlug(e.target.value)}>
+        {MARKETS.map(m => <option key={m.slug} value={m.slug}>{m.label}</option>)}
+      </select>
+    </label>
+  );
 
   const w = 760;
   const h = 280;
@@ -75,15 +93,16 @@ export default function CycleOverlay({ series, label, caption }: { series: strin
         <div className="kb-figure-head">
           <span className="kb-figure-kind">Cycle overlay</span>
           <strong>{label}</strong>
+          {picker}
         </div>
         <div className="kb-figure-fallback">
           {state === 'loading' ? (
             <p className="muted">Loading the scan…</p>
           ) : (
             <>
-              <p>No scan on file for <code>{series}</code> yet.</p>
+              <p>No scan on file for <strong>{marketLabel(slug)}</strong> yet.</p>
               <p className="muted small">
-                This chart draws itself from <code>public/cycles/{series}.json</code>, written by the
+                This chart draws itself from <code>public/cycles/{slug}.json</code>, written by the
                 “Update prices and rescan cycles” workflow. Run it once and the overlay appears here —
                 real history, not an illustration.
               </p>
@@ -95,7 +114,7 @@ export default function CycleOverlay({ series, label, caption }: { series: strin
     );
   }
 
-  const match = report.matches[0];
+  const match = report.matches[Math.min(pick, report.matches.length - 1)];
   const cur = normalize(report.currentCloses);
   const ana = normalize(match.analogCloses);
   const forecast = match.forecastCloses ?? [];
@@ -104,15 +123,13 @@ export default function CycleOverlay({ series, label, caption }: { series: strin
   const span = view === 'overlay'
     ? Math.max(cur.length, ana.length) - 1 || 1
     : combinedNorm.length - 1 || 1;
-
   const splitX = pad + ((report.currentCloses.length - 1) * (w - pad * 2)) / span;
 
   return (
     <figure className="kb-figure">
       <div className="kb-figure-head">
         <span className="kb-figure-kind">Cycle overlay</span>
-        <strong>{label}</strong>
-        <span className="muted small">{match.lagYears.toFixed(1)}-year offset</span>
+        {picker}
         <div className="kb-figure-toggle">
           <button className={view === 'overlay' ? 'on' : ''} onClick={() => setView('overlay')}>Overlay</button>
           <button className={view === 'forecast' ? 'on' : ''} onClick={() => setView('forecast')}
@@ -122,8 +139,19 @@ export default function CycleOverlay({ series, label, caption }: { series: strin
         </div>
       </div>
 
+      {report.matches.length > 1 && (
+        <div className="kb-offsets" role="group" aria-label="Matched offsets">
+          <span className="muted small">Offset:</span>
+          {report.matches.map((m, i) => (
+            <button key={m.lagYears} className={i === pick ? 'on' : ''} onClick={() => setPick(i)}>
+              {m.lagYears.toFixed(1)}y
+            </button>
+          ))}
+        </div>
+      )}
+
       <svg viewBox={`0 0 ${w} ${h}`} className="kb-demo-chart" role="img"
-           aria-label={`${label}: the present window against a stretch ${match.lagYears.toFixed(1)} years earlier`}>
+           aria-label={`${marketLabel(slug)}: the present window against a stretch ${match.lagYears.toFixed(1)} years earlier`}>
         {[0, 25, 50, 75, 100].map(v => (
           <line key={v} x1={pad} x2={w - pad}
                 y1={h - pad - (v * (h - pad * 2)) / 100} y2={h - pad - (v * (h - pad * 2)) / 100}
@@ -155,18 +183,26 @@ export default function CycleOverlay({ series, label, caption }: { series: strin
         <dl className="kb-demo-scores">
           <div><dt>Price</dt><dd>{match.corr.toFixed(3)}</dd></div>
           {match.swingCorr !== undefined && (
-            <div><dt>Swing</dt><dd>{match.swingCorr.toFixed(3)}</dd></div>
+            {/* The random-walk control scored 0.449 on swing, so anything
+                under that is not a pass — it is the band where noise lives. */}
+            <div className={match.swingCorr < 0.15 ? 'bad' : match.swingCorr < 0.5 ? 'mid' : 'good'}>
+              <dt>Swing</dt><dd>{match.swingCorr.toFixed(3)}</dd>
+            </div>
           )}
           {match.heldMinCorr != null && (
-            <div><dt>Worst epoch</dt><dd>{match.heldMinCorr.toFixed(3)}</dd></div>
+            <div className={match.heldMinCorr < 0 ? 'bad' : 'good'}>
+              <dt>Worst epoch</dt><dd>{match.heldMinCorr.toFixed(3)}</dd>
+            </div>
           )}
         </dl>
       </div>
 
       <figcaption>
-        {caption ?? `Both paths rescaled to 0–100, the way the course slides draw them. ${
-          match.preSpecified ? 'The offset was named in advance.' : 'The offset was found by searching, so read the swing and epoch scores before the price correlation.'
-        }`}
+        {caption ?? 'Both paths rescaled to 0–100, the way the course slides draw them.'}{' '}
+        {marketLabel(slug)}, {report.historyStart} → {report.historyEnd}, {report.window}-day window.{' '}
+        {match.preSpecified
+          ? 'This offset was named in advance.'
+          : 'This offset was found by searching, so read the swing and worst-epoch scores before the price correlation — a random walk scores about 0.95 on price alone.'}
       </figcaption>
     </figure>
   );
