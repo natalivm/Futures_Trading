@@ -464,12 +464,30 @@ const cycleGlossary: KbArticle = {
  * The shelves the articles go on. Drop a KbArticle into the matching
  * `articles` array and it shows up on the page — nothing else needs changing.
  */
+/**
+ * The chapters, in reading order. The page renders them as one continuous
+ * document, so this array is the order of the story: the premise, the fork
+ * in method, how we search, what the search found, the rules that came out
+ * of it, how to use them, and then reference.
+ */
 export const categories: KbCategory[] = [
   {
     id: 'course',
     title: 'Market Forecast Mastery — the course',
     description: 'Lesson-by-lesson notes from Allen Reminick’s course: the premise, the law of periodicity, and where the knowledge comes from — Gann, Baumring, Reminick.',
     articles: [lesson1],
+  },
+  {
+    id: 'approaches',
+    title: 'Two ways to forecast',
+    description: 'Analytical / decomposition (Fourier series, spectral analysis, wave mechanics) versus synthesis / pattern recognition — what each one costs and why the course picks synthesis.',
+    articles: [waveMechanics],
+  },
+  {
+    id: 'cycles',
+    title: 'Technique 1 — locating cycles',
+    description: 'Series and sequences, and the scanner that searches every offset in the history for the one today’s market rhymes with.',
+    articles: [cycleScanner],
   },
   {
     id: 'catalogue',
@@ -484,16 +502,10 @@ export const categories: KbCategory[] = [
     articles: [rulesOfAnalysis, usingForecasts],
   },
   {
-    id: 'cycles',
-    title: 'Technique 1 — locating cycles',
-    description: 'Series and sequences, and the scanner that searches every offset in the history for the one today’s market rhymes with.',
-    articles: [cycleScanner],
-  },
-  {
-    id: 'approaches',
-    title: 'Two ways to forecast',
-    description: 'Analytical / decomposition (Fourier series, spectral analysis, wave mechanics) versus synthesis / pattern recognition — what each one costs and why the course picks synthesis.',
-    articles: [waveMechanics],
+    id: 'glossary',
+    title: 'Glossary',
+    description: 'Plain definitions for every term used across the desk and the course.',
+    articles: [cycleGlossary],
   },
   {
     id: 'slide',
@@ -524,12 +536,6 @@ export const categories: KbCategory[] = [
     title: 'Forecast journal & review',
     description: 'Recording a forecast on the day it is made, scoring it once the window has passed, and the review that turns a run of calls into a measured hit rate.',
     articles: [],
-  },
-  {
-    id: 'glossary',
-    title: 'Glossary',
-    description: 'Plain definitions for every term used across the desk and the course.',
-    articles: [cycleGlossary],
   },
 ];
 

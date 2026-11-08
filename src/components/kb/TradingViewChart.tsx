@@ -31,11 +31,27 @@ function chartUrl(symbol: string, interval: string) {
  */
 export default function TradingViewChart({ symbol, label, interval, range, caption }: Props) {
   const host = useRef<HTMLDivElement>(null);
+  const frame = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState(false);
+  const [near, setNear] = useState(false);
+
+  // Everything lives on one page now, so mounting every widget at load meant
+  // four third-party charts fetching at once before the reader had scrolled
+  // to any of them. Each one waits until it is close to the viewport.
+  useEffect(() => {
+    const node = frame.current;
+    if (!node || near) return;
+    const observer = new IntersectionObserver(
+      entries => entries.some(e => e.isIntersecting) && setNear(true),
+      { rootMargin: '400px 0px' },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [near]);
 
   useEffect(() => {
     const node = host.current;
-    if (!node) return;
+    if (!node || !near) return;
     let settled = false;
 
     node.innerHTML = '';
@@ -75,7 +91,7 @@ export default function TradingViewChart({ symbol, label, interval, range, capti
       window.clearTimeout(timer);
       node.innerHTML = '';
     };
-  }, [symbol, interval, range]);
+  }, [symbol, interval, range, near]);
 
   return (
     <figure className="kb-figure">
@@ -99,10 +115,11 @@ export default function TradingViewChart({ symbol, label, interval, range, capti
           </a>
         </div>
       ) : (
-        <div className="kb-tv-frame">
+        <div className="kb-tv-frame" ref={frame}>
           {/* autosize makes the widget write height:100% on its own container,
               so the fixed height has to live on a parent it does not touch. */}
           <div className="tradingview-widget-container" ref={host} />
+          {!near && <p className="kb-tv-idle muted small">Chart loads when you reach it.</p>}
         </div>
       )}
       {caption && <figcaption>{caption}</figcaption>}
