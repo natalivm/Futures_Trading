@@ -1,6 +1,6 @@
 # Cycle report
 
-Generated 2026-11-08 19:26 UTC from commit be51e1a.
+Generated 2026-11-08 22:16 UTC from commit 89e1a1e.
 
 ## Fetch log
 
@@ -56,7 +56,12 @@ TSLA
   ! stooq tsla.us: https://stooq.com: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'; https://stooq.pl: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'
   Tesla: 4116 rows (2010-06-29 → 2026-11-06), +0 new
 
-10 file(s) updated.
+QQQ
+  yahoo: 6960 rows (1999-03-10 → 2026-11-06)
+  ! stooq qqq.us: https://stooq.com: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'; https://stooq.pl: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'
+  Invesco QQQ Trust: 6960 rows (1999-03-10 → 2026-11-06), +0 new
+
+11 file(s) updated.
 ```
 
 ## Price files
@@ -70,6 +75,7 @@ TSLA
 | GSPC.csv | 24837 | 1927-12-30 | 2026-11-06 |
 | IXIC.csv | 14057 | 1971-02-05 | 2026-11-06 |
 | NDX.csv | 10356 | 1985-10-01 | 2026-11-06 |
+| QQQ.csv | 6960 | 1999-03-10 | 2026-11-06 |
 | RUT.csv | 9871 | 1987-09-01 | 2026-11-06 |
 | TSLA.csv | 4116 | 2010-06-29 | 2026-11-06 |
 | ZB_F.csv | 6568 | 2000-09-21 | 2026-11-06 |
@@ -229,6 +235,19 @@ NDX: 10356 bars, 1985-10-01 → 2026-11-06
             analog 1996-04-17 → 1998-01-12   forecast +68.0% over 230 bars
   wrote public/cycles/NDX.json
 
+QQQ: 6960 bars, 1999-03-10 → 2026-11-06
+    11.8y back  corr +0.948  swing -0.092  daily +0.041  top  0.02%  |  held +0.15 (worst -0.16) over 2 earlier epochs
+            analog 2013-05-01 → 2015-01-28   forecast +16.9% over 230 bars
+     8.3y back  corr +0.941  swing +0.245  daily +0.055  top  0.40%  |  held +0.02 (worst -0.75) over 3 earlier epochs
+            analog 2016-10-10 → 2018-07-10   forecast +4.8% over 230 bars
+     5.0y back  corr +0.936  swing +0.223  daily +0.014  top  1.28%  |  held +0.16 (worst -0.49) over 4 earlier epochs
+            analog 2020-01-22 → 2021-10-18   forecast -20.5% over 230 bars
+     9.2y back  corr +0.908  swing +0.439  daily -0.105  top  6.35%  |  held +0.15 (worst -0.64) over 3 earlier epochs
+            analog 2015-11-24 → 2017-08-23   forecast +40.6% over 230 bars
+    15.5y back  corr +0.903  swing +0.019  daily +0.037  top  8.80%  |  held +0.16 (worst -0.47) over 2 earlier epochs
+            analog 2009-07-16 → 2011-04-12   forecast +21.1% over 230 bars
+  wrote public/cycles/QQQ.json
+
 RUT: 9871 bars, 1987-09-01 → 2026-11-06
     12.4y back  corr +0.959  swing +0.266  daily +0.028  top  0.01%  |  held -0.28 (worst -0.80) over 5 earlier epochs
             analog 2012-09-04 → 2014-06-05   forecast +8.6% over 230 bars
@@ -333,6 +352,22 @@ CL_F: 6580 bars, 2000-08-23 → 2026-11-06
 GC_F: 6573 bars, 2000-08-30 → 2026-11-06
   24.5y: not enough history (18.9y available)
   no offsets scored
+```
+
+## Named-cycle overlays (QQQ)
+
+```
+
+QQQ: 6960 bars, 1999-03-10 → 2026-11-06
+     4.0y back  corr -0.409  swing -0.010  daily -0.068  pre-specified  |  held +0.47 (worst -0.23) over 4 earlier epochs
+            analog 2021-02-03 → 2022-10-31   forecast +30.5% over 230 bars
+     6.8y back  corr +0.612  swing -0.073  daily +0.047  pre-specified  |  held +0.59 (worst +0.23) over 3 earlier epochs
+            analog 2018-04-16 → 2020-01-13   forecast +54.3% over 230 bars
+    11.7y back  corr +0.908  swing +0.132  daily +0.013  pre-specified  |  held +0.23 (worst +0.10) over 2 earlier epochs
+            analog 2013-06-07 → 2015-03-06   forecast -7.6% over 230 bars
+    22.0y back  corr +0.769  swing +0.166  daily +0.113  pre-specified  |  no earlier epoch testable
+            analog 2003-01-28 → 2004-10-25   forecast +10.7% over 230 bars
+  wrote public/cycles/QQQ_named.json
 ```
 
 ## Named-cycle overlays (Tesla)
@@ -553,6 +588,32 @@ NDX
     12 months  no agreement   2 up / 1 down   lean -0.20   weighted +4.9%
   wrote public/cycles/NDX_composite.json
 
+QQQ
+  6960 bars, 1999-03-10 → 2026-11-06, window 440
+
+     cycle    price   swing   worst  weight   3-month
+        4y  -0.409  -0.010  -0.23    0.00   +8.4%
+      6.8y  +0.612  -0.073  +0.23    0.00   -6.2%
+    11.65y  +0.908  +0.132  +0.10    0.00   +2.5%
+       17y  -0.401  +0.241  +0.84    0.60   +3.6%
+    19.08y  +0.680  -0.100  -0.85    0.00   +1.0%
+       22y  +0.769  +0.166     n/a    0.02   +3.8%
+     24.5y  -0.840  +0.167     n/a    0.02   -7.2%
+       27y  — needs 29y of history
+       28y  — needs 30y of history
+       56y  — needs 58y of history
+       60y  — needs 62y of history
+     78.5y  — needs 80y of history
+      157y  — needs 159y of history
+      314y  — needs 316y of history
+
+  Agreement
+    1 month    up             2 up / 1 down   lean +0.94   weighted +2.3%
+    3 months   up             2 up / 1 down   lean +0.94   weighted +3.3%
+    6 months   up             1 up / 2 down   lean +0.88   weighted +12.4%
+    12 months  up             2 up / 1 down   lean +0.94   weighted +18.1%
+  wrote public/cycles/QQQ_composite.json
+
 RUT
   9871 bars, 1987-09-01 → 2026-11-06, window 440
 
@@ -751,6 +812,18 @@ NDX
 
   Pre-election years up 100% of the time (10/10). Down years: none
   wrote public/cycles/NDX_election.json
+
+QQQ
+  27 full years, 2000–2026
+
+  cycle year         n   up  up rate     mean   median    worst
+  1 post-election    7    6      86%    19.3%    26.8%   -33.3%
+  2 midterm          7    4      57%    -3.0%     6.8%   -37.4%
+  3 pre-election     6    6     100%    28.5%    28.2%     2.5%
+  4 election         7    5      71%     3.8%     9.5%   -41.9%
+
+  Pre-election years up 100% of the time (6/6). Down years: none
+  wrote public/cycles/QQQ_election.json
 
 RUT
   39 full years, 1988–2026
