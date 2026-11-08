@@ -13,6 +13,32 @@ import re
 import sys
 
 
+def duplicate_definitions(lines):
+    """Top-level identifiers declared twice.
+
+    Pine refuses a redeclaration, and a merge is exactly how one turns up: a
+    block lifted from another script carries its own copy of something the
+    host file already has. That is how barDays / tfUsable / tfCoarse arrived
+    twice when the moon section was folded into the summation script.
+    """
+    seen, dupes = {}, []
+    pat = re.compile(
+        r"^(?:(?:var\s+)?(?:float|int|bool|string|color|line|label|table|box"
+        r"|array<[^>]+>)\s+)?([A-Za-z_]\w*)\s*(?::?=)(?!=)")
+    for i, raw in enumerate(lines, 1):
+        if not raw or raw[0].isspace() or raw.lstrip().startswith("//"):
+            continue
+        m = pat.match(raw)
+        if not m:
+            continue
+        name = m.group(1)
+        if name in seen:
+            dupes.append(f"line {i}: {name} was already declared at line {seen[name]}")
+        else:
+            seen[name] = i
+    return dupes
+
+
 def check(path):
     lines = open(path).read().split("\n")
     # strip comments so string and comment text cannot trip the checks
@@ -86,6 +112,8 @@ def check(path):
                 break
         if not guarded:
             bad.append(f"line {i}: unguarded loop over {arr} (empty array runs backwards)")
+
+    bad += duplicate_definitions(lines)
 
     print(f"{path}: {len(lines)} lines")
     for b in bad:

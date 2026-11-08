@@ -10,6 +10,14 @@
 //   2. Look for a summation series in those numbers — each term the sum of
 //      the two before it, as in 3,4,7,11,18,29,47,76 or 4,8,12,20,32,52,84.
 //   3. Look for high-to-high and low-to-low intervals that recur.
+//   4. Multiply the terms over 50 and test each product as a cycle length.
+//
+// It also carries the lunar-node section as an optional overlay (group 7),
+// because the course uses the moon's node conjunctions as the swing trigger
+// on the same charts this counts pivots on, and two scripts fighting over
+// one pane is worse than one script with a switch. The two are independent:
+// nothing in the counting reads the moon and nothing in the moon section
+// reads the chain.
 //
 // What it adds to the manual method: the counting and the series search are
 // done for you, every candidate chain is scored rather than eyeballed, and
@@ -25,6 +33,7 @@ string G_SERIES = "3 · Series search"
 string G_SHAPE  = "4 · Confirming a cycle"
 string G_PROJ   = "5 · Projection"
 string G_VIEW   = "6 · Display"
+string G_MOON   = "7 · Moon node cycles"
 
 // ── 1 · Pivots ──
 leftBars   = input.int(5, "Pivot strength — left", minval=1, maxval=50, inline="piv", group=G_PIVOT)
@@ -94,6 +103,26 @@ multCol    = input.color(#4DD0E1, "Multiple grid", inline="col2", group=G_VIEW)
 // ta.* has to be evaluated on every bar to keep its state, so it cannot live
 // inside the last-bar block that uses it.
 atr14 = ta.atr(14)
+
+
+// ── 7 · Moon node cycles ──
+// A separate method on the same chart: the moon's conjunctions with the
+// lunar nodes, which the course uses as a swing-trade trigger. Off by
+// default, because most of the time you are here for the counting.
+showMoon   = input.bool(false, "Mark moon-Rahu / moon-Ketu conjunctions", group=G_MOON,
+     tooltip="Rahu is the moon crossing the ecliptic going north, Ketu the crossing going south about a fortnight later. Finding them needs no zodiac: they are the two zeros of the moon's latitude each draconic month (27.21 days).")
+showPhase  = input.bool(false, "Also mark new and full moons", group=G_MOON,
+     tooltip="The SYNODIC cycle, 29.53 days — a different cycle from the node one, marked separately so the two are never confused.")
+moonLines  = input.bool(false, "Vertical line at each node", group=G_MOON)
+moonLast   = input.int(40, "Label only the last N conjunctions", minval=5, maxval=200, group=G_MOON,
+     tooltip="TradingView allows 500 labels per script and the pivot counts already want most of them. 40 node labels is about three years on a daily chart.")
+monthsBack = input.int(6, "Compare this many lunar months", minval=0, maxval=8, group=G_MOON,
+     tooltip="\"What did it do last month? And two months ago?\" 0 hides the table. Note what the backtest found: a Ketu entry wins no more often than any other day, and the odd/even rule is short-horizon mean reversion that any block of the same length shows. The table is a reading aid, not a signal.")
+moonPos    = input.string("Middle right", "Table position", options=["Top left", "Middle right", "Bottom right"], group=G_MOON,
+     tooltip="Kept off the summation table's corner by default so the two do not overlap.")
+rahuCol    = input.color(#EF5350, "Rahu", inline="moonc", group=G_MOON)
+ketuCol    = input.color(#26A69A, "Ketu", inline="moonc", group=G_MOON)
+phaseCol   = input.color(#B0BEC5, "Phase", inline="moonc", group=G_MOON)
 
 // ── Pivot collection ──
 var array<int>   pvBar   = array.new<int>()
@@ -242,6 +271,148 @@ nearestIdx(counts, target) =>
                 bestDist := d
                 best := i
     best
+
+
+// ── Ephemeris ──
+// Meeus, Astronomical Algorithms, ch. 47 and 25. Transcribed term for term
+// from cycles/moon.py, which is checked against five published solar
+// eclipses: every new moon lands within nine minutes of the catalogued time
+// and every eclipse has a node crossing within hours, as it must.
+
+julian(int ms) =>
+    ms / 86400000.0 + 2440587.5
+
+// Moon's ecliptic latitude in degrees. Zero at a node.
+moonLat(float jd) =>
+    float t  = (jd - 2451545.0) / 36525.0
+    float D  = math.toradians(297.8501921 + 445267.1114034 * t - 0.0018819 * t * t + t * t * t / 545868.0)
+    float M  = math.toradians(357.5291092 + 35999.0502909 * t - 0.0001536 * t * t)
+    float Mp = math.toradians(134.9633964 + 477198.8675055 * t + 0.0087414 * t * t + t * t * t / 69699.0)
+    float F  = math.toradians(93.2720950 + 483202.0175233 * t - 0.0036539 * t * t - t * t * t / 3526000.0)
+    float e  = 1 - 0.002516 * t - 0.0000074 * t * t
+    float b = 5128122 * math.sin(F)
+         + 280602 * math.sin(Mp + F)
+         + 277693 * math.sin(Mp - F)
+         + 173237 * math.sin(2 * D - F)
+         + 55413 * math.sin(2 * D - Mp + F)
+         + 46271 * math.sin(2 * D - Mp - F)
+         + 32573 * math.sin(2 * D + F)
+         + 17198 * math.sin(2 * Mp + F)
+         + 9266 * math.sin(2 * D + Mp - F)
+         + 8822 * math.sin(2 * Mp - F)
+         + 8216 * e * math.sin(2 * D - M - F)
+         + 4324 * math.sin(2 * D - 2 * Mp - F)
+         + 4200 * math.sin(2 * D + Mp + F)
+         - 3359 * e * math.sin(2 * D + M - F)
+         + 2463 * e * math.sin(2 * D - M - Mp + F)
+         + 2211 * e * math.sin(2 * D - M + F)
+         + 2065 * e * math.sin(2 * D - M - Mp - F)
+         - 1870 * e * math.sin(M - Mp - F)
+         + 1828 * math.sin(4 * D - Mp - F)
+         - 1794 * e * math.sin(M + F)
+    b / 1000000.0
+
+// Moon minus sun, folded to (-180, 180]. Zero at new moon, +/-180 at full.
+// The longitude series keeps the leading 13 terms of the 16 in moon.py; the
+// three dropped ones total under 0.04 degrees, which is under five minutes of
+// relative motion and invisible on any bar this runs on. The LATITUDE series
+// above is complete, because that is the one the node crossings come from.
+elongation(float jd) =>
+    float t  = (jd - 2451545.0) / 36525.0
+    float D  = math.toradians(297.8501921 + 445267.1114034 * t - 0.0018819 * t * t)
+    float M  = math.toradians(357.5291092 + 35999.0502909 * t - 0.0001536 * t * t)
+    float Mp = math.toradians(134.9633964 + 477198.8675055 * t + 0.0087414 * t * t)
+    float F  = math.toradians(93.2720950 + 483202.0175233 * t - 0.0036539 * t * t)
+    float L  = 218.3164477 + 481267.88123421 * t - 0.0015786 * t * t
+    float e  = 1 - 0.002516 * t - 0.0000074 * t * t
+    float s = 6288774 * math.sin(Mp)
+         + 1274027 * math.sin(2 * D - Mp)
+         + 658314 * math.sin(2 * D)
+         + 213618 * math.sin(2 * Mp)
+         - 185116 * e * math.sin(M)
+         - 114332 * math.sin(2 * F)
+         + 58793 * math.sin(2 * D - 2 * Mp)
+         + 57066 * e * math.sin(2 * D - M - Mp)
+         + 53322 * math.sin(2 * D + Mp)
+         + 45758 * e * math.sin(2 * D - M)
+         - 40923 * e * math.sin(M - Mp)
+         - 34720 * math.sin(D)
+         - 30383 * e * math.sin(M + Mp)
+    float moonL = L + s / 1000000.0
+    float L0 = 280.46646 + 36000.76983 * t + 0.0003032 * t * t
+    float C = (1.914602 - 0.004817 * t - 0.000014 * t * t) * math.sin(M)
+         + (0.019993 - 0.000101 * t) * math.sin(2 * M)
+         + 0.000289 * math.sin(3 * M)
+    float sunL = L0 + C
+    ((moonL - sunL) % 360 + 540) % 360 - 180
+
+// ── The timeframe has to be able to hold the cycle ──
+
+
+// ── Moon node detection, per bar ──
+//
+// A 27.21-day cycle sampled once every 30.44 days does not come out slow, it
+// comes out ALIASED: the beat period is 1 / |1/27.21 - 1/30.44| = 257 days,
+// about 8.4 months. On a monthly chart this section used to mark "Rahu"
+// every eight or nine months and fill its table with confident nonsense —
+// measured gaps of 8.1, 8.9, 8.0, 8.0, 9.0, 9.0 against the 8.4 predicted.
+// Nyquist wants two samples per cycle, so 13.6-day bars is the floor; weekly
+// clears it and can only place a crossing to the week. Coarser is refused.
+float barDays  = timeframe.in_seconds() / 86400.0
+bool  tfUsable = barDays <= 7.5
+bool  tfCoarse = barDays > 1.5
+bool  moonOn   = (showMoon or showPhase) and tfUsable
+
+float moonLat_ = moonOn ? moonLat(julian(time)) : na
+float moonElo_ = (showPhase and tfUsable) ? elongation(julian(time)) : na
+
+crossRahu = moonOn and not na(moonLat_[1]) and moonLat_[1] < 0 and moonLat_ >= 0
+crossKetu = moonOn and not na(moonLat_[1]) and moonLat_[1] > 0 and moonLat_ <= 0
+
+// The fold makes elongation jump from +180 to -180 at full moon, so a plain
+// sign change finds the full moon as well as the new one. Requiring the
+// values to be small is what tells a zero from the cliff.
+newMoon  = showPhase and tfUsable and not na(moonElo_[1]) and moonElo_[1] < 0 and moonElo_ >= 0 and math.abs(moonElo_) < 90
+fullMoon = showPhase and tfUsable and not na(moonElo_[1]) and moonElo_[1] > 0 and moonElo_ < 0 and math.abs(moonElo_) > 90
+
+// Kept in their own arrays, NOT in drawnLabels/drawnLines: those are wiped
+// and rebuilt on every last bar for the summation drawing, while these are
+// historical marks that should stay where they were put. The ring buffer is
+// the label budget — TradingView allows 500 per script and the pivot counts
+// already want most of them.
+var array<label> moonLabels = array.new<label>()
+var array<line>  moonLineArr = array.new<line>()
+
+markMoon(bool isHigh, string txt, color col) =>
+    label lb = label.new(bar_index, isHigh ? high : low,
+         txt, yloc = isHigh ? yloc.abovebar : yloc.belowbar,
+         style = isHigh ? label.style_label_down : label.style_label_up,
+         color=color.new(col, 20), textcolor=color.white, size=size.tiny)
+    array.push(moonLabels, lb)
+    if moonLines
+        line ln = line.new(bar_index, low, bar_index, high, xloc=xloc.bar_index,
+             extend=extend.both, color=color.new(col, 70), style=line.style_dotted)
+        array.push(moonLineArr, ln)
+    while array.size(moonLabels) > moonLast
+        label.delete(array.shift(moonLabels))
+    while array.size(moonLineArr) > moonLast
+        line.delete(array.shift(moonLineArr))
+
+if showMoon and crossRahu
+    markMoon(true, "Rahu", rahuCol)
+if showMoon and crossKetu
+    markMoon(false, "Ketu", ketuCol)
+if newMoon or fullMoon
+    label pl = label.new(bar_index, high, newMoon ? "●" : "○", yloc=yloc.abovebar,
+         style=label.style_none, textcolor=phaseCol, size=size.small)
+    array.push(moonLabels, pl)
+    while array.size(moonLabels) > moonLast
+        label.delete(array.shift(moonLabels))
+
+// Each draconic month runs Rahu to Rahu.
+var array<int> rahuBars = array.new<int>()
+if crossRahu
+    array.push(rahuBars, bar_index)
 
 
 // ── Analysis, redrawn on the last bar ──
@@ -887,3 +1058,70 @@ if barstate.islast
             table.cell(info, 1, 11, str.tostring(chainLen) + " vs " + str.tostring(nb) +
                  (beatsNoise ? "  clears it" : "  random reaches this"),
                  text_color=beatsNoise ? color.lime : color.red, text_size=size.tiny)
+
+
+// ── The lunar-month comparison table ──
+//
+// Not a score. The lecture is explicit that a conjunction is not a direction
+// — "it isn't either" — and asks instead whether the market is repeating
+// what it did a month ago. The rule of thumb is printed beside each row as a
+// prediction to read the row against, never as a result.
+//
+// And read a full house with care: six rows matching looks like 1-in-64 and
+// is not, because consecutive months share a boundary. Across the S&P from
+// 1928 it falls on 1.1% of days against 1.6% for coin flips — RARER than
+// chance — and what follows is indistinguishable from any other day.
+var table moonTbl = na
+
+if barstate.islast and showMoon and monthsBack > 0
+    if na(moonTbl)
+        moonTbl := table.new(moonPos == "Top left" ? position.top_left :
+             moonPos == "Bottom right" ? position.bottom_right : position.middle_right,
+             4, monthsBack + 2, border_width=1,
+             frame_color=color.new(color.gray, 50), frame_width=1)
+    table.cell(moonTbl, 0, 0, "Lunar month", bgcolor=color.new(color.black, 20),
+         text_color=color.white, text_size=size.small)
+    table.cell(moonTbl, 1, 0, "from", bgcolor=color.new(color.black, 20),
+         text_color=color.white, text_size=size.small)
+    table.cell(moonTbl, 2, 0, "move", bgcolor=color.new(color.black, 20),
+         text_color=color.white, text_size=size.small)
+    table.cell(moonTbl, 3, 0, tfCoarse and tfUsable ? "vs now (bar-resolution only)" : "vs now",
+         bgcolor=color.new(color.black, 20), text_color=color.white, text_size=size.small)
+
+    int msz = array.size(rahuBars)
+    if not tfUsable
+        table.cell(moonTbl, 0, 1, "timeframe too coarse", text_color=color.red, text_size=size.tiny)
+        table.cell(moonTbl, 1, 1, str.tostring(barDays, "#.#") + "-day bars",
+             text_color=color.red, text_size=size.tiny)
+        table.cell(moonTbl, 2, 1, "aliases to ~257 d", text_color=color.red, text_size=size.tiny)
+        table.cell(moonTbl, 3, 1, "use daily, or weekly at a push",
+             text_color=color.red, text_size=size.tiny)
+    else if msz >= 2
+        float nowMove = na
+        for k = 0 to monthsBack
+            int si = msz - 1 - k
+            if si >= 0
+                int sb = array.get(rahuBars, si)
+                int eb = k == 0 ? bar_index : array.get(rahuBars, si + 1)
+                int so = bar_index - sb
+                int eo = bar_index - eb
+                if so >= 0 and so < 5000 and eo >= 0 and eo < 5000 and close[so] != 0
+                    float mv = (close[eo] - close[so]) / close[so] * 100.0
+                    if k == 0
+                        nowMove := mv
+                    string same = k == 0 ? "—" :
+                         (na(nowMove) ? "?" : ((mv > 0) == (nowMove > 0) ? "same" : "opposite"))
+                    string want = k == 0 ? "" :
+                         (k % 2 == 1 ? " (odd: expect opposite)" : " (even: expect same)")
+                    table.cell(moonTbl, 0, k + 1,
+                         k == 0 ? "now, so far" : str.tostring(k) + " back",
+                         text_color=color.gray, text_size=size.tiny)
+                    table.cell(moonTbl, 1, k + 1, str.format_time(time[so], "yyyy-MM-dd"),
+                         text_color=color.gray, text_size=size.tiny)
+                    table.cell(moonTbl, 2, k + 1, str.tostring(mv, "#.##") + "%",
+                         text_color=mv > 0 ? ketuCol : rahuCol, text_size=size.tiny)
+                    table.cell(moonTbl, 3, k + 1, same + want,
+                         text_color=color.new(color.white, 20), text_size=size.tiny)
+    else
+        table.cell(moonTbl, 0, 1, "not enough history", text_color=color.gray, text_size=size.tiny)
+        table.cell(moonTbl, 1, 1, "load more bars", text_color=color.gray, text_size=size.tiny)
