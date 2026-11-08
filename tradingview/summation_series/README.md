@@ -463,6 +463,41 @@ each row as a prediction to read the row against rather than as a result.
 
 Nothing here scores a setup, and nothing colours a conjunction as a signal.
 
+### The calendar ahead
+
+`Project this many conjunctions ahead` (default 6) adds a calendar section to
+the lunar table and marks the dates on the chart as dotted lines.
+
+**This is the one projection on the panel that is not a forecast.** Everything
+else that points forward here was measured and lands at chance. A node
+crossing is astronomy: the ephemeris is checked against five published solar
+eclipses and lands within minutes of each, and the Pine root-finder was
+verified against the Python one to the millisecond across six future
+crossings. The dates are not in doubt.
+
+What the market does on them is an entirely separate question, and the
+backtest above answers it: nothing reliable. The calendar is there so you can
+see the dates coming, which is what the lecture uses them for.
+
+```
+Ahead   date (UT)           in     astronomy, not a forecast
+Rahu    2026-11-17 11:45     9 d
+Ketu    2026-11-30 03:39    22 d
+Rahu    2026-12-14 13:02    36 d
+Ketu    2026-12-27 08:07    49 d
+```
+
+**The dates are exact; the line positions are not.** Placing a date on a
+future bar needs an average bar spacing, and holidays and half-days make that
+an estimate, so a mark can stand a bar or two off its true date. Read the
+table for the date and the line for roughly where it falls.
+
+The same calendar outside TradingView, with new and full moons included:
+
+```bash
+python3 cycles/moon.py --ahead 60
+```
+
 ### Settings
 
 - **What to mark** — node conjunctions, optionally new and full moons (the

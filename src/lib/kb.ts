@@ -952,6 +952,12 @@ const moonCycles: KbArticle = {
     },
     {
       kind: 'callout',
+      tone: 'key',
+      title: 'The calendar ahead is the one projection that is not a forecast',
+      text: 'Everything else on this panel that points forward has been measured and lands at chance. A node crossing is different in kind: it is astronomy. The ephemeris is checked against five published solar eclipses and lands within minutes of each, and the indicator\u2019s own root-finder was verified against it to the millisecond across six future crossings. So the dates are not in doubt \u2014 Rahu 17 Nov 2026 11:45 UT, Ketu 30 Nov 03:39, Rahu 14 Dec 13:02. What the market does on them is a separate question with a separate answer, and that answer is still: nothing reliable. The calendar exists so the dates can be seen coming, which is what the lecture uses them for. One caveat: the dates are exact, the chart marks are not, because placing a date on a future bar needs an average bar spacing and holidays make that an estimate.',
+    },
+    {
+      kind: 'callout',
       tone: 'note',
       title: 'Why the ephemeris can be trusted here',
       text: 'cycles/moon.py is checked against five published solar eclipses \u2014 a solar eclipse is a new moon at a node, so both routines have to land together. Every new moon comes within nine minutes of the catalogued time and every eclipse carries a node crossing within hours. Measured back from its own roots the draconic month reads 27.2141 days against the book\u2019s 27.2122, and the synodic 29.530567 against 29.530588.',

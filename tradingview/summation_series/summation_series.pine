@@ -118,6 +118,8 @@ moonLast   = input.int(40, "Label only the last N conjunctions", minval=5, maxva
      tooltip="TradingView allows 500 labels per script and the pivot counts already want most of them. 40 node labels is about three years on a daily chart.")
 monthsBack = input.int(6, "Compare this many lunar months", minval=0, maxval=8, group=G_MOON,
      tooltip="\"What did it do last month? And two months ago?\" 0 hides the table. Note what the backtest found: a Ketu entry wins no more often than any other day, and the odd/even rule is short-horizon mean reversion that any block of the same length shows. The table is a reading aid, not a signal.")
+aheadN     = input.int(6, "Project this many conjunctions ahead", minval=0, maxval=12, group=G_MOON,
+     tooltip="A calendar of the node crossings still to come. These dates are astronomy, not a forecast: the ephemeris puts them within minutes, so unlike every other projection on this panel they are not in doubt. What the market does on them is a separate question, and the backtest in the README says: nothing reliable.")
 moonPos    = input.string("Bottom right", "Table position",
      options=["Bottom right", "Bottom left", "Top left"], group=G_MOON,
      tooltip="\"Middle right\" used to be here and was the default, and it was wrong: the summation table at top right runs to twelve rows, which reaches into the middle of the pane, so the two drew on top of each other and both became unreadable. The three corners left are ones a twelve-row table cannot reach.")
@@ -312,6 +314,42 @@ moonLat(float jd) =>
          + 1828 * math.sin(4 * D - Mp - F)
          - 1794 * e * math.sin(M + F)
     b / 1000000.0
+
+// The node crossings still to come. Stepping a day at a time from `fromJd`,
+// a sign change in the latitude brackets a crossing and bisection pins it.
+// Cheap enough to run on the last bar: a few hundred evaluations of a
+// twenty-term sine series.
+//
+// Returns julian days and, for each, whether the moon is heading north
+// (Rahu) or south (Ketu).
+nextNodes(float fromJd, int want, int maxDays) =>
+    array<float> jds = array.new<float>()
+    array<bool>  asc = array.new<bool>()
+    float prev = moonLat(fromJd)
+    for d = 1 to maxDays
+        float j = fromJd + d
+        float cur = moonLat(j)
+        if (prev < 0 and cur >= 0) or (prev > 0 and cur <= 0)
+            float lo = j - 1
+            float hi = j
+            float flo = prev
+            for _it = 1 to 40
+                float mid = (lo + hi) / 2.0
+                float fm = moonLat(mid)
+                if flo * fm <= 0
+                    hi := mid
+                else
+                    lo := mid
+                    flo := fm
+            array.push(jds, (lo + hi) / 2.0)
+            array.push(asc, cur >= 0)
+            if array.size(jds) >= want
+                break
+        prev := cur
+    [jds, asc]
+
+unixMsFromJd(float j) =>
+    (j - 2440587.5) * 86400000.0
 
 // Moon minus sun, folded to (-180, 180]. Zero at new moon, +/-180 at full.
 // The longitude series keeps the leading 13 terms of the 16 in moon.py; the
@@ -1090,11 +1128,11 @@ if barstate.islast
 // chance — and what follows is indistinguishable from any other day.
 var table moonTbl = na
 
-if barstate.islast and showMoon and monthsBack > 0
+if barstate.islast and showMoon and (monthsBack > 0 or aheadN > 0)
     if na(moonTbl)
         moonTbl := table.new(moonPos == "Top left" ? position.top_left :
              moonPos == "Bottom left" ? position.bottom_left : position.bottom_right,
-             4, monthsBack + 2, border_width=1,
+             4, monthsBack + 3 + aheadN, border_width=1,
              frame_color=color.new(color.gray, 50), frame_width=1)
     table.cell(moonTbl, 0, 0, "Lunar month", bgcolor=color.new(color.black, 20),
          text_color=color.white, text_size=size.small)
@@ -1142,3 +1180,59 @@ if barstate.islast and showMoon and monthsBack > 0
     else
         table.cell(moonTbl, 0, 1, "not enough history", text_color=color.gray, text_size=size.tiny)
         table.cell(moonTbl, 1, 1, "load more bars", text_color=color.gray, text_size=size.tiny)
+
+    // ── The calendar ahead ──
+    //
+    // The one projection on this panel that is not a forecast. A node
+    // crossing is astronomy: the ephemeris here is checked against five
+    // published solar eclipses and lands within minutes of each, so these
+    // DATES are not in doubt. What the market does on them is a different
+    // question, and the backtest says nothing reliable.
+    //
+    // The dates are exact; where the line sits is not. Mapping a date to a
+    // future bar needs an average bar spacing, and holidays and half-days
+    // make that an estimate, so a mark can stand a bar or two off its date.
+    // Read the table for the date and the line for roughly where it falls.
+    if tfUsable and aheadN > 0
+        int lookback = math.min(bar_index, 100)
+        float msPerBar = lookback > 0 ? (time - time[lookback]) / lookback : 86400000.0
+        [fjd, fasc] = nextNodes(julian(time) + 0.05, aheadN, 420)
+        table.cell(moonTbl, 0, monthsBack + 2, "Ahead", bgcolor=color.new(color.black, 20),
+             text_color=color.white, text_size=size.small)
+        table.cell(moonTbl, 1, monthsBack + 2, "date (UT)", bgcolor=color.new(color.black, 20),
+             text_color=color.white, text_size=size.small)
+        table.cell(moonTbl, 2, monthsBack + 2, "in", bgcolor=color.new(color.black, 20),
+             text_color=color.white, text_size=size.small)
+        table.cell(moonTbl, 3, monthsBack + 2, "astronomy, not a forecast",
+             bgcolor=color.new(color.black, 20), text_color=color.gray, text_size=size.small)
+        if array.size(fjd) > 0
+            for i = 0 to array.size(fjd) - 1
+                float j = array.get(fjd, i)
+                bool isRahu = array.get(fasc, i)
+                float ms = unixMsFromJd(j)
+                int days = int(math.round((ms - time) / 86400000.0))
+                int row = monthsBack + 3 + i
+                table.cell(moonTbl, 0, row, isRahu ? "Rahu" : "Ketu",
+                     text_color=isRahu ? rahuCol : ketuCol, text_size=size.tiny)
+                table.cell(moonTbl, 1, row, str.format_time(int(ms), "yyyy-MM-dd HH:mm", "UTC"),
+                     text_color=color.new(color.white, 20), text_size=size.tiny)
+                table.cell(moonTbl, 2, row, str.tostring(days) + " d",
+                     text_color=color.gray, text_size=size.tiny)
+                table.cell(moonTbl, 3, row, "", text_size=size.tiny)
+                // These redraw every last bar, so they belong in the arrays
+                // that get wiped and rebuilt — unlike the historical node
+                // marks, which stay where they were put.
+                int off = int(math.round((ms - time) / msPerBar))
+                if off > 0 and off < 480
+                    line fl = line.new(bar_index + off, low, bar_index + off, high,
+                         xloc=xloc.bar_index, extend=extend.both,
+                         color=color.new(isRahu ? rahuCol : ketuCol, 55),
+                         style=line.style_dotted, width=1)
+                    array.push(drawnLines, fl)
+                    label flb = label.new(bar_index + off, high,
+                         (isRahu ? "Rahu " : "Ketu ") + str.format_time(int(ms), "d MMM", "UTC"),
+                         xloc=xloc.bar_index, yloc=yloc.abovebar,
+                         style=label.style_label_down,
+                         color=color.new(isRahu ? rahuCol : ketuCol, 35),
+                         textcolor=color.white, size=size.tiny)
+                    array.push(drawnLabels, flb)
