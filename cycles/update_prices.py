@@ -71,11 +71,28 @@ def _get(url, timeout=30):
 
 # ── Sources ──
 
+# Stooq serves the same CSV from two hosts, and rate-limits by IP. A shared
+# runner can be over the limit on one and fine on the other.
+STOOQ_HOSTS = ("https://stooq.com", "https://stooq.pl")
+
+
 def fetch_stooq(code):
     """Full daily history from Stooq. Returns [(YYYY-MM-DD, close)] oldest first."""
-    text = _get(f"https://stooq.com/q/d/l/?s={code}&i=d")
-    if not text.lstrip().lower().startswith("date"):
-        raise ValueError(f"unexpected Stooq response: {text[:80]!r}")
+    problems = []
+    text = None
+    for host in STOOQ_HOSTS:
+        try:
+            body = _get(f"{host}/q/d/l/?s={code}&i=d")
+        except Exception as e:                      # noqa: BLE001 - try the other host
+            problems.append(f"{host}: {e}")
+            continue
+        if body.lstrip().lower().startswith("date"):
+            text = body
+            break
+        # Stooq answers 200 with a plain-text refusal, so the body is the error.
+        problems.append(f"{host}: {body.strip()[:120]!r}")
+    if text is None:
+        raise ValueError("; ".join(problems) or "no response")
     rows = []
     for row in csv.DictReader(io.StringIO(text)):
         close = row.get("Close")
@@ -90,11 +107,19 @@ def fetch_stooq(code):
     return rows
 
 
-def fetch_yahoo(symbol, period1=0):
-    """Daily history from Yahoo's chart API. Returns [(YYYY-MM-DD, close)] oldest first."""
+def fetch_yahoo(symbol, period1=None):
+    """Daily history from Yahoo's chart API. Returns [(YYYY-MM-DD, close)] oldest first.
+
+    `period1=None` asks for `range=max` rather than a start timestamp. Unix
+    time starts in 1970, so `period1=0` is not "everything" — it is "since
+    1970", and it quietly cut the S&P 500 off at 1970 when its history runs
+    back to 1927. There is no timestamp that means "the beginning"; the range
+    parameter is the only way to ask for it.
+    """
     sym = urllib.parse.quote(symbol, safe="")
-    url = (f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}"
-           f"?period1={int(period1)}&period2={int(time.time()) + 86400}&interval=1d")
+    window = ("range=max" if period1 is None
+              else f"period1={int(period1)}&period2={int(time.time()) + 86400}")
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}?{window}&interval=1d"
     data = json.loads(_get(url))
     result = (data.get("chart") or {}).get("result")
     if not result:
@@ -173,7 +198,7 @@ def update_symbol(symbol, source, dry_run):
 
     if source in ("both", "yahoo"):
         # Only the recent tail is needed when we already hold history.
-        period1 = 0 if not existing and not pulled else time.time() - 120 * 86400
+        period1 = None if not existing and not pulled else time.time() - 120 * 86400
         try:
             rows = fetch_yahoo(symbol, period1)
             pulled.append(rows)

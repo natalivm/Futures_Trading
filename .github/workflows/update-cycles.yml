@@ -35,7 +35,7 @@ jobs:
           python-version: '3.12'
 
       - name: Refresh daily closes
-        run: python3 cycles/update_prices.py
+        run: python3 cycles/update_prices.py 2>&1 | tee /tmp/fetch.log
 
       - name: Run the analysis and write the report
         run: |
@@ -46,6 +46,12 @@ jobs:
             echo "# Cycle report"
             echo
             echo "Generated $(date -u '+%Y-%m-%d %H:%M UTC') from commit ${GITHUB_SHA:0:7}."
+            echo
+            echo '## Fetch log'
+            echo
+            echo '```'
+            cat /tmp/fetch.log 2>/dev/null || echo '(no log)'
+            echo '```'
             echo
             echo '## Price files'
             echo
