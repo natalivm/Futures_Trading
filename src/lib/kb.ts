@@ -197,7 +197,14 @@ const sixtyYear: KbArticle = {
         { rule: 'Window', detail: '440 trading days — about 22 months.' },
         { rule: 'Offset', detail: '60 years, named in advance rather than searched for.' },
         { rule: 'Command', detail: 'find_cycles.py --symbol ^DJI --lag-years 60 --window 440' },
+        { rule: 'Measurable on', detail: 'The S\u0026P, not the Dow. Yahoo\u2019s Dow record starts in 1992, so 60 years cannot be measured on it and the figure above says so. The S\u0026P reaches 1927.' },
       ],
+    },
+    {
+      kind: 'callout',
+      tone: 'key',
+      title: 'Tested on the S&P, it was the strongest claim in this course \u2014 and then it decayed',
+      text: 'Run on the S&P as of 30 June 2022, the pre-specified 60-year offset scores 0.922 on price and 0.457 on swing \u2014 the only swing figure anywhere in these pages to clear the 0.449 a random walk reaches, and its analog is 1960-09 to 1962-06, exactly the stretch the course points at. The same offset today reads \u22120.279 on price and 0.182 on swing. The window the claim was made on matched; the window since has not. Its forward call fared better than the overlay did: +29.6% projected over eleven months against +10.4% delivered, so the direction held and a third of the size.',
     },
     { kind: 'heading', text: 'The claim' },
     {
@@ -732,6 +739,226 @@ const invertedCycles: KbArticle = {
   ],
 };
 
+/**
+ * The one lecture that can be scored.
+ *
+ * Almost every claim in this course is shown on a chart that already
+ * happened. This one is not: the slide's own quote line dates the recording,
+ * and it ends with a forecast. Four years of data have arrived since.
+ */
+const bondBacktest: KbArticle = {
+  id: 'bond-216-backtest',
+  title: 'Scoring the bond lecture, four years on',
+  summary: 'The 216-week chain, the 246-week mirror and the six-month call, each tested against what happened.',
+  source: 'Backtest: cycles/backtest_interval.py against ZB=F weekly',
+  updated: TODAY,
+  body: [
+    {
+      kind: 'callout',
+      tone: 'key',
+      title: 'The lecture was recorded on 18 November 2022',
+      text: 'Not a guess. The slide leaves its quote line visible — O=125 29/32, Hi=126 12/32, Lo=125 9/32 — and exactly one bar in the bond record carries those three numbers. That fixes the date and makes everything said after it a forecast with four years of out-of-sample data behind it.',
+    },
+    { kind: 'heading', text: 'The call itself: right' },
+    {
+      kind: 'rules',
+      items: [
+        { rule: '"We are basically at a low"', detail: 'Correct. The swing low was 117.59 on 24 October 2022, four weeks before he spoke.' },
+        { rule: '"It should go up for about six months"', detail: 'Broadly correct. Bonds ran from 125.44 to 134.44 by 3 April 2023 — +7.2% over 4.6 months — and were still +1.4% at the six-month mark.' },
+        { rule: '"The market\u2019s about to go down hard again"', detail: 'Correct, and hard: from that April peak to roughly 105 by October 2023. Four years on the contract is \u221213.5%, having set a new low at 101.16 on 5 October 2026.' },
+      ],
+    },
+    {
+      kind: 'callout',
+      tone: 'warn',
+      title: 'One call is one call',
+      text: 'A direction, a rough duration and a sequel, all of them right, on a single trade. That is worth noting and it is not evidence of a method. What follows is the evidence he offered for it, which is testable at a sample size above one.',
+    },
+    { kind: 'heading', text: 'The 216-week chain: real on his chart, and it broke' },
+    {
+      kind: 'list',
+      items: [
+        'On the chart he had, pivot highs 216 weeks apart run six deep: 2001-01-01, 2005-02-07, 2009-03-16, 2013-04-29, 2017-06-19, 2021-07-19. Every link inside \u00b14 weeks. It is a striking picture and it is really there.',
+        'It is there at one pivot definition. Swept across fifteen pivot strengths, the chain is six long at strengths 5 and 7 and collapses to one to three everywhere else. That is a result selected by how hard you squint.',
+        'The out-of-sample term was due the week of 8 September 2025. The nearest pivot high came on 20 October 2025 \u2014 six weeks late, outside the \u00b14 every earlier link held to. The chain did not continue.',
+        'The claim that each decline is bigger than the last does not hold either: the 216-week highs gave \u221221.0%, \u221227.8%, \u221220.5%. Up, then down.',
+      ],
+    },
+    {
+      kind: 'table',
+      caption: 'The control holds the real pivots fixed \u2014 same count, same types, same distribution of gaps \u2014 and shuffles only their order, so anything left is alignment.',
+      head: ['Test', 'Longest run', 'Random reaches it'],
+      rows: [
+        ['216w highs, his chart, strength 7', '6', '3% of runs'],
+        ['\u2026 corrected for the 15 strengths tried', '6', '\u224836%'],
+        ['216w highs, full series, strength 7', '6', '12.3%'],
+        ['216w highs, full series, strength 13', '3', '58.7%'],
+      ],
+    },
+    { kind: 'heading', text: 'The 246-week mirror: one good pair, no edge' },
+    {
+      kind: 'list',
+      items: [
+        'The specific pair holds. 246 weeks before the lecture is late February 2018, and the chart carries a pivot high there against the low he was pointing at. The mirror he described is in the data.',
+        'Across the whole series it is a coin flip with a lean. Of all pivot pairs 246 weeks apart, 56\u201367% are mirrored depending on pivot strength, against the 50% you get for nothing.',
+        'The daily scan agrees. Pre-specified at 1.57, 3.14 and 4.72 years, swing correlation reads 0.11 to 0.24 \u2014 well under the 0.449 a random walk scores on the same measure.',
+      ],
+    },
+    {
+      kind: 'callout',
+      tone: 'key',
+      title: 'What this case is actually worth',
+      text: 'He made a good call and the reasoning he gave for it does not survive a control. Those are two separate findings and neither cancels the other. The useful lesson is the one the rest of this page keeps arriving at from other directions: a chain of six intervals that looks undeniable on the chart is the kind of thing shuffled pivots produce often enough that you cannot tell them apart \u2014 and the way you find out is to write down the next date and wait, which is exactly what the 8 September 2025 term did for us.',
+    },
+    {
+      kind: 'rules',
+      items: [
+        { rule: 'Reproduce it', detail: 'python3 cycles/backtest_interval.py --interval 216 --type high --strength 7 --until 2022-11-18' },
+        { rule: 'And out of sample', detail: 'python3 cycles/backtest_interval.py --interval 216 --type high --strength 7 --as-of 2022-11-18' },
+      ],
+    },
+  ],
+};
+
+/**
+ * The step between finding a series and having a cycle.
+ *
+ * Kept separate from the two bond articles in the catalogue: they are the
+ * worked example and its score, this is the rule they are examples of.
+ */
+const multiplesRule: KbArticle = {
+  id: 'multiples-rule',
+  title: 'The series is the middle of the work, not the end',
+  summary: 'Counting pivots gives you numbers. Multiples of the numbers over 50 are where a cycle length comes from.',
+  source: 'Market Forecast Mastery \u2014 Allen Reminick',
+  updated: TODAY,
+  body: [
+    'A summation chain is not a set of cycle lengths. It is a set of candidates to multiply.',
+    {
+      kind: 'rules',
+      items: [
+        { rule: 'Take the terms over 50', detail: 'Below that the interval is too short to repeat enough times to be worth measuring. Smaller terms stay in the chain; they just are not multiplied.' },
+        { rule: 'Multiply each by 1, 2, 3, 4, 5', detail: 'The term itself counts as x1 \u2014 sometimes the count already is the cycle.' },
+        { rule: 'Test each product as an interval', detail: 'Does it recur high to high, or low to low? That is the only question the multiple has to answer.' },
+        { rule: 'Accept a half as well as a whole', detail: 'A product that lands a high on a low is half of the real cycle, so the real one is twice it. Polarity tells you which you have.' },
+        { rule: 'Confirm by watching it repeat', detail: 'The multiple is a hypothesis until the chart has done it more than twice.' },
+      ],
+    },
+    { kind: 'heading', text: 'Why a half cycle is still a cycle' },
+    {
+      kind: 'list',
+      items: [
+        'The 246-week bond interval is about 4.7 years. Double it and you get 9.3; double again and you get 18.6 \u2014 the lunar nodal period the course ties to the real-estate cycle.',
+        'So one interval inverted and another upright can be the same cycle seen at two scales, and when both point the same way that is agreement rather than coincidence.',
+        'The ratio of consecutive terms approaches the golden ratio as they grow: 216 \u00f7 134 is 1.612. You cannot see that at the start of a chain \u2014 4, 8, 12, 20 shows nothing \u2014 which is why the course works forward from counts rather than starting from a ratio.',
+      ],
+    },
+    { kind: 'heading', text: 'Start big, then tighten' },
+    {
+      kind: 'list',
+      tight: true,
+      items: [
+        'Monthly \u2014 whether the next five years go up or down.',
+        'Weekly \u2014 where the method starts, and where the big picture is readable.',
+        'Daily \u2014 the trading level: up thirteen days, down twelve.',
+        'Hourly and below \u2014 swing and intraday, by which point a lot of cycle structure is already in hand.',
+      ],
+    },
+    {
+      kind: 'callout',
+      tone: 'warn',
+      title: 'Multiplying is the widest search in this whole method',
+      text: 'Four chain terms over the floor, times five, tested upright and mirrored, is forty hypotheses \u2014 against a noise bar measured for one. The indicator prints the candidate count beside whatever it finds for exactly this reason, and colours the row as a lead rather than a finding. What that costs is measured on a real case in \u201cScoring the bond lecture, four years on\u201d.',
+    },
+    {
+      kind: 'callout',
+      tone: 'note',
+      title: 'The indicator does not reproduce the lecture\u2019s own series',
+      text: 'Run on the same weekly bond chart truncated to the day of the lecture, the mechanical chain reads 43, 91, 136, 227, 363, 591 \u2014 not 82, 134, 216. The 134 turns up at most pivot settings and 82 at none of the eight tried. A hand-marked chart and a pivot rule do not pick the same swings, and the gap has been left visible rather than tuned away: fitting the pivot settings until a published answer falls out is how you end up measuring your own assumptions.',
+    },
+  ],
+};
+
+/**
+ * The moon section, with its own numbers attached.
+ *
+ * This one came with a statistic ("you win about 70% of the time"), which is
+ * rare enough in the course to be worth taking literally and testing.
+ */
+const moonCycles: KbArticle = {
+  id: 'moon-node-cycles',
+  title: 'Moon cycles, and the three lengths people confuse',
+  summary: 'Rahu and Ketu conjunctions as swing triggers \u2014 the 70% claim measured, and what survives it.',
+  source: 'Market Forecast Mastery \u2014 Allen Reminick; tested with cycles/backtest_moon.py',
+  updated: TODAY,
+  body: [
+    {
+      kind: 'table',
+      caption: 'Three cycles get called \u201cthe lunar cycle\u201d. A test run on the wrong one tests nothing.',
+      head: ['Cycle', 'Length', 'What it is'],
+      rows: [
+        ['Synodic', '29.53 d', 'New moon to new moon \u2014 what most people mean, because you can see it'],
+        ['Sidereal', '27.32 d', 'The moon once round the zodiac'],
+        ['Draconic', '27.21 d', 'North node to north node \u2014 the one the course trades'],
+      ],
+    },
+    {
+      kind: 'rules',
+      items: [
+        { rule: 'Rahu', detail: 'The north node. Moon conjunct Rahu is the moon crossing the ecliptic going north.' },
+        { rule: 'Ketu', detail: 'The south node, the crossing going south, about a fortnight later.' },
+        { rule: 'Finding them needs no zodiac', detail: 'They are the two zeros of the moon\u2019s ecliptic latitude each draconic month \u2014 arithmetic on a timestamp.' },
+        { rule: 'What they are for', detail: 'A swing-trade trigger: a date to look at, not a direction to take.' },
+      ],
+    },
+    { kind: 'heading', text: 'The three claims, measured' },
+    {
+      kind: 'table',
+      caption: 'S&P 500, 2010\u20132026, held four weeks. The last column is the whole result.',
+      head: ['Horizon', 'Ketu win', 'Rahu win', 'Any day at all'],
+      rows: [
+        ['1 week', '60.6%', '61.5%', '60.1%'],
+        ['2 weeks', '64.2%', '62.8%', '63.5%'],
+        ['To the next node', '65.5%', '67.7%', '66.2%'],
+        ['4 weeks', '67.3%', '67.3%', '67.2%'],
+      ],
+    },
+    {
+      kind: 'list',
+      items: [
+        '\u201cBuy at Ketu and you win about 70% of the time.\u201d The rate is real \u2014 67.3% over four weeks. Buying on any day at all over four weeks wins 67.2%. The number is the market\u2019s drift over a month, measured at the node.',
+        '\u201cRahu is more bearish than bullish.\u201d No. Rahu wins as often as Ketu at every horizon and more at one of them. On the full record since 1928, a randomly-phased schedule beats the real four-week Ketu rate 91% of the time.',
+        '\u201cLast month tends to be the opposite.\u201d True, and not lunar. Draconic-month returns carry a real negative lag-1 autocorrelation \u2014 \u22120.159 on the S&P since 2010, \u22120.109 on ES since 2000 \u2014 but cut the same series into 19-bar blocks at an arbitrary phase and it reads \u22120.162, marginally stronger. It is short-horizon mean reversion. Any block of that length does it.',
+        '\u201cTwo, four, six and eight months back tend to be the same.\u201d Not found. Every even lag sits inside the shuffle band since 2010, and on the full record the pattern is incoherent \u2014 lag 3 holds, lag 4 goes the wrong way.',
+      ],
+    },
+    {
+      kind: 'callout',
+      tone: 'key',
+      title: 'The framing outlives the statistics',
+      text: 'The lecture is explicit that the conjunction is not a direction \u2014 \u201cit isn\u2019t either\u201d, some months bullish, some bearish, no statistical meaning in a normal market. What it asks is whether the market is repeating what it did a month ago. That question costs nothing to ask and the indicator is built for it: each completed draconic month\u2019s move, and whether it matches the one in progress. What does not survive is the part that got turned into a win rate.',
+    },
+    {
+      kind: 'callout',
+      tone: 'warn',
+      title: 'Six rows out of six is rarer than a coin, and still means nothing',
+      text: 'The panel marks each earlier month same or opposite against the rule, and a full house of six looks like a 1-in-64 event. It is not, because the rows share boundaries and are not independent: measured across the S&P from 1928, 6/6 turns up on 1.1% of days against the 1.6% coin flips would give, and 0/6 on 1.0% against 1.6% \u2014 the whole distribution is squeezed toward the middle. A panel cut at an arbitrary phase reaches a full house as often or oftener 40% of the time, and what follows a 6/6 day is not distinguishable from what follows any other day. It is a striking thing to look at and it is not a signal.',
+    },
+    {
+      kind: 'callout',
+      tone: 'warn',
+      title: 'Daily or finer \u2014 a monthly chart aliases this cycle into fiction',
+      text: 'A 27.21-day cycle sampled once every 30.44 days does not come out slow, it comes out aliased: the beat period is 1 \u00f7 |1/27.21 \u2212 1/30.44| = 257 days, about 8.4 months. Run on a monthly chart the first version of the indicator duly marked \u201cRahu\u201d every eight or nine months \u2014 measured gaps of 8.1, 8.9, 8.0, 8.0, 9.0, 9.0 \u2014 and filled its table with confident nonsense. It now refuses anything coarser than weekly and says why. Nyquist wants two samples per cycle, so 13.6-day bars is the floor; weekly clears it and can only place a crossing to the week.',
+    },
+    {
+      kind: 'callout',
+      tone: 'note',
+      title: 'Why the ephemeris can be trusted here',
+      text: 'cycles/moon.py is checked against five published solar eclipses \u2014 a solar eclipse is a new moon at a node, so both routines have to land together. Every new moon comes within nine minutes of the catalogued time and every eclipse carries a node crossing within hours. Measured back from its own roots the draconic month reads 27.2141 days against the book\u2019s 27.2122, and the synodic 29.530567 against 29.530588.',
+    },
+  ],
+};
+
 // ── Using a forecast ──
 
 const rulesOfAnalysis: KbArticle = {
@@ -925,13 +1152,13 @@ export const categories: KbCategory[] = [
     id: 'cycles',
     title: 'Technique 1 — locating cycles',
     description: 'The scanner that searches every offset for the one today’s market rhymes with, and the controls that say which scores to believe.',
-    articles: [cycleScanner],
+    articles: [cycleScanner, multiplesRule, moonCycles],
   },
   {
     id: 'catalogue',
     title: 'The cycle catalogue',
     description: 'The specific cycles the course works with — equities, crude and gold — the evidence for each, and where each points.',
-    articles: [sixtyYear, seventyEightYear, spShortCycles, electionCycle, crudeCycles, metonicCycle, goldCycle, invertedCycles, composite],
+    articles: [sixtyYear, seventyEightYear, spShortCycles, electionCycle, crudeCycles, metonicCycle, goldCycle, invertedCycles, bondBacktest, composite],
   },
   {
     id: 'using',

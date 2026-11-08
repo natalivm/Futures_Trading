@@ -100,6 +100,25 @@ multiples.
 51, 82 — and the one that works is **82 × 3 = 246 weeks**, which never appears
 as a label. `--preset bonds` carries 82 and 246 weeks as 1.57 and 4.72 years.
 
+This one *is* in the indicator now, as the **Multiple cycle** row: every chain
+term above `multFloor` (50 — below that an interval is too short to repeat
+enough times to measure) times one to five, each product tested as a recurring
+high-to-high or low-to-low interval and again mirrored, since a product that
+lands a high on a low is half of the real cycle. The winning grid is drawn on
+the chart, back and two terms forward. **Moves after each** reports what
+followed every hit, because the lecture's claim is not only that the highs
+recur but that each decline is bigger than the last.
+
+> The row always carries its candidate count — `(of 36 tried)` — and is never
+> coloured as a finding. Four terms over the floor times five tested two ways
+> is forty hypotheses against a noise bar measured for one, which is a wider
+> search than the chain itself and has no control. Read it as a lead.
+>
+> It also does not reproduce the lecture's own 82 / 134 / 216 on the same
+> chart: truncated to the day of the lecture the mechanical chain reads 43,
+> 91, 136, 227, 363, 591, and 82 appears at none of the eight pivot settings
+> tried. That gap is left visible rather than tuned away.
+
 **A cycle can repeat inverted.** On that chart the highest high lines up with
 a major low, so every rally maps to a decline and every decline to a rally —
 and the week counts still match exactly, leg for leg: A→B a rally of N weeks

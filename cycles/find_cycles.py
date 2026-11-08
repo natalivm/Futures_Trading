@@ -472,6 +472,15 @@ def main():
                          "overwrite the open search's output")
     args = ap.parse_args()
 
+    # --as-of truncates the series, so its output is a historical replay and
+    # must never land on the filename the site reads. It did: two checks of a
+    # 2022 claim overwrote public/cycles/GSPC.json with a 440-day window that
+    # ended in 2022, and nothing said so.
+    if args.as_of and not args.json_suffix:
+        args.json_suffix = "_asof" + args.as_of
+        print(f"--as-of is a replay, so the JSON goes to <slug>{args.json_suffix}.json "
+              "and leaves the site's own file alone")
+
     if args.preset and not args.lag_years:
         args.lag_years = ",".join(str(x) for x in PRESETS[args.preset])
     args.lags = [float(x) for x in args.lag_years.split(",")] if args.lag_years else []

@@ -77,6 +77,11 @@ turnTol    = input.int(2, "Turn date tolerance (bars)", minval=0, maxval=10, gro
      tooltip="How close two analogs must land a turn for it to count as the same date. The course names a turn when both cycles agree on it.")
 showIntervals = input.bool(true, "Report recurring H-H / L-L intervals", group=G_PROJ,
      tooltip="Step 3: intervals between consecutive same-type pivots that keep repeating.")
+showMult   = input.bool(true, "Test multiples of the chain's terms", group=G_PROJ,
+     tooltip="\"The series wasn't the end point, it was the middle point. Once you found the series you have to do multiples.\" Each term over the floor is multiplied by 1..N and the result tested as a cycle length.")
+multFloor  = input.int(50, "Only terms above", minval=5, maxval=500, inline="mult", group=G_PROJ)
+multK      = input.int(5, "times 1..N", minval=1, maxval=8, inline="mult", group=G_PROJ,
+     tooltip="\"I try to use numbers bigger than 50. If the number is smaller than 50 the cycles aren't big enough to repeat long enough.\"")
 
 // ── 5 · Display ──
 showCounts = input.bool(true, "Label every pivot with its count", group=G_VIEW)
@@ -84,6 +89,7 @@ showTable  = input.bool(true, "Show the summary table", group=G_VIEW)
 chainCol   = input.color(color.new(color.aqua, 0), "Chain", inline="col", group=G_VIEW)
 plainCol   = input.color(#C792EA, "Other pivots", inline="col", group=G_VIEW)
 projCol    = input.color(color.new(color.orange, 0), "Projection", inline="col", group=G_VIEW)
+multCol    = input.color(#4DD0E1, "Multiple grid", inline="col2", group=G_VIEW)
 
 // ta.* has to be evaluated on every bar to keep its state, so it cannot live
 // inside the last-bar block that uses it.
@@ -154,6 +160,41 @@ noiseBar(int pivots, int tb, float tp) =>
     else
         v := row == 0 ? 5 : (row == 1 ? 6 : (row == 2 ? 7 : (row == 3 ? 8 : (row == 4 ? 9 : (row <= 6 ? 10 : 11)))))
     v
+
+// The longest run of same-type pivots each ~M bars after the previous one.
+// "216 weeks, high to high to high to high" is a claim about exactly this —
+// a run, not a count of pairs. A pair count rewards one dense cluster; a run
+// is the thing the chart is being asked to keep doing.
+//
+// Starts are pruned to pivots old enough to have a successor, which is what
+// keeps this affordable: the search is re-run for every candidate multiple.
+gridChain(int M, int tol, bool wantHigh) =>
+    array<int> best = array.new<int>()
+    int sz = array.size(pvBar)
+    int lastBar = sz > 0 ? array.get(pvBar, sz - 1) : 0
+    if sz > 0 and M > 0
+        for s = 0 to sz - 1
+            if array.get(pvHigh, s) == wantHigh and array.get(pvBar, s) + M <= lastBar + tol
+                array<int> run = array.new<int>()
+                array.push(run, s)
+                int at = array.get(pvBar, s)
+                for step = 1 to 24
+                    int target = at + M
+                    int found = -1
+                    int bestd = tol + 1
+                    for q = 0 to sz - 1
+                        if array.get(pvHigh, q) == wantHigh
+                            int d = math.abs(array.get(pvBar, q) - target)
+                            if d <= tol and d < bestd
+                                bestd := d
+                                found := q
+                    if found < 0
+                        break
+                    array.push(run, found)
+                    at := array.get(pvBar, found)
+                if array.size(run) > array.size(best)
+                    best := run
+    best
 
 // Closes over [startBar, startBar+len), oldest first.
 windowVals(startBar, len) =>
@@ -664,6 +705,115 @@ if barstate.islast
                 intervalText := str.tostring(bestGap) + " bars, seen " + str.tostring(bestCount) +
                      " of " + str.tostring(array.size(gaps))
 
+        // ── Step 4: multiples of the chain's larger terms ──
+        //
+        // "The series wasn't the end point, it was the middle point. Once you
+        //  found the series you have to do multiples of the numbers — but you
+        //  don't do it for all the numbers. I try to use numbers bigger than
+        //  50. Somewhere in there you may find one of those multiples is a
+        //  real cycle, or half of a real cycle."
+        //
+        // Half of one is why the mirrored polarity is tested too: on the
+        // bonds, 82 x 3 = 246 weeks lands a high on a low, which says 246 is
+        // the half and 492 the whole.
+        //
+        // The candidate count is reported beside the winner, and it is not
+        // decoration. Four terms over the floor, times five, tested two ways
+        // is forty hypotheses against a noise bar measured for one. The
+        // 216-week bond chain is what that costs: six highs deep on the
+        // lecture's own chart, every link inside four weeks, and the next
+        // term arrived six weeks late. This row is where to look first and
+        // the last thing to believe.
+        string multText = "—"
+        array<int> multChain = array.new<int>()
+        int multM = 0
+        bool multMirror = false
+        if showMult and haveChain
+            int tried = 0
+            int bestLen = 1
+            int bestTerm = 0
+            int bestK = 0
+            int span = array.get(pvBar, n - 1) - array.get(pvBar, 0)
+            if array.size(bestChain) > 0
+                for i = 0 to array.size(bestChain) - 1
+                    int term = array.get(counts, array.get(bestChain, i))
+                    if term >= multFloor
+                        for k = 1 to multK
+                            int M = term * k
+                            if M <= span
+                                tried += 2
+                                array<int> up = gridChain(M, tolFor(M), anchorIsHigh)
+                                if array.size(up) > bestLen
+                                    bestLen := array.size(up)
+                                    multChain := up
+                                    multM := M
+                                    multMirror := false
+                                    bestTerm := term
+                                    bestK := k
+                                array<int> mir = gridChain(M, tolFor(M), not anchorIsHigh)
+                                if array.size(mir) > bestLen
+                                    bestLen := array.size(mir)
+                                    multChain := mir
+                                    multM := M
+                                    multMirror := true
+                                    bestTerm := term
+                                    bestK := k
+            if bestLen > 1
+                multText := str.tostring(bestTerm) + " x" + str.tostring(bestK) + " = " +
+                     str.tostring(multM) + ", " + str.tostring(bestLen) +
+                     (multMirror ? " mirrored" : (anchorIsHigh ? " highs" : " lows")) +
+                     "  (of " + str.tostring(tried) + " tried)"
+            else if tried > 0
+                multText := "nothing recurs  (of " + str.tostring(tried) + " tried)"
+            else
+                multText := "no chain term over " + str.tostring(multFloor)
+
+        // What followed each one. The lecture's claim is not only that the
+        // highs recur but that the decline after each is bigger than the
+        // last — "the nature of growth". It is measurable, so it is measured
+        // rather than repeated.
+        string growText = "—"
+        if array.size(multChain) >= 2
+            growText := ""
+            float prev = na
+            bool rising = true
+            for i = 0 to array.size(multChain) - 1
+                int pi = array.get(multChain, i)
+                int pb = array.get(pvBar, pi)
+                float px = array.get(pvPrice, pi)
+                bool isHi = array.get(pvHigh, pi)
+                float ext = px
+                for b = 0 to multM / 2
+                    int off = bar_index - (pb + b)
+                    if off >= 0 and off < 5000
+                        ext := isHi ? math.min(ext, low[off]) : math.max(ext, high[off])
+                float mv = (ext - px) / px * 100.0
+                growText += (i > 0 ? ", " : "") + str.tostring(mv, "#.#") + "%"
+                if not na(prev) and math.abs(mv) <= math.abs(prev)
+                    rising := false
+                prev := mv
+            growText += rising ? "  each bigger" : "  not monotonic"
+
+        // The grid itself, drawn back and projected forward — the slide's own
+        // picture. Forward terms are dotted: they have not happened.
+        if array.size(multChain) >= 2 and showProjection
+            for i = 0 to array.size(multChain) - 1
+                int pb = array.get(pvBar, array.get(multChain, i))
+                line gl = line.new(pb, low, pb, high, xloc=xloc.bar_index, extend=extend.both,
+                     color=color.new(multCol, 60), style=line.style_dashed, width=1)
+                array.push(drawnLines, gl)
+            int tail = array.get(pvBar, array.get(multChain, array.size(multChain) - 1))
+            for k = 1 to 2
+                int fx = tail + multM * k
+                if fx > bar_index - 1 and fx < bar_index + 500
+                    line gf = line.new(fx, low, fx, high, xloc=xloc.bar_index, extend=extend.both,
+                         color=color.new(multCol, 35), style=line.style_dotted, width=1)
+                    array.push(drawnLines, gf)
+                    label gfl = label.new(fx, low, "+" + str.tostring(multM * k),
+                         xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_none,
+                         textcolor=multCol, size=size.tiny)
+                    array.push(drawnLabels, gfl)
+
         // ── Summary ──
         if showTable
             string chainText = "none ≥ " + str.tostring(minChain)
@@ -681,7 +831,7 @@ if barstate.islast
                 cycleText += anchorIsHigh ? "  (highs)" : "  (lows)"
 
             if na(info)
-                info := table.new(position.top_right, 2, 10, border_width=1,
+                info := table.new(position.top_right, 2, 12, border_width=1,
                      frame_color=color.new(color.gray, 50), frame_width=1)
             table.cell(info, 0, 0, "Summation series", bgcolor=color.new(color.black, 20),
                  text_color=color.white, text_size=size.small)
@@ -698,14 +848,21 @@ if barstate.islast
             table.cell(info, 1, 2, chainText,
                  text_color=haveChain ? (chainReal ? chainCol : color.gray) : color.gray,
                  text_size=size.tiny)
-            table.cell(info, 0, 3, "Cycle candidates", text_color=color.gray, text_size=size.tiny)
-            table.cell(info, 1, 3, cycleText, text_color=color.white, text_size=size.tiny)
-            table.cell(info, 0, 4, "Recurring interval", text_color=color.gray, text_size=size.tiny)
-            table.cell(info, 1, 4, intervalText, text_color=color.white, text_size=size.tiny)
-            table.cell(info, 0, 5, "Classic series", text_color=color.gray, text_size=size.tiny)
-            table.cell(info, 1, 5, presetText, text_color=color.white, text_size=size.tiny)
-            table.cell(info, 0, 6, "Projection step", text_color=color.gray, text_size=size.tiny)
-            table.cell(info, 1, 6, nextText, text_color=projCol, text_size=size.tiny)
+            table.cell(info, 0, 3, "Multiple cycle", text_color=color.gray, text_size=size.tiny)
+            // Never coloured as a finding: the candidate count in the text is
+            // the whole caveat, and there is no noise bar for a search this
+            // wide. See the 216-week bond chain in the knowledge base.
+            table.cell(info, 1, 3, multText, text_color=color.white, text_size=size.tiny)
+            table.cell(info, 0, 4, "Moves after each", text_color=color.gray, text_size=size.tiny)
+            table.cell(info, 1, 4, growText, text_color=color.white, text_size=size.tiny)
+            table.cell(info, 0, 5, "Cycle candidates", text_color=color.gray, text_size=size.tiny)
+            table.cell(info, 1, 5, cycleText, text_color=color.white, text_size=size.tiny)
+            table.cell(info, 0, 6, "Recurring interval", text_color=color.gray, text_size=size.tiny)
+            table.cell(info, 1, 6, intervalText, text_color=color.white, text_size=size.tiny)
+            table.cell(info, 0, 7, "Classic series", text_color=color.gray, text_size=size.tiny)
+            table.cell(info, 1, 7, presetText, text_color=color.white, text_size=size.tiny)
+            table.cell(info, 0, 8, "Projection step", text_color=color.gray, text_size=size.tiny)
+            table.cell(info, 1, 8, nextText, text_color=projCol, text_size=size.tiny)
             int nb = noiseBar(array.size(counts), tolBars, tolPct)
             int chainLen = array.size(bestChain)
             bool beatsNoise = chainLen > nb
@@ -716,17 +873,17 @@ if barstate.islast
                     for i = 0 to array.size(confCount) - 1
                         confText += (i > 0 ? ", " : "") + str.tostring(array.get(confCount, i)) +
                              " (" + str.tostring(array.get(confScore, i), "#.##") + ")"
-            table.cell(info, 0, 7, "Confirmed by shape", text_color=color.gray, text_size=size.tiny)
-            table.cell(info, 1, 7, confText,
+            table.cell(info, 0, 9, "Confirmed by shape", text_color=color.gray, text_size=size.tiny)
+            table.cell(info, 1, 9, confText,
                  text_color=array.size(confCount) > 0 ? color.lime : color.gray, text_size=size.tiny)
             string voteText = array.size(confOff) < 2 ? "needs two confirmed cycles" :
                  runDir == 0 ? "they disagree — stand aside" :
                  (runDir > 0 ? "UP" : "DOWN") + " for at least " + str.tostring(runLen) +
                  " bars, mean " + str.tostring(meanMove, "#.#") + "%"
-            table.cell(info, 0, 8, "Agreement now", text_color=color.gray, text_size=size.tiny)
-            table.cell(info, 1, 8, voteText,
+            table.cell(info, 0, 10, "Agreement now", text_color=color.gray, text_size=size.tiny)
+            table.cell(info, 1, 10, voteText,
                  text_color=consensus ? (meanMove > 0 ? color.lime : color.red) : color.gray, text_size=size.tiny)
-            table.cell(info, 0, 9, "Noise bar", text_color=color.gray, text_size=size.tiny)
-            table.cell(info, 1, 9, str.tostring(chainLen) + " vs " + str.tostring(nb) +
+            table.cell(info, 0, 11, "Noise bar", text_color=color.gray, text_size=size.tiny)
+            table.cell(info, 1, 11, str.tostring(chainLen) + " vs " + str.tostring(nb) +
                  (beatsNoise ? "  clears it" : "  random reaches this"),
                  text_color=beatsNoise ? color.lime : color.red, text_size=size.tiny)
