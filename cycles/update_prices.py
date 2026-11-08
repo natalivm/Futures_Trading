@@ -71,8 +71,12 @@ def _get(url, timeout=30):
 
 # ── Sources ──
 
-# Stooq serves the same CSV from two hosts, and rate-limits by IP. A shared
-# runner can be over the limit on one and fine on the other.
+# Stooq serves the same CSV from two hosts and rate-limits by IP. Both have
+# answered GitHub's runners with an HTML bot-challenge page rather than the
+# CSV ("robots: noindex,nofollow" plus a <noscript>), which no header will get
+# past — it is an IP-reputation block on datacenter ranges, not a rate limit.
+# It still works from a home connection, so the script keeps it as the first
+# choice and falls through quietly when it is refused.
 STOOQ_HOSTS = ("https://stooq.com", "https://stooq.pl")
 
 
@@ -182,7 +186,7 @@ def merge(*series):
 
 # ── Update ──
 
-def update_symbol(symbol, source, dry_run):
+def update_symbol(symbol, source, dry_run, full=False):
     name, stooq_code = INDEXES[symbol]
     path = os.path.join(DATA_DIR, f"{slug(symbol)}.csv")
     existing = load_csv(path)
@@ -197,8 +201,11 @@ def update_symbol(symbol, source, dry_run):
             problems.append(f"stooq {stooq_code}: {e}")
 
     if source in ("both", "yahoo"):
-        # Only the recent tail is needed when we already hold history.
-        period1 = None if not existing and not pulled else time.time() - 120 * 86400
+        # Only the recent tail is needed when we already hold history — but a
+        # file written before the range=max fix starts in 1970 and will never
+        # grow backwards on its own, so --full forces the whole series.
+        period1 = (None if full or (not existing and not pulled)
+                   else time.time() - 120 * 86400)
         try:
             rows = fetch_yahoo(symbol, period1)
             pulled.append(rows)
@@ -226,6 +233,9 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--symbols", help="comma-separated subset, e.g. ^DJI,^GSPC")
     ap.add_argument("--source", choices=["both", "stooq", "yahoo"], default="both")
+    ap.add_argument("--full", action="store_true",
+                    help="ask Yahoo for the whole series rather than the recent tail — needed once to "
+                         "backfill files written before the range=max fix")
     ap.add_argument("--dry-run", action="store_true", help="fetch and report, write nothing")
     args = ap.parse_args()
 
@@ -238,7 +248,7 @@ def main():
     for symbol in symbols:
         print(f"\n{symbol}")
         try:
-            changed, err = update_symbol(symbol, args.source, args.dry_run)
+            changed, err = update_symbol(symbol, args.source, args.dry_run, args.full)
         except Exception as e:                      # noqa: BLE001 - report and carry on
             changed, err = False, f"{symbol}: {e}"
         if err:

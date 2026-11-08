@@ -52,8 +52,12 @@ TRADING_DAYS_PER_YEAR = 252
 # 24.5 is gold's. 19.08 is "19 years and 1 month" — the Metonic cycle, after
 # which the solar and lunar calendars realign.
 PRESETS = {
-    "course":   [4, 17, 19.08, 24.5, 27, 28, 56, 60, 78.5, 157, 314],
+    "course":   [4, 6.8, 11.65, 17, 19.08, 22, 24.5, 27, 28, 56, 60, 78.5, 157, 314],
     "equities": [4, 28, 56, 60, 78.5, 157, 314],
+    # The S&P examples: 22 years (2000 against 2022, the run that also repeated
+    # the Fed's first 50bp rise in 22 years), 11.65 (230 and ~400-day windows)
+    # and 6.8, which the course demonstrates on four-hour bars.
+    "sp500":    [4, 6.8, 11.65, 22, 28],
     "crude":    [17, 19.08, 27],
     "gold":     [24.5],
 }
@@ -425,6 +429,7 @@ def main():
     ap.add_argument("--min-sep", type=int, default=0, help="minimum gap between kept offsets (default: window/2)")
     ap.add_argument("--svg", action="store_true", help="also write overlay + forecast charts to cycles/out")
     ap.add_argument("--svg-top", type=int, default=1, help="how many matches to chart")
+    ap.add_argument("--as-of", help="pretend today is this date (YYYY-MM-DD) — checks a published claim on its own terms")
     ap.add_argument("--json-dir", default=WEB_DIR, help="where the JSON goes (default public/cycles)")
     args = ap.parse_args()
 
@@ -452,7 +457,13 @@ def main():
     for path in paths:
         slug = os.path.splitext(os.path.basename(path))[0]
         dates, closes = load_series(path)
-        print(f"\n{slug}: {len(closes)} bars, {dates[0] if dates else '?'} → {dates[-1] if dates else '?'}")
+        if args.as_of:
+            # A claim made in April 2022 is about the window ending in April
+            # 2022. Scoring it against today tests something else entirely.
+            keep = sum(1 for d in dates if d <= args.as_of)
+            dates, closes = dates[:keep], closes[:keep]
+        print(f"\n{slug}: {len(closes)} bars, {dates[0] if dates else '?'} → {dates[-1] if dates else '?'}"
+              + (f"  (as of {args.as_of})" if args.as_of else ""))
         if len(closes) < 50:
             print("  too little data")
             continue
