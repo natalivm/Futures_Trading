@@ -2,8 +2,15 @@ import { type KbBlock } from '../../lib/kbBlocks';
 import CycleOverlay from './CycleOverlay';
 import NoiseCycleDemo from './NoiseCycleDemo';
 
-/** Renders an article's blocks. A plain string is still a paragraph. */
-export default function ArticleBody({ body }: { body: KbBlock[] }) {
+/**
+ * Renders an article's blocks. A plain string is still a paragraph.
+ *
+ * `level` is the depth a heading block sits at: 3 in a chapter that prints no
+ * section heading, 4 under one that does. It only changes the tag — headings
+ * inside an article are one size whatever their depth.
+ */
+export default function ArticleBody({ body, level = 3 }: { body: KbBlock[]; level?: 3 | 4 }) {
+  const Heading = level === 4 ? 'h4' : 'h3';
   return (
     <>
       {body.map((block, i) => {
@@ -15,7 +22,7 @@ export default function ArticleBody({ body }: { body: KbBlock[] }) {
 
         switch (block.kind) {
           case 'heading':
-            return <h2 key={i} className="kb-h2">{block.text}</h2>;
+            return <Heading key={i} className="kb-h2">{block.text}</Heading>;
 
           case 'callout':
             return (
