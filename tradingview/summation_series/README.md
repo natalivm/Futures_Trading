@@ -384,8 +384,11 @@ counts pivots on, and two scripts fighting over one pane is worse than one
 script with a switch. The two are independent: nothing in the counting reads
 the moon and nothing here reads the chain.
 
-Its table has its own corner (middle right by default, so it does not sit on
-the summation table) and its labels live in their own ring buffer — the
+Its table has its own corner (bottom right by default). "Middle right" was
+the first default and was wrong: the summation table at top right runs to
+twelve rows, which reaches into the middle of the pane, so the two drew over
+each other and both became unreadable. Only corners a twelve-row table cannot
+reach are offered now and its labels live in their own ring buffer — the
 summation drawing is wiped and rebuilt on every last bar, while node marks
 are historical and should stay where they were put. `Label only the last N`
 exists because TradingView allows 500 labels per script and the pivot counts

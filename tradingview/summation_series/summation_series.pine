@@ -118,8 +118,9 @@ moonLast   = input.int(40, "Label only the last N conjunctions", minval=5, maxva
      tooltip="TradingView allows 500 labels per script and the pivot counts already want most of them. 40 node labels is about three years on a daily chart.")
 monthsBack = input.int(6, "Compare this many lunar months", minval=0, maxval=8, group=G_MOON,
      tooltip="\"What did it do last month? And two months ago?\" 0 hides the table. Note what the backtest found: a Ketu entry wins no more often than any other day, and the odd/even rule is short-horizon mean reversion that any block of the same length shows. The table is a reading aid, not a signal.")
-moonPos    = input.string("Middle right", "Table position", options=["Top left", "Middle right", "Bottom right"], group=G_MOON,
-     tooltip="Kept off the summation table's corner by default so the two do not overlap.")
+moonPos    = input.string("Bottom right", "Table position",
+     options=["Bottom right", "Bottom left", "Top left"], group=G_MOON,
+     tooltip="\"Middle right\" used to be here and was the default, and it was wrong: the summation table at top right runs to twelve rows, which reaches into the middle of the pane, so the two drew on top of each other and both became unreadable. The three corners left are ones a twelve-row table cannot reach.")
 rahuCol    = input.color(#EF5350, "Rahu", inline="moonc", group=G_MOON)
 ketuCol    = input.color(#26A69A, "Ketu", inline="moonc", group=G_MOON)
 phaseCol   = input.color(#B0BEC5, "Phase", inline="moonc", group=G_MOON)
@@ -1092,7 +1093,7 @@ var table moonTbl = na
 if barstate.islast and showMoon and monthsBack > 0
     if na(moonTbl)
         moonTbl := table.new(moonPos == "Top left" ? position.top_left :
-             moonPos == "Bottom right" ? position.bottom_right : position.middle_right,
+             moonPos == "Bottom left" ? position.bottom_left : position.bottom_right,
              4, monthsBack + 2, border_width=1,
              frame_color=color.new(color.gray, 50), frame_width=1)
     table.cell(moonTbl, 0, 0, "Lunar month", bgcolor=color.new(color.black, 20),
