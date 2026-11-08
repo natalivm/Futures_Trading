@@ -6,6 +6,7 @@ interface Match {
   corr: number;
   retCorr: number;
   swingCorr?: number;
+  inverted?: boolean;
   heldMinCorr?: number | null;
   analogStart: string;
   analogEnd: string;
@@ -154,7 +155,10 @@ export default function CycleOverlay({ series, label, lagYears, caption }: Props
 
   const match = report.matches[Math.min(pick, report.matches.length - 1)];
   const cur = normalize(report.currentCloses);
-  const ana = normalize(match.analogCloses);
+  // An inverted repeat puts a low where a high was, so the analog is drawn
+  // flipped: the shape agreement is real, the sign is not.
+  const anaRaw = normalize(match.analogCloses);
+  const ana = match.inverted ? anaRaw.map(v => 100 - v) : anaRaw;
   const forecast = match.forecastCloses ?? [];
   const combined = view === 'forecast' ? [...report.currentCloses, ...forecast] : [];
   const combinedNorm = combined.length ? normalize(combined) : [];
@@ -226,6 +230,7 @@ export default function CycleOverlay({ series, label, lagYears, caption }: Props
           <span className="swatch now" /> now: {report.currentStart} → {report.currentEnd}
           <br />
           <span className="swatch then" /> analog: {match.analogStart} → {match.analogEnd}
+          {match.inverted && <span className="kb-inverted"> inverted</span>}
         </p>
         <dl className="kb-demo-scores">
           <div><dt>Price</dt><dd>{match.corr.toFixed(3)}</dd></div>

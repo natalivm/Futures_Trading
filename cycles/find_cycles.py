@@ -60,7 +60,21 @@ PRESETS = {
     "sp500":    [4, 6.8, 11.65, 22, 28],
     "crude":    [17, 19.08, 27],
     "gold":     [24.5],
+    # 82 weeks is the bond base count; the course's working interval is
+    # 82 x 3 = 246 weeks, which in years is 1.57 and 4.72.
+    "bonds":    [1.57, 3.14, 4.72],
 }
+
+# The one market --allow-invert may be used on, keyed by data-file slug.
+#
+# Not a preference. Accepting an inverted repeat doubles the hypothesis space:
+# every offset now gets two chances to score, so the random-walk baseline the
+# whole project gates on no longer applies, and it has not been re-measured
+# under inversion. The course demonstrates exactly one inverted cycle — US
+# 30-year bonds, 82 x 3 = 246 weeks, where the highest high lands on a major
+# low — so that is the one series allowed to spend the extra freedom until
+# there is a control for it.
+INVERT_MARKETS = {"ZB_F"}
 
 
 # ── Data ──
@@ -95,6 +109,17 @@ def _moments(xs):
     mean = sum(xs) / n
     var = sum((x - mean) ** 2 for x in xs) / n
     return mean, math.sqrt(var)
+
+
+def best_polarity(a, b):
+    """Correlation allowing an inverted match, as (score, inverted).
+
+    The bond chart repeats upside down: a low lands where a high was, and
+    every leg mirrors. The shape agreement is just as real, so score the
+    magnitude and record which way round it went.
+    """
+    r = correlation(a, b)
+    return (abs(r), r < 0)
 
 
 def correlation(a, b):
@@ -356,8 +381,13 @@ def analyse(symbol, dates, closes, args):
     for lag, corr in matches:
         start = n - window - lag
         analog, future, projected = project(closes, lag, window, horizon)
-        ret_corr = correlation(log_returns(analog), cur_returns)
-        swing_corr = correlation(log_returns(analog, args.swing), cur_swing)
+        if args.allow_invert:
+            ret_corr, _ = best_polarity(log_returns(analog), cur_returns)
+            swing_corr, inverted = best_polarity(log_returns(analog, args.swing), cur_swing)
+        else:
+            ret_corr = correlation(log_returns(analog), cur_returns)
+            swing_corr = correlation(log_returns(analog, args.swing), cur_swing)
+            inverted = False
         epochs = stability(closes, lag, window, args.epochs,
                            int(args.epoch_years * TRADING_DAYS_PER_YEAR), args.swing)
         held = [e["corr"] for e in epochs]
@@ -370,6 +400,7 @@ def analyse(symbol, dates, closes, args):
             "corr": round(corr, 4),
             "retCorr": round(ret_corr, 4),
             "swingCorr": round(swing_corr, 4),
+            "inverted": inverted,
             "pctBetter": round(better * 100, 2) if better is not None else None,
             "preSpecified": bool(args.lags),
             "stability": epochs,
@@ -419,6 +450,11 @@ def main():
     ap.add_argument("--preset", choices=sorted(PRESETS),
                     help="a named cycle set from the lectures: course (all), equities, crude, gold")
     ap.add_argument("--swing", type=int, default=21, help="bars per swing-return block (default 21 ≈ monthly)")
+    ap.add_argument("--allow-invert", action="store_true",
+                    help="also accept an inverted repeat, where a low lines up with a high and every "
+                         "leg mirrors — the shape of the 246-week bond cycle. Restricted to "
+                         + ", ".join(sorted(INVERT_MARKETS)) + ": it doubles the hypothesis space "
+                         "and the noise control has not been re-measured under it")
     ap.add_argument("--epochs", type=int, default=5, help="earlier anchor points used to check the cycle held")
     ap.add_argument("--epoch-years", type=float, default=5, help="years between those anchor points")
     ap.add_argument("--horizon", type=int, default=230, help="trading days to project forward (default 230 ≈ 11 months)")
@@ -447,6 +483,20 @@ def main():
         paths = [os.path.join(DATA_DIR, f"{name}.csv")]
     else:
         ap.error("pass --symbol or --all")
+
+    # Inversion stays on the one market it was demonstrated on. A sweep that
+    # allowed it everywhere would score every series against twice as many
+    # candidate shapes while being read against a baseline measured for one.
+    if args.allow_invert:
+        allowed = ", ".join(sorted(INVERT_MARKETS))
+        if args.all:
+            ap.error(f"--allow-invert is not a sweep setting: run it on one of {allowed}")
+        slug = os.path.splitext(os.path.basename(paths[0]))[0]
+        if slug not in INVERT_MARKETS:
+            ap.error(f"--allow-invert is limited to {allowed}, not {slug} "
+                     "(see INVERT_MARKETS in this file for why)")
+        print(f"inversion allowed on {slug} — an upside-down match scores as a match, "
+              "so read the swing figure against a control that does not exist yet")
 
     missing = [p for p in paths if not os.path.exists(p)]
     if missing:

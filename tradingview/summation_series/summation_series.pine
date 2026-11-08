@@ -1,0 +1,732 @@
+//@version=6
+// Summation Series Cycle Finder
+//
+// An implementation of the Summation Series technique for locating cycles,
+// from Market Forecast Mastery (Allen Reminick). Not his code.
+//
+// The method, in three steps:
+//   1. Pick an important pivot, label it 0, then count bars back in time and
+//      label every earlier pivot with its distance from the anchor.
+//   2. Look for a summation series in those numbers — each term the sum of
+//      the two before it, as in 3,4,7,11,18,29,47,76 or 4,8,12,20,32,52,84.
+//   3. Look for high-to-high and low-to-low intervals that recur.
+//
+// What it adds to the manual method: the counting and the series search are
+// done for you, every candidate chain is scored rather than eyeballed, and
+// the next term of the winning chain is projected forward as the bar where
+// the next turn is due.
+
+indicator("Summation Series Cycle Finder", shorttitle="Summation", overlay=true,
+     max_labels_count=500, max_lines_count=500, max_boxes_count=100, max_bars_back=5000)
+
+string G_PIVOT  = "1 · Pivots"
+string G_ANCHOR = "2 · Anchor"
+string G_SERIES = "3 · Series search"
+string G_SHAPE  = "4 · Confirming a cycle"
+string G_PROJ   = "5 · Projection"
+string G_VIEW   = "6 · Display"
+
+// ── 1 · Pivots ──
+leftBars   = input.int(5, "Pivot strength — left", minval=1, maxval=50, inline="piv", group=G_PIVOT)
+rightBars  = input.int(5, "right", minval=1, maxval=50, inline="piv", group=G_PIVOT,
+     tooltip="How many bars either side a pivot must dominate. Higher = fewer, more important pivots, which is what the method calls a primary pivot. A pivot is only confirmed once 'right' bars have closed after it.")
+usePivotHighs = input.bool(true, "Count pivot highs", inline="kind", group=G_PIVOT)
+usePivotLows  = input.bool(true, "and lows", inline="kind", group=G_PIVOT,
+     tooltip="The count can run over highs, lows, or both. The slide counts both.")
+maxPivots  = input.int(80, "Pivots to keep", minval=6, maxval=150, group=G_PIVOT,
+     tooltip="How far back the count reaches: the most recent N pivots are kept and everything older is dropped. The course labels out past 130, 180, even a couple of hundred bars, so raise this if the numbers stop too early — but note the chain search grows with the square of it, and pivot strength is the better lever because it controls how dense the pivots are in the first place.")
+
+// ── 2 · Anchor ──
+anchorMode = input.string("Auto — recent important pivot", "Anchor (labelled 0)",
+     options=["Auto — recent important pivot", "Most recent pivot", "Most recent pivot high", "Most recent pivot low", "Highest high", "Lowest low", "Manual date"],
+     group=G_ANCHOR,
+     tooltip="Step 1: the pivot you count back from. Auto follows the course — a decent high or low in the recent window below, a high if the market has been falling since and a low if it has been rising. Highest high / lowest low is the other way the course does it, as on the Bitcoin chart: not that near, not that far, but obviously important.")
+anchorMin  = input.int(20, "Auto window — from", minval=2, maxval=300, inline="aw", group=G_ANCHOR)
+anchorMax  = input.int(70, "to (bars back)", minval=5, maxval=500, inline="aw", group=G_ANCHOR,
+     tooltip="The course picks a zero point roughly 20 to 70 weeks back on a weekly chart: recent enough to connect to the present, old enough to have pivots behind it.")
+anchorTime = input.time(timestamp("01 Jan 2024 00:00 +0000"), "Manual anchor date", group=G_ANCHOR,
+     tooltip="Used only when Anchor is set to Manual date. The nearest pivot at or before this date becomes 0.")
+
+// ── 3 · Series search ──
+minChain   = input.int(5, "Shortest chain to report", minval=3, maxval=12, group=G_SERIES,
+     tooltip="Set from the random-data baseline, not by taste: with 20 pivots at the default tolerance, random counts reach 5 about as often as not. See the Noise bar row in the table — a chain at or below it is worth nothing.")
+tolBars    = input.int(1, "Tolerance — bars", minval=0, maxval=20, inline="tol", group=G_SERIES)
+tolPct     = input.float(2.0, "or %", minval=0, maxval=25, step=0.5, inline="tol", group=G_SERIES,
+     tooltip="How far a pivot may sit from the exact sum and still count. The larger of the two is used, so small terms get the bar allowance and large ones the percentage. Loosen this and the search will find a chain in anything.")
+showPresets = input.bool(true, "Also test the classic series", group=G_SERIES,
+     tooltip="Marks pivots whose count matches Fibonacci (2,3,5,8,13,21…), Lucas (1,3,4,7,11,18,29,47,76…) or the 4,8,12,20,32,52,84,136 series from the slide.")
+
+// ── 4 · Confirming a cycle ──
+// A chain member of the anchor's own type is only a CANDIDATE. The course
+// confirms it by eye: does the same thing happen going into it, and coming
+// out of it, as happened at the zero point? This scores that.
+inBars     = input.int(12, "Shape window — into the pivot", minval=3, maxval=60, group=G_SHAPE,
+     tooltip="The rally or decline that leads into the turn. In the gold example this is the sharp six to twelve week rally before the high.")
+outBars    = input.int(17, "and out of it", minval=3, maxval=60, group=G_SHAPE,
+     tooltip="What follows the turn. The gold example matches a 17-week stair-step decline at the zero point, at 83 and at 135.")
+shapeMin   = input.float(0.6, "Confirm above", minval=0, maxval=1, step=0.05, group=G_SHAPE,
+     tooltip="Both the into-shape and the out-of-shape must correlate at least this well with the anchor's. The weaker of the two is the score.")
+
+// ── 5 · Projection ──
+showProjection = input.bool(true, "Project the next terms", group=G_PROJ,
+     tooltip="Where the chain says the next turns are due, counted forward from the anchor.")
+projTerms  = input.int(3, "How many terms ahead", minval=1, maxval=6, group=G_PROJ)
+projHorizon = input.int(26, "Agreement schedule (bars)", minval=2, maxval=104, group=G_PROJ,
+     tooltip="How far forward to walk the confirmed cycles, bar by bar, asking whether they still say the same thing. Drawn as a ribbon: a band where they agree, a gap where they diverge. Cycles drift in and out of sync, and the gaps are as much the point as the bands — the course takes three separate trades from one pair that way.")
+turnTol    = input.int(2, "Turn date tolerance (bars)", minval=0, maxval=10, group=G_PROJ,
+     tooltip="How close two analogs must land a turn for it to count as the same date. The course names a turn when both cycles agree on it.")
+showIntervals = input.bool(true, "Report recurring H-H / L-L intervals", group=G_PROJ,
+     tooltip="Step 3: intervals between consecutive same-type pivots that keep repeating.")
+
+// ── 5 · Display ──
+showCounts = input.bool(true, "Label every pivot with its count", group=G_VIEW)
+showTable  = input.bool(true, "Show the summary table", group=G_VIEW)
+chainCol   = input.color(color.new(color.aqua, 0), "Chain", inline="col", group=G_VIEW)
+plainCol   = input.color(#C792EA, "Other pivots", inline="col", group=G_VIEW)
+projCol    = input.color(color.new(color.orange, 0), "Projection", inline="col", group=G_VIEW)
+
+// ta.* has to be evaluated on every bar to keep its state, so it cannot live
+// inside the last-bar block that uses it.
+atr14 = ta.atr(14)
+
+// ── Pivot collection ──
+var array<int>   pvBar   = array.new<int>()
+var array<float> pvPrice = array.new<float>()
+var array<bool>  pvHigh  = array.new<bool>()
+var array<int>   pvTime  = array.new<int>()
+
+ph = ta.pivothigh(leftBars, rightBars)
+pl = ta.pivotlow(leftBars, rightBars)
+
+if usePivotHighs and not na(ph)
+    array.push(pvBar, bar_index - rightBars)
+    array.push(pvPrice, ph)
+    array.push(pvHigh, true)
+    array.push(pvTime, time[rightBars])
+if usePivotLows and not na(pl)
+    array.push(pvBar, bar_index - rightBars)
+    array.push(pvPrice, pl)
+    array.push(pvHigh, false)
+    array.push(pvTime, time[rightBars])
+
+// Keep the array bounded — the search is O(n^3) in the worst case.
+while array.size(pvBar) > maxPivots
+    array.shift(pvBar)
+    array.shift(pvPrice)
+    array.shift(pvHigh)
+    array.shift(pvTime)
+
+// ── Helpers ──
+
+// The slack allowed around an expected term: the larger of the two settings,
+// so a 7 gets the bar allowance and a 136 gets the percentage.
+tolFor(expected) =>
+    math.max(tolBars, math.round(expected * tolPct / 100.0))
+
+// The longest chain random pivot counts reach 95% of the time, measured over
+// 200-600 trials per cell on uniformly spaced random pivots. A chain at or
+// below this is what noise produces — it is the bar a real one has to clear.
+//
+//   pivots   exact   1b/2%   2b/4%   3b/6%
+//       12       3       4       5       5
+//       20       4       5       6       6
+//       30       4       6       7       7
+//       40       4       7       8       8
+//       60       5       7       8       9
+//       80       5       8       9      10
+//      110       5       9      10      10
+//      150       5       9      10      11
+//
+// The grid used to stop at 40, which under-reported the bar for anyone
+// running the default 80 pivots: a 73-pivot Bitcoin chart was told 7 when
+// the real figure is 8, turning a chain that loses to noise into one that
+// appears to tie it.
+noiseBar(int pivots, int tb, float tp) =>
+    int band = tb <= 0 and tp <= 0 ? 0 : (tb <= 1 and tp <= 2.0 ? 1 : (tb <= 2 and tp <= 4.0 ? 2 : 3))
+    int row = pivots <= 15 ? 0 : (pivots <= 25 ? 1 : (pivots <= 35 ? 2 : (pivots <= 50 ? 3 : (pivots <= 70 ? 4 : (pivots <= 95 ? 5 : (pivots <= 130 ? 6 : 7))))))
+    int v = 4
+    if band == 0
+        v := row <= 0 ? 3 : (row <= 3 ? 4 : 5)
+    else if band == 1
+        v := row == 0 ? 4 : (row == 1 ? 5 : (row == 2 ? 6 : (row <= 4 ? 7 : (row == 5 ? 8 : 9))))
+    else if band == 2
+        v := row == 0 ? 5 : (row == 1 ? 6 : (row == 2 ? 7 : (row <= 4 ? 8 : (row == 5 ? 9 : 10))))
+    else
+        v := row == 0 ? 5 : (row == 1 ? 6 : (row == 2 ? 7 : (row == 3 ? 8 : (row == 4 ? 9 : (row <= 6 ? 10 : 11)))))
+    v
+
+// Closes over [startBar, startBar+len), oldest first.
+windowVals(startBar, len) =>
+    array<float> out = array.new<float>()
+    for i = 0 to len - 1
+        int off = bar_index - (startBar + i)
+        if off >= 0 and off < 5000
+            array.push(out, close[off])
+    out
+
+// Pearson between two equal-length float arrays, on their shapes rather than
+// their levels — gold at 1,800 and gold at 1,200 should still match.
+corrArr(a, b) =>
+    int n2 = math.min(array.size(a), array.size(b))
+    float r = na
+    if n2 >= 3
+        float ma = 0.0
+        float mb = 0.0
+        for i = 0 to n2 - 1
+            ma += array.get(a, i)
+            mb += array.get(b, i)
+        ma /= n2
+        mb /= n2
+        float num = 0.0
+        float va = 0.0
+        float vb = 0.0
+        for i = 0 to n2 - 1
+            float da = array.get(a, i) - ma
+            float db = array.get(b, i) - mb
+            num += da * db
+            va += da * da
+            vb += db * db
+        r := va > 0 and vb > 0 ? num / math.sqrt(va * vb) : na
+    r
+
+// Index of the count nearest `target`, or -1 if nothing is within tolerance.
+nearestIdx(counts, target) =>
+    int best = -1
+    float bestDist = 1e9
+    float tol = tolFor(target)
+    if array.size(counts) > 0
+        for i = 0 to array.size(counts) - 1
+            float d = math.abs(array.get(counts, i) - target)
+            if d <= tol and d < bestDist
+                bestDist := d
+                best := i
+    best
+
+
+// ── Analysis, redrawn on the last bar ──
+var array<label> drawnLabels = array.new<label>()
+var array<line>  drawnLines  = array.new<line>()
+var array<box>   drawnBoxes  = array.new<box>()
+var table info = na
+
+if barstate.islast
+    if array.size(drawnLabels) > 0
+        for i = 0 to array.size(drawnLabels) - 1
+            label.delete(array.get(drawnLabels, i))
+    array.clear(drawnLabels)
+    if array.size(drawnLines) > 0
+        for i = 0 to array.size(drawnLines) - 1
+            line.delete(array.get(drawnLines, i))
+    array.clear(drawnLines)
+    if array.size(drawnBoxes) > 0
+        for i = 0 to array.size(drawnBoxes) - 1
+            box.delete(array.get(drawnBoxes, i))
+    array.clear(drawnBoxes)
+
+    int n = array.size(pvBar)
+    if n >= minChain
+
+        // ── Step 1: choose the zero point ──
+        int anchorIdx = n - 1
+        if anchorMode == "Most recent pivot high" or anchorMode == "Most recent pivot low"
+            bool wantHigh = anchorMode == "Most recent pivot high"
+            for i = n - 1 to 0
+                if array.get(pvHigh, i) == wantHigh
+                    anchorIdx := i
+                    break
+        else if anchorMode == "Manual date"
+            for i = n - 1 to 0
+                if array.get(pvTime, i) <= anchorTime
+                    anchorIdx := i
+                    break
+        else if anchorMode == "Highest high" or anchorMode == "Lowest low"
+            bool wantTop = anchorMode == "Highest high"
+            float bestPx = wantTop ? -1e18 : 1e18
+            for i = 0 to n - 1
+                if array.get(pvHigh, i) == wantTop
+                    float v = array.get(pvPrice, i)
+                    if (wantTop and v > bestPx) or (not wantTop and v < bestPx)
+                        bestPx := v
+                        anchorIdx := i
+        else if anchorMode == "Auto — recent important pivot"
+            // The course's rule: a high if the market has fallen since, a low
+            // if it has risen. "Since" is measured over the auto window.
+            float then = close[math.min(bar_index, anchorMax)]
+            bool wantHigh = close < then
+            float bestScore = -1e9
+            for i = 0 to n - 1
+                int back = bar_index - array.get(pvBar, i)
+                if back >= anchorMin and back <= anchorMax and array.get(pvHigh, i) == wantHigh
+                    // Prefer the most extreme pivot inside the window.
+                    float sc = wantHigh ? array.get(pvPrice, i) : -array.get(pvPrice, i)
+                    if sc > bestScore
+                        bestScore := sc
+                        anchorIdx := i
+
+        int anchorBar = array.get(pvBar, anchorIdx)
+        bool anchorIsHigh = array.get(pvHigh, anchorIdx)
+
+        // ── Step 1b: count backwards ──
+        array<int>  counts  = array.new<int>()
+        array<int>  cIdx    = array.new<int>()
+        // Newest pivot first, so the distance from the anchor grows as we go:
+        // `counts` comes out ascending, which is the order a series is read in
+        // and what the pair loop below assumes.
+        for i = n - 1 to 0
+            int gap = anchorBar - array.get(pvBar, i)
+            if gap > 0
+                // Counted inclusively: the first candle back is already one,
+                // so the label is the span, not the gap between bars.
+                array.push(counts, gap + 1)
+                array.push(cIdx, i)
+
+        // ── Step 2: find the best summation chain among those counts ──
+        // Not simply the longest. The course picks the chain that "works
+        // perfectly" over a longer one that needs slack — told to include a
+        // 3 that forced a one-bar error, the answer was to leave it out and
+        // keep 7, 9, 16, 25, 41, 66, 107, 173, which sums exactly.
+        //
+        // So: take the longest, allow one term shorter, and among those
+        // prefer the lowest mean error per link. One term of slack is the
+        // only value that reproduces BOTH published answers — the Bitcoin
+        // chain above and the gold 6, 23, 30, 52, 83, 132. Zero loses
+        // Bitcoin, two loses gold.
+        int MAXL = 24
+        array<int>   bestA = array.new<int>(MAXL, -1)
+        array<int>   bestB = array.new<int>(MAXL, -1)
+        array<float> bestM = array.new<float>(MAXL, 1e9)
+        array<int> bestChain = array.new<int>()
+        // The worst single link, not the total. "±3" has to mean no term is
+        // more than 3 off its predecessors' sum; a running total says nothing
+        // a reader can check against a term, and climbs with chain length, so
+        // a long exact-looking chain reads worse than a short sloppy one.
+        float chainWorst = 0.0
+
+        int m = array.size(counts)
+        if m >= 2
+            for a = 0 to m - 2
+                for b = a + 1 to m - 1
+                    int x = array.get(counts, a)
+                    int y = array.get(counts, b)
+                    if y > x
+                        int len = 2
+                        float err = 0.0
+                        bool extending = true
+                        while extending
+                            int k = nearestIdx(counts, x + y)
+                            if k >= 0 and array.get(counts, k) > y
+                                err += math.abs(array.get(counts, k) - (x + y))
+                                len += 1
+                                x := y
+                                y := array.get(counts, k)
+                            else
+                                extending := false
+                        if len >= 3 and len < MAXL
+                            float meanErr = err / (len - 2)
+                            if meanErr < array.get(bestM, len)
+                                array.set(bestM, len, meanErr)
+                                array.set(bestA, len, a)
+                                array.set(bestB, len, b)
+
+        int longest = 0
+        for L = 3 to MAXL - 1
+            if array.get(bestA, L) >= 0
+                longest := L
+        int pickL = longest
+        if longest >= 4
+            if array.get(bestA, longest - 1) >= 0 and array.get(bestM, longest - 1) < array.get(bestM, longest)
+                pickL := longest - 1
+
+        if pickL >= 3
+            int a2 = array.get(bestA, pickL)
+            int b2 = array.get(bestB, pickL)
+            array.push(bestChain, a2)
+            array.push(bestChain, b2)
+            int x2 = array.get(counts, a2)
+            int y2 = array.get(counts, b2)
+            bool ext2 = true
+            while ext2
+                int k2 = nearestIdx(counts, x2 + y2)
+                if k2 >= 0 and array.get(counts, k2) > y2
+                    chainWorst := math.max(chainWorst, math.abs(array.get(counts, k2) - (x2 + y2)))
+                    array.push(bestChain, k2)
+                    x2 := y2
+                    y2 := array.get(counts, k2)
+                else
+                    ext2 := false
+
+        bool haveChain = array.size(bestChain) >= minChain
+
+        // ── Step 3: among the chain, the pivots matching the anchor's type
+        //    are the cycle candidates — high to high, low to low.
+        array<int> cycleCounts = array.new<int>()
+        if haveChain
+            if array.size(bestChain) > 0
+                for i = 0 to array.size(bestChain) - 1
+                    int ci = array.get(bestChain, i)
+                    int pi = array.get(cIdx, ci)
+                    if array.get(pvHigh, pi) == anchorIsHigh
+                        array.push(cycleCounts, array.get(counts, ci))
+
+        // ── Step 4: confirm a candidate by its shape, and look for consensus ──
+        // A candidate is only a cycle if the same thing happened into it and
+        // out of it as at the zero point. Two that agree, and agree about what
+        // comes next, is what the course calls evidence.
+        array<int>   confCount = array.new<int>()
+        array<float> confScore = array.new<float>()
+        array<float> confNext  = array.new<float>()   // % move the analog made next
+        array<int>   confOff   = array.new<int>()     // bars back to the analog's "now"
+
+        int nowOffset = bar_index - anchorBar
+        array<float> anchorIn  = windowVals(anchorBar - inBars, inBars)
+        array<float> anchorOut = windowVals(anchorBar, outBars)
+
+        if array.size(cycleCounts) > 0
+            for i = 0 to array.size(cycleCounts) - 1
+                int c = array.get(cycleCounts, i)
+                int candBar = anchorBar - c
+                array<float> candIn  = windowVals(candBar - inBars, inBars)
+                array<float> candOut = windowVals(candBar, outBars)
+                float rIn  = corrArr(anchorIn, candIn)
+                float rOut = corrArr(anchorOut, candOut)
+                if not na(rIn) and not na(rOut)
+                    float score = math.min(rIn, rOut)
+                    if score >= shapeMin
+                        // Where the analog stood at the point we are at now, and
+                        // what it did over the next `projHorizon` bars.
+                        int atNow = candBar + nowOffset
+                        int offNow = bar_index - atNow
+                        int offFut = bar_index - (atNow + projHorizon)
+                        if offNow >= 0 and offNow < 5000 and offFut >= 0
+                            float a0 = close[offNow]
+                            float a1 = close[offFut]
+                            if a0 > 0
+                                array.push(confCount, c)
+                                array.push(confScore, score)
+                                array.push(confNext, (a1 / a0 - 1) * 100)
+                            array.push(confOff, offNow)
+
+        // Agreement is not one verdict, it is a schedule. Two cycles drift in
+        // and out of sync: where they say the same thing you can act, where
+        // they diverge you stand aside, and when they agree again you can act
+        // again. The course gets three separate trades out of one pair that
+        // way. So walk every bar forward and record who agrees when.
+        array<int> agreeDir = array.new<int>()        // +1 up, -1 down, 0 split
+        if array.size(confOff) >= 2
+            for k = 1 to projHorizon
+                int up = 0
+                int dn = 0
+                for i = 0 to array.size(confOff) - 1
+                    int o0 = array.get(confOff, i)
+                    int ok = o0 - k
+                    if ok >= 0 and o0 >= 0 and o0 < 5000
+                        float p0 = close[o0]
+                        float pk = close[ok]
+                        if p0 > 0
+                            if pk > p0
+                                up += 1
+                            else if pk < p0
+                                dn += 1
+                int votes = array.size(confOff)
+                array.push(agreeDir, up == votes ? 1 : (dn == votes ? -1 : 0))
+
+        // The run starting now is the one you can trade; its length is the
+        // "at least N bars" the course talks about.
+        int runDir = array.size(agreeDir) > 0 ? array.get(agreeDir, 0) : 0
+        int runLen = 0
+        if runDir != 0
+            // safe: runDir is only non-zero when agreeDir has entries
+            for k = 0 to array.size(agreeDir) - 1
+                if array.get(agreeDir, k) == runDir
+                    runLen += 1
+                else
+                    break
+        bool consensus = runDir != 0 and runLen >= 2
+
+        // Mean move over that agreed run, not over a fixed horizon.
+        float meanMove = 0.0
+        int upVotes = 0
+        int downVotes = 0
+        if array.size(confOff) > 0
+            for i = 0 to array.size(confOff) - 1
+                int o0 = array.get(confOff, i)
+                int oEnd = o0 - math.max(runLen, 1)
+                if oEnd >= 0 and o0 < 5000 and close[o0] > 0
+                    float mv = (close[oEnd] / close[o0] - 1) * 100
+                    meanMove += mv
+                    if mv > 0
+                        upVotes += 1
+                    else
+                        downVotes += 1
+            meanMove /= array.size(confOff)
+
+        // ── Draw ──
+        label anchorLbl = label.new(anchorBar, array.get(pvPrice, anchorIdx), "0",
+             xloc=xloc.bar_index, yloc=anchorIsHigh ? yloc.abovebar : yloc.belowbar,
+             style=anchorIsHigh ? label.style_label_down : label.style_label_up,
+             color=color.new(color.yellow, 20), textcolor=color.black, size=size.small)
+        array.push(drawnLabels, anchorLbl)
+
+        if showCounts
+            if array.size(counts) > 0
+                for i = 0 to array.size(counts) - 1
+                    int ci = array.get(cIdx, i)
+                    bool inChain = false
+                    if haveChain
+                        // safe: haveChain means bestChain holds at least minChain
+                        for j = 0 to array.size(bestChain) - 1
+                            if array.get(bestChain, j) == i
+                                inChain := true
+                                break
+                    bool isHigh = array.get(pvHigh, ci)
+                    label cl = label.new(array.get(pvBar, ci), array.get(pvPrice, ci),
+                         str.tostring(array.get(counts, i)),
+                         xloc=xloc.bar_index, yloc=isHigh ? yloc.abovebar : yloc.belowbar,
+                         style=label.style_none,
+                         textcolor=inChain ? chainCol : plainCol,
+                         size=inChain ? size.large : size.normal)
+                    array.push(drawnLabels, cl)
+
+        // Confirmed cycles get their own marker — these are the ones the
+        // course would act on, not every chain member.
+        if array.size(confCount) > 0
+            for i = 0 to array.size(confCount) - 1
+                int c = array.get(confCount, i)
+                int cb = anchorBar - (c - 1)       // the count is a span
+                label confL = label.new(cb, array.get(pvPrice, anchorIdx),
+                     "cycle " + str.tostring(c),
+                     xloc=xloc.bar_index, yloc=anchorIsHigh ? yloc.abovebar : yloc.belowbar,
+                     style=anchorIsHigh ? label.style_label_down : label.style_label_up,
+                     color=color.new(color.lime, 30), textcolor=color.black, size=size.tiny)
+                array.push(drawnLabels, confL)
+                // A historical reference beyond max_bars_back is a runtime
+                // error, and a long chain term can reach past it.
+                int cbOff = bar_index - cb
+                if cbOff >= 0 and cbOff < 5000
+                    line cline = line.new(cb, close[cbOff], anchorBar, close[bar_index - anchorBar],
+                         xloc=xloc.bar_index, color=color.new(color.lime, 60), style=line.style_dotted)
+                    array.push(drawnLines, cline)
+
+        // ── Projected turning points ──
+        // The course does not only call direction, it calls dates: the
+        // 3/10/23 high, then the July and October lows, each named because
+        // BOTH cycles put a turn there. A projected turn is a pivot in an
+        // analog's own future, carried forward to today's timeline; when two
+        // analogs land the same kind of turn on the same bar, it is a date.
+        array<int>  turnBar   = array.new<int>()
+        array<bool> turnHigh  = array.new<bool>()
+        array<int>  turnVotes = array.new<int>()
+        if array.size(confOff) >= 2
+            for i = 0 to array.size(confOff) - 1
+                int atNow = bar_index - array.get(confOff, i)
+                for q = 0 to n - 1
+                    int pb = array.get(pvBar, q)
+                    if pb > atNow and pb <= atNow + projHorizon
+                        int fb = bar_index + (pb - atNow)
+                        bool isH = array.get(pvHigh, q)
+                        int match = -1
+                        if array.size(turnBar) > 0
+                            for t = 0 to array.size(turnBar) - 1
+                                bool sameKind = array.get(turnHigh, t) == isH
+                                if sameKind and math.abs(array.get(turnBar, t) - fb) <= turnTol
+                                    match := t
+                        if match >= 0
+                            array.set(turnVotes, match, array.get(turnVotes, match) + 1)
+                        else
+                            array.push(turnBar, fb)
+                            array.push(turnHigh, isH)
+                            array.push(turnVotes, 1)
+
+        if array.size(turnBar) > 0 and showProjection
+            for t = 0 to array.size(turnBar) - 1
+                if array.get(turnVotes, t) >= 2
+                    int tb = array.get(turnBar, t)
+                    if tb > bar_index and tb < bar_index + 500
+                        bool isH = array.get(turnHigh, t)
+                        line tl = line.new(tb, low, tb, high, xloc=xloc.bar_index,
+                             extend=extend.both, color=color.new(isH ? color.red : color.lime, 35),
+                             style=line.style_dotted, width=1)
+                        array.push(drawnLines, tl)
+                        label tlab = label.new(tb, isH ? high : low,
+                             (isH ? "high  " : "low  ") + str.format_time(
+                                 time + (tb - bar_index) * (time - time[1]), "d MMM yy"),
+                             xloc=xloc.bar_index, yloc=isH ? yloc.abovebar : yloc.belowbar,
+                             style=isH ? label.style_label_down : label.style_label_up,
+                             color=color.new(isH ? color.red : color.lime, 25),
+                             textcolor=color.white, size=size.tiny)
+                        array.push(drawnLabels, tlab)
+
+        // The agreement schedule, drawn forward as a ribbon: a band where the
+        // confirmed cycles say the same thing, a gap where they do not.
+        if array.size(agreeDir) > 0 and showProjection
+            float top = high + atr14 * 2.2
+            float bot = high + atr14 * 1.4
+            int runStart = 0
+            int runVal = array.get(agreeDir, 0)
+            for k = 1 to array.size(agreeDir)
+                int v = k < array.size(agreeDir) ? array.get(agreeDir, k) : -99
+                if v != runVal
+                    if runVal != 0
+                        box rb = box.new(bar_index + 1 + runStart, top, bar_index + k, bot,
+                             xloc=xloc.bar_index, border_width=0,
+                             bgcolor=color.new(runVal > 0 ? color.lime : color.red, 55))
+                        array.push(drawnBoxes, rb)
+                    runStart := k
+                    runVal := v
+
+        if consensus
+            label call = label.new(bar_index + math.min(runLen, projHorizon), close,
+                 (meanMove > 0 ? "▲ " : "▼ ") + str.tostring(array.size(confOff)) +
+                 " cycles agree for " + str.tostring(runLen) + " bars: " +
+                 str.tostring(meanMove, "#.#") + "%",
+                 xloc=xloc.bar_index, yloc=meanMove > 0 ? yloc.belowbar : yloc.abovebar,
+                 style=meanMove > 0 ? label.style_label_up : label.style_label_down,
+                 color=color.new(meanMove > 0 ? color.lime : color.red, 20),
+                 textcolor=color.black, size=size.small)
+            array.push(drawnLabels, call)
+
+        // ── Projection: where the chain says the next turns are due ──
+        string nextText = "—"
+        if haveChain and showProjection
+            int sz = array.size(bestChain)
+            int x2 = array.get(counts, array.get(bestChain, sz - 2))
+            int y2 = array.get(counts, array.get(bestChain, sz - 1))
+            // The chain grows backwards in time, so each new term is further
+            // into the past. Forward projection mirrors it around the anchor:
+            // the same intervals, counted forward instead of back.
+            array<int> fwd = array.new<int>()
+            int step = y2 - x2
+            for k = 1 to projTerms
+                array.push(fwd, anchorBar + step * k)
+            if array.size(fwd) > 0
+                for k = 0 to array.size(fwd) - 1
+                    int bx = array.get(fwd, k)
+                    if bx > bar_index - 1 and bx < bar_index + 500
+                        line pl2 = line.new(bx, low, bx, high, xloc=xloc.bar_index,
+                             extend=extend.both, color=color.new(projCol, 55),
+                             style=line.style_dashed, width=1)
+                        array.push(drawnLines, pl2)
+                        label fl = label.new(bx, high, "+" + str.tostring(step * (k + 1)),
+                             xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_none,
+                             textcolor=projCol, size=size.tiny)
+                        array.push(drawnLabels, fl)
+            nextText := str.tostring(step) + " bars → +" + str.tostring(step * projTerms) + " max"
+
+        // ── The classic series, for reference ──
+        string presetText = "—"
+        if showPresets
+            array<int> fib = array.from(2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377)
+            array<int> luc = array.from(3, 4, 7, 11, 18, 29, 47, 76, 123, 199, 322)
+            array<int> slide = array.from(4, 8, 12, 20, 32, 52, 84, 136, 220, 356)
+            int fibHits = 0
+            int lucHits = 0
+            int slideHits = 0
+            if array.size(counts) > 0
+                for i = 0 to array.size(counts) - 1
+                    int c = array.get(counts, i)
+                    for j = 0 to array.size(fib) - 1
+                        if math.abs(c - array.get(fib, j)) <= tolFor(array.get(fib, j))
+                            fibHits += 1
+                            break
+                    for j = 0 to array.size(luc) - 1
+                        if math.abs(c - array.get(luc, j)) <= tolFor(array.get(luc, j))
+                            lucHits += 1
+                            break
+                    for j = 0 to array.size(slide) - 1
+                        if math.abs(c - array.get(slide, j)) <= tolFor(array.get(slide, j))
+                            slideHits += 1
+                            break
+            presetText := "Fib " + str.tostring(fibHits) + " · Lucas " + str.tostring(lucHits) +
+                 " · 4-8-12 " + str.tostring(slideHits) + "  of " + str.tostring(array.size(counts))
+
+        // ── Step 3: recurring same-type intervals ──
+        string intervalText = "—"
+        if showIntervals
+            array<int> gaps = array.new<int>()
+            for i = 0 to n - 2
+                for j = i + 1 to n - 1
+                    if array.get(pvHigh, i) == array.get(pvHigh, j) and array.get(pvHigh, i) == anchorIsHigh
+                        array.push(gaps, array.get(pvBar, j) - array.get(pvBar, i))
+                        break
+            if array.size(gaps) >= 3
+                int bestGap = 0
+                int bestCount = 0
+                if array.size(gaps) > 0
+                    for i = 0 to array.size(gaps) - 1
+                        int g = array.get(gaps, i)
+                        int c = 0
+                        for j = 0 to array.size(gaps) - 1
+                            if math.abs(array.get(gaps, j) - g) <= tolFor(g)
+                                c += 1
+                        if c > bestCount
+                            bestCount := c
+                            bestGap := g
+                intervalText := str.tostring(bestGap) + " bars, seen " + str.tostring(bestCount) +
+                     " of " + str.tostring(array.size(gaps))
+
+        // ── Summary ──
+        if showTable
+            string chainText = "none ≥ " + str.tostring(minChain)
+            if haveChain
+                chainText := ""
+                if array.size(bestChain) > 0
+                    for i = 0 to array.size(bestChain) - 1
+                        chainText += (i > 0 ? ", " : "") + str.tostring(array.get(counts, array.get(bestChain, i)))
+            string cycleText = "—"
+            if array.size(cycleCounts) > 0
+                cycleText := ""
+                if array.size(cycleCounts) > 0
+                    for i = 0 to array.size(cycleCounts) - 1
+                        cycleText += (i > 0 ? ", " : "") + str.tostring(array.get(cycleCounts, i))
+                cycleText += anchorIsHigh ? "  (highs)" : "  (lows)"
+
+            if na(info)
+                info := table.new(position.top_right, 2, 10, border_width=1,
+                     frame_color=color.new(color.gray, 50), frame_width=1)
+            table.cell(info, 0, 0, "Summation series", bgcolor=color.new(color.black, 20),
+                 text_color=color.white, text_size=size.small)
+            table.cell(info, 1, 0, anchorIsHigh ? "anchor: high" : "anchor: low",
+                 bgcolor=color.new(color.black, 20), text_color=color.white, text_size=size.small)
+            table.cell(info, 0, 1, "Pivots counted", text_color=color.gray, text_size=size.tiny)
+            table.cell(info, 1, 1, str.tostring(array.size(counts)), text_color=color.white, text_size=size.tiny)
+            table.cell(info, 0, 2, "Chain" + (haveChain ? (chainWorst == 0 ? " (exact)" :
+                 " (±" + str.tostring(chainWorst, "#.#") + " worst)") : ""),
+                 text_color=color.gray, text_size=size.tiny)
+            // Greyed when it does not clear the noise bar: a chain that random
+            // data reaches is not a finding, and should not be coloured as one.
+            bool chainReal = array.size(bestChain) > noiseBar(array.size(counts), tolBars, tolPct)
+            table.cell(info, 1, 2, chainText,
+                 text_color=haveChain ? (chainReal ? chainCol : color.gray) : color.gray,
+                 text_size=size.tiny)
+            table.cell(info, 0, 3, "Cycle candidates", text_color=color.gray, text_size=size.tiny)
+            table.cell(info, 1, 3, cycleText, text_color=color.white, text_size=size.tiny)
+            table.cell(info, 0, 4, "Recurring interval", text_color=color.gray, text_size=size.tiny)
+            table.cell(info, 1, 4, intervalText, text_color=color.white, text_size=size.tiny)
+            table.cell(info, 0, 5, "Classic series", text_color=color.gray, text_size=size.tiny)
+            table.cell(info, 1, 5, presetText, text_color=color.white, text_size=size.tiny)
+            table.cell(info, 0, 6, "Projection step", text_color=color.gray, text_size=size.tiny)
+            table.cell(info, 1, 6, nextText, text_color=projCol, text_size=size.tiny)
+            int nb = noiseBar(array.size(counts), tolBars, tolPct)
+            int chainLen = array.size(bestChain)
+            bool beatsNoise = chainLen > nb
+            string confText = "none"
+            if array.size(confCount) > 0
+                confText := ""
+                if array.size(confCount) > 0
+                    for i = 0 to array.size(confCount) - 1
+                        confText += (i > 0 ? ", " : "") + str.tostring(array.get(confCount, i)) +
+                             " (" + str.tostring(array.get(confScore, i), "#.##") + ")"
+            table.cell(info, 0, 7, "Confirmed by shape", text_color=color.gray, text_size=size.tiny)
+            table.cell(info, 1, 7, confText,
+                 text_color=array.size(confCount) > 0 ? color.lime : color.gray, text_size=size.tiny)
+            string voteText = array.size(confOff) < 2 ? "needs two confirmed cycles" :
+                 runDir == 0 ? "they disagree — stand aside" :
+                 (runDir > 0 ? "UP" : "DOWN") + " for at least " + str.tostring(runLen) +
+                 " bars, mean " + str.tostring(meanMove, "#.#") + "%"
+            table.cell(info, 0, 8, "Agreement now", text_color=color.gray, text_size=size.tiny)
+            table.cell(info, 1, 8, voteText,
+                 text_color=consensus ? (meanMove > 0 ? color.lime : color.red) : color.gray, text_size=size.tiny)
+            table.cell(info, 0, 9, "Noise bar", text_color=color.gray, text_size=size.tiny)
+            table.cell(info, 1, 9, str.tostring(chainLen) + " vs " + str.tostring(nb) +
+                 (beatsNoise ? "  clears it" : "  random reaches this"),
+                 text_color=beatsNoise ? color.lime : color.red, text_size=size.tiny)
