@@ -1766,6 +1766,11 @@ td input.note {
   pointer-events: none;
 }
 
+.kb-tv-frame > .tradingview-widget-container {
+  position: relative;
+  background: var(--surface);
+}
+
 /* Quotes inside an article */
 .kb-quote {
   margin: 16px 0;
@@ -1774,4 +1779,89 @@ td input.note {
   background: var(--surface);
   border-radius: 0 var(--radius) var(--radius) 0;
   font-style: italic;
+}
+
+/* Market picker and offset chips on a figure */
+.kb-figure-pick select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 5px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  max-width: 220px;
+}
+
+.kb-offsets {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  padding: 10px 14px 0;
+}
+
+.kb-offsets button {
+  font-size: 12px;
+  padding: 3px 9px;
+  background: var(--bg);
+  color: var(--muted);
+}
+
+.kb-offsets button.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #001526;
+  font-weight: 700;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Lists and rule lists inside an article */
+.kb-list {
+  margin: 12px 0 12px 2px;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.kb-list.tight {
+  gap: 3px;
+}
+
+.kb-list li {
+  padding-left: 4px;
+}
+
+.kb-list li::marker {
+  color: var(--accent);
+}
+
+.kb-rules {
+  margin: 14px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.kb-rules > div {
+  border-left: 2px solid var(--border);
+  padding: 2px 0 2px 14px;
+}
+
+.kb-rules dt {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.kb-rules dd {
+  color: var(--muted);
+  margin-top: 2px;
 }

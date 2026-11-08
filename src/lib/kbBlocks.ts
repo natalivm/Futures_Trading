@@ -23,10 +23,20 @@ export type KbBlock =
     }
   /** The present window against its analog, drawn from cycles/*.json. */
   | { kind: 'overlay'; series: string; label: string; caption?: string }
+  /** Plain bullets, or numbered steps. */
+  | { kind: 'list'; items: string[]; ordered?: boolean; tight?: boolean }
+  /** A term or rule in bold, with the explanation after it. */
+  | { kind: 'rules'; items: RuleItem[] }
   | { kind: 'timeline'; title?: string; caption?: string; rows: TimelineRow[] }
   | { kind: 'table'; head: string[]; rows: string[][]; caption?: string }
   /** An interactive demonstration, keyed by id. */
   | { kind: 'demo'; id: 'noise'; caption?: string };
+
+export interface RuleItem {
+  /** The rule itself, or the term being defined. Kept short enough to scan. */
+  rule: string;
+  detail?: string;
+}
 
 export interface TimelineRow {
   when: string;
@@ -48,6 +58,10 @@ export function blockText(block: KbBlock): string {
       return `${block.label} ${block.caption ?? ''}`;
     case 'overlay':
       return `${block.label} ${block.caption ?? ''}`;
+    case 'list':
+      return block.items.join(' ');
+    case 'rules':
+      return block.items.map(i => `${i.rule} ${i.detail ?? ''}`).join(' ');
     case 'timeline':
       return [block.title, block.caption, ...block.rows.map(r => `${r.when} ${r.what} ${r.note ?? ''}`)]
         .filter(Boolean).join(' ');

@@ -116,10 +116,14 @@ export default function TradingViewChart({ symbol, label, interval, range, capti
         </div>
       ) : (
         <div className="kb-tv-frame" ref={frame}>
+          {/* Sits behind the widget container, which paints over it once the
+              iframe arrives — so the frame is never a blank rectangle. */}
+          <p className="kb-tv-idle muted small">
+            {near ? 'Loading chart…' : 'Chart loads when you reach it.'}
+          </p>
           {/* autosize makes the widget write height:100% on its own container,
               so the fixed height has to live on a parent it does not touch. */}
           <div className="tradingview-widget-container" ref={host} />
-          {!near && <p className="kb-tv-idle muted small">Chart loads when you reach it.</p>}
         </div>
       )}
       {caption && <figcaption>{caption}</figcaption>}
