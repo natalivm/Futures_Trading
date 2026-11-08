@@ -19,21 +19,41 @@ Open the Pine editor, clear it, paste the whole file, Save, Add to chart.
    the sum of the two before it: 3, 4, 7, 11, 18, 29, 47, 76. It may use any
    *subset* of the pivots; skipping most of them is expected. Fibonacci is one
    such series and the course's point is that it is not the only one.
-4. **Read the cycle off the chain.** Of the pivots in the chain, the ones whose
-   *type matches the zero point* — high against a high anchor, low against a
-   low — are the cycle candidates. That is what connects the past to the
-   present: a chain of growth terms landing on the same kind of turn.
+4. **Read the candidates off the chain.** Of the pivots in the chain, the ones
+   whose *type matches the zero point* — high against a high anchor, low
+   against a low — are the cycle candidates. That is what connects the past to
+   the present: a chain of growth terms landing on the same kind of turn.
+5. **Confirm by shape, not by the number.** A candidate is only a cycle if the
+   same thing happened *into* it and *out of* it as at the zero point. In the
+   gold example: a sharp rally in, then a 17-week stair-step decline out — at
+   the zero point, at 83 and at 135. The indicator correlates both windows and
+   confirms above a threshold.
+6. **Act on agreement, not on one cycle.** Two confirmed cycles that also agree
+   about what comes next is the evidence. In the gold example both said five to
+   six weeks up, worth roughly $200 — a trade with a stop under the nearby low.
+   Two that disagree is no signal at all.
 
 > "The summation series is a growth process that connects the past through a
 > sequence of collapsing points to the present."
+
+> "It can't be just any high. Because they're in the series, they're connected
+> to each other. They're part of the same growth process."
+
+On tolerance, the course is explicit: being off by one and then back in sync
+is fine; what you must not allow is an error that **compounds**. The chain
+search follows that — each new term is predicted from the two *actual* pivot
+counts before it, never from the predicted value, so drift cannot accumulate.
 
 ## What it draws
 
 - **0** in yellow on the anchor, every other pivot labelled with its count.
 - Chain members in aqua, everything else dimmed — the circling step, done for you.
+- Confirmed cycles marked in lime, each joined to the anchor by a dotted line.
+- A consensus label when two or more confirmed cycles agree on the next move.
 - Dashed forward lines where the chain's own step projects the next turns.
-- A table: pivots counted, the chain, the cycle candidates, the most repeated
-  same-type interval, and how many counts land on the classic series.
+- A table: pivots counted, the chain, the candidates, which ones confirmed and
+  at what score, the vote over the agreement horizon, the most repeated
+  same-type interval, the classic-series hits, and the noise bar.
 
 ## Settings worth knowing
 
@@ -42,6 +62,44 @@ Open the Pine editor, clear it, paste the whole file, Save, Add to chart.
 | **Pivot strength** | The single biggest lever. Higher = fewer, more important pivots, which is what "primary pivot" means. Low values find a chain in noise. |
 | **Tolerance** | How far a pivot may sit from the exact sum. The larger of *n* bars or *x* %, so small terms get the bar allowance and large ones the percentage. |
 | **Shortest chain** | 3 is one addition and happens constantly by chance. 4–5 is where it starts to mean something. |
+
+## Run end to end on real gold weekly data
+
+The strongest check available: take actual gold weekly closes, anchor on the
+last pivot high before August 2022 — where the course anchors — and run every
+step without looking at the answer.
+
+```
+anchor           2022-03-11  high @ 1985
+counts back      6, 17, 25, 27, 31, 38, 41, 53, 62, 67, 70, 76, 83, 92, 95, 103, 118, …
+longest chain    6, 76, 83, 159, 244, 400, 641, 1043
+same-type (high) 83, 159, 400, 641
+
+ cycle   corr in  corr out   score    next 6 weeks
+    83      0.87      0.74    0.74          −3.7%
+   159      0.69      0.04    0.04          +8.3%
+   400      0.71      0.91    0.71          +3.5%
+   641      0.86      0.48    0.48          +6.7%
+```
+
+**It finds 83 — the course's own number — from raw data.** And 83 scores
+highest on shape: 0.87 going in, 0.74 coming out, which is exactly the
+argument made in the lecture (sharp rally into the high, stair-step 17-week
+decline out of it, at both points).
+
+Two things the gates then do, which matter more than the hit:
+
+- **159 is rejected.** It is in the chain and it is a high, but its
+  out-shape correlates 0.04 with the anchor's. A chain member is not a cycle.
+- **No signal is produced.** The two that confirm, 83 and 400, point opposite
+  ways over the next six weeks — −3.7% against +3.5%. The course's rule is
+  that one cycle might get you in and two agreeing is the evidence; two
+  disagreeing is not a weak signal, it is no signal.
+
+The course pairs 83 with 135. This run offers 159 instead, and rejects it —
+pivot detection here is close-based on resampled weekly bars rather than
+COMEX highs and lows, and the anchor is March rather than April. Close enough
+to say the method reproduces; not close enough to claim the same two cycles.
 
 ## What a chain is worth — measured, not assumed
 
