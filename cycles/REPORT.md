@@ -1,6 +1,53 @@
 # Cycle report
 
-Generated 2026-11-08 15:46 UTC from commit a47f112.
+Generated 2026-11-08 16:14 UTC from commit 44656cc.
+
+## Fetch log
+
+```
+
+^DJI
+  yahoo: 84 rows (2026-07-13 → 2026-11-06)
+  ! stooq ^dji: https://stooq.com: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'; https://stooq.pl: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'
+  Dow Jones Industrial Average: 8775 rows (1992-01-02 → 2026-11-06), +0 new
+
+^GSPC
+  yahoo: 84 rows (2026-07-13 → 2026-11-06)
+  ! stooq ^spx: https://stooq.com: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'; https://stooq.pl: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'
+  S&P 500: 14335 rows (1970-01-02 → 2026-11-06), +0 new
+
+^IXIC
+  yahoo: 84 rows (2026-07-13 → 2026-11-06)
+  ! stooq ^ndq: https://stooq.com: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'; https://stooq.pl: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'
+  Nasdaq Composite: 14057 rows (1971-02-05 → 2026-11-06), +0 new
+
+^NDX
+  yahoo: 84 rows (2026-07-13 → 2026-11-06)
+  ! stooq ^ndx: https://stooq.com: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'; https://stooq.pl: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'
+  Nasdaq 100: 10356 rows (1985-10-01 → 2026-11-06), +0 new
+
+^RUT
+  yahoo: 84 rows (2026-07-13 → 2026-11-06)
+  ! stooq ^rut: https://stooq.com: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'; https://stooq.pl: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'
+  Russell 2000: 9865 rows (1987-09-10 → 2026-11-06), +0 new
+
+ES=F
+  yahoo: 84 rows (2026-07-13 → 2026-11-06)
+  ! stooq es.f: https://stooq.com: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'; https://stooq.pl: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'
+  E-mini S&P 500 continuous futures: 6600 rows (2000-09-18 → 2026-11-06), +0 new
+
+CL=F
+  yahoo: 84 rows (2026-07-13 → 2026-11-06)
+  ! stooq cl.f: https://stooq.com: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'; https://stooq.pl: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'
+  WTI crude oil continuous futures: 6581 rows (2000-08-23 → 2026-11-06), +0 new
+
+GC=F
+  yahoo: 84 rows (2026-07-13 → 2026-11-06)
+  ! stooq gc.f: https://stooq.com: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'; https://stooq.pl: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'
+  Gold continuous futures: 6573 rows (2000-08-30 → 2026-11-06), +0 new
+
+8 file(s) updated.
+```
 
 ## Price files
 
@@ -281,11 +328,9 @@ RUT
   wrote public/cycles/RUT_election.json
 ```
 
-## Ad-hoc: ^DJI at 60 year(s), window 440
+## Ad-hoc: S&P at 96 year(s), window 440
 
 ```
-
-DJI: 8775 bars, 1992-01-02 → 2026-11-06
-  60y: not enough history (33.1y available)
-  no offsets scored
+No price data for: S&P.csv
+Run `python3 cycles/update_prices.py` first.
 ```
