@@ -38,6 +38,27 @@ export default function ArticleBody({ body }: { body: KbBlock[] }) {
           case 'demo':
             return <NoiseCycleDemo key={i} caption={block.caption} />;
 
+          case 'list': {
+            const List = block.ordered ? 'ol' : 'ul';
+            return (
+              <List key={i} className={`kb-list${block.tight ? ' tight' : ''}`}>
+                {block.items.map((item, n) => <li key={n}>{item}</li>)}
+              </List>
+            );
+          }
+
+          case 'rules':
+            return (
+              <dl key={i} className="kb-rules">
+                {block.items.map((item, n) => (
+                  <div key={n}>
+                    <dt>{item.rule}</dt>
+                    {item.detail && <dd>{item.detail}</dd>}
+                  </div>
+                ))}
+              </dl>
+            );
+
           case 'timeline':
             return (
               <figure key={i} className="kb-figure">

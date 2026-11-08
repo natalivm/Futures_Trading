@@ -1766,6 +1766,11 @@ td input.note {
   pointer-events: none;
 }
 
+.kb-tv-frame > .tradingview-widget-container {
+  position: relative;
+  background: var(--surface);
+}
+
 /* Quotes inside an article */
 .kb-quote {
   margin: 16px 0;
@@ -1816,4 +1821,47 @@ td input.note {
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+/* Lists and rule lists inside an article */
+.kb-list {
+  margin: 12px 0 12px 2px;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.kb-list.tight {
+  gap: 3px;
+}
+
+.kb-list li {
+  padding-left: 4px;
+}
+
+.kb-list li::marker {
+  color: var(--accent);
+}
+
+.kb-rules {
+  margin: 14px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.kb-rules > div {
+  border-left: 2px solid var(--border);
+  padding: 2px 0 2px 14px;
+}
+
+.kb-rules dt {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.kb-rules dd {
+  color: var(--muted);
+  margin-top: 2px;
 }
