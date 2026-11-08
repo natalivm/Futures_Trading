@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { articleCount, categories, relatedPages, type KbArticle } from '../lib/kb';
+import { articleCount, categories, categoryOf, relatedPages, type KbArticle } from '../lib/kb';
 import type { Page } from '../lib/nav';
 
 interface Props {
@@ -20,11 +20,13 @@ export default function KnowledgeBase({ onGo }: Props) {
     .filter(c => !q || c.articles.length > 0 || match(c.title) || match(c.description));
   const written = shelves.filter(c => c.articles.length > 0);
   const planned = shelves.filter(c => c.articles.length === 0);
+  const related = relatedPages.filter(r => !q || match(r.title) || match(r.summary));
 
   if (open) {
     return (
       <article className="kb-article">
         <button className="ghost back" onClick={() => setOpen(null)}>← Back to the knowledge base</button>
+        <p className="kb-crumb muted small">{categoryOf(open.id)?.title ?? 'Knowledge base'}</p>
         <h1>{open.title}</h1>
         <p className="muted lead">{open.summary}</p>
         {open.source && <p className="muted small">Source: {open.source}</p>}
@@ -56,7 +58,7 @@ export default function KnowledgeBase({ onGo }: Props) {
         aria-label="Search the knowledge base"
       />
 
-      <h2>Read now</h2>
+      {written.length + related.length > 0 && <h2>Read now</h2>}
       <div className="kb-grid">
         {written.map(c => (
           <section key={c.id} className="kb-card live">
@@ -71,7 +73,7 @@ export default function KnowledgeBase({ onGo }: Props) {
             </ul>
           </section>
         ))}
-        {relatedPages.map(r => (
+        {related.map(r => (
           <button type="button" key={r.page} className="kb-card live" onClick={() => onGo(r.page)}>
             <h3>{r.title}</h3>
             <p className="muted small">{r.summary}</p>
@@ -80,8 +82,8 @@ export default function KnowledgeBase({ onGo }: Props) {
         ))}
       </div>
 
-      <h2>Sections being written</h2>
-      {shelves.length === 0 && <p className="muted">Nothing matches “{query}”.</p>}
+      {planned.length > 0 && <h2>Sections being written</h2>}
+      {shelves.length === 0 && related.length === 0 && <p className="muted">Nothing matches “{query}”.</p>}
       <div className="kb-grid">
         {planned.map(c => (
           <section key={c.id} className="kb-card">

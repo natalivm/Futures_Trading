@@ -7,8 +7,9 @@ decomposition.
 Two scripts, standard library only, no pip install:
 
 ```bash
-python3 cycles/update_prices.py          # refresh cycles/data/*.csv
-python3 cycles/find_cycles.py --all --svg
+python3 cycles/update_prices.py                      # refresh cycles/data/*.csv
+python3 cycles/find_cycles.py --preset course        # the lectures' cycle set
+python3 cycles/election_cycle.py --symbol ^DJI       # the four-year cycle statistic
 ```
 
 ## update_prices.py
@@ -35,9 +36,15 @@ of exactly 60 years. 440 is the default.
 # search for whatever repeats
 python3 cycles/find_cycles.py --symbol ^DJI --min-years 40 --max-years 80 --svg
 
-# or test one cycle you already believe in — far stronger evidence
+# or test cycles you already believe in — far stronger evidence
 python3 cycles/find_cycles.py --symbol ^DJI --lag-years 60 --svg
+python3 cycles/find_cycles.py --symbol ^DJI --preset course
 ```
+
+`--preset course` expands to the set the lectures work with: 4, 28, 56, 60,
+78.5, 157 and 314 years. 78.5 is half of 157, which is half of 314 — the
+harmonic chain that reaches back to the 1720 top and forward to 2034. Offsets
+longer than the available history are skipped with a note.
 
 | flag | meaning |
 | --- | --- |
@@ -94,8 +101,27 @@ over twelve thousand hypotheses does by construction.
 `--lag-years 60` over a search when you already have a cycle in mind: naming
 the hypothesis in advance removed the false positive entirely (0.086).
 
+## election_cycle.py
+
+The four-year presidential cycle, computed rather than taken on trust. Year 1
+is the year after the election, year 2 the midterm, year 3 the pre-election
+year, year 4 the election year.
+
+```bash
+python3 cycles/election_cycle.py --symbol ^DJI
+python3 cycles/election_cycle.py --all --from 1926 --json
+```
+
+It prints, per cycle year, the up-rate, mean, median and worst calendar-year
+move, then names every down year. The lecture's claim is that the third year
+is up about 94% of the time with only two misses, given as 1931 and 2008 —
+note that 2008 was an election year rather than a pre-election year, and the
+exceptions usually cited are 1931 and 2015. This script settles it on our own
+data. With roughly 25 pre-election years in a century, one extra miss moves
+the rate by four points, so read it as a tilt rather than a law.
+
 ## Automation
 
-`.github/workflows/update-cycles.yml` refreshes the prices and rescans every
-Saturday, and on demand from the Actions tab. It commits `cycles/data/` and
-`public/cycles/` when they change.
+`.github/workflows/update-cycles.yml` refreshes the prices, rescans and
+recomputes the election-cycle table every Saturday, and on demand from the
+Actions tab. It commits `cycles/data/` and `public/cycles/` when they change.

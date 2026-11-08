@@ -311,15 +311,20 @@ def analyse(symbol, dates, closes, args):
               f"for a {args.min_years}-year lag on a {window}-day window")
         return None
 
-    if args.lag_years:
-        # A pre-specified cycle is a far stronger test than the best of a
-        # 10,000-offset search: one hypothesis, no multiple-comparison problem.
-        lag = int(round(args.lag_years * TRADING_DAYS_PER_YEAR))
-        if lag + window > n:
-            print(f"  not enough history for a {args.lag_years}-year offset")
-            return None
-        scored = scan(closes, window, lag, lag, 1)
-        matches = [(lag, scored[0][1])] if scored else []
+    if args.lags:
+        # Pre-specified cycles are a far stronger test than the best of a
+        # 10,000-offset search: named hypotheses, no multiple-comparison problem.
+        scored, matches = [], []
+        for years in args.lags:
+            lag = int(round(years * TRADING_DAYS_PER_YEAR))
+            if lag + window > n:
+                print(f"  {years:g}y: not enough history "
+                      f"({(n - window) / TRADING_DAYS_PER_YEAR:.1f}y available)")
+                continue
+            one = scan(closes, window, lag, lag, 1)
+            if one:
+                scored.extend(one)
+                matches.append(one[0])
     else:
         scored = scan(closes, window, min_lag, max_lag, args.step)
         matches = pick(scored, args.top, args.min_sep or window // 2)
@@ -342,7 +347,7 @@ def analyse(symbol, dates, closes, args):
                            int(args.epoch_years * TRADING_DAYS_PER_YEAR), args.swing)
         held = [e["corr"] for e in epochs]
         # Meaningless when only one offset was tested — that is the point of --lag-years.
-        better = None if args.lag_years else sum(1 for _, c in scored if c >= corr) / len(scored)
+        better = None if args.lags else sum(1 for _, c in scored if c >= corr) / len(scored)
         years = lag / TRADING_DAYS_PER_YEAR
         out_matches.append({
             "lagTradingDays": lag,
@@ -351,7 +356,7 @@ def analyse(symbol, dates, closes, args):
             "retCorr": round(ret_corr, 4),
             "swingCorr": round(swing_corr, 4),
             "pctBetter": round(better * 100, 2) if better is not None else None,
-            "preSpecified": bool(args.lag_years),
+            "preSpecified": bool(args.lags),
             "stability": epochs,
             "heldMeanCorr": round(sum(held) / len(held), 4) if held else None,
             "heldMinCorr": round(min(held), 4) if held else None,
@@ -381,7 +386,8 @@ def analyse(symbol, dates, closes, args):
         "horizon": horizon,
         "offsetsScanned": len(scored),
         "swingBars": args.swing,
-        "scanYears": [args.min_years, round(max_lag / TRADING_DAYS_PER_YEAR, 1)],
+        "scanYears": args.lags if args.lags else [args.min_years, round(max_lag / TRADING_DAYS_PER_YEAR, 1)],
+        "mode": "named" if args.lags else "search",
         "currentStart": cur_dates[0],
         "currentEnd": cur_dates[-1],
         "currentCloses": [round(v, 2) for v in cur_closes],
@@ -394,7 +400,8 @@ def main():
     ap.add_argument("--symbol", help="file slug or symbol, e.g. ^DJI or DJI")
     ap.add_argument("--all", action="store_true", help="every series in cycles/data")
     ap.add_argument("--window", type=int, default=440, help="trading days compared (default 440 ≈ 22 months, the span on the DJIA slide)")
-    ap.add_argument("--lag-years", type=float, help="test ONE cycle length instead of searching, e.g. 60")
+    ap.add_argument("--lag-years", help="test named cycle length(s) instead of searching, e.g. 60 or 60,78.5,28")
+    ap.add_argument("--preset", choices=["course"], help="course = the cycle set from the lectures: 4, 28, 56, 60, 78.5, 157, 314 years")
     ap.add_argument("--swing", type=int, default=21, help="bars per swing-return block (default 21 ≈ monthly)")
     ap.add_argument("--epochs", type=int, default=5, help="earlier anchor points used to check the cycle held")
     ap.add_argument("--epoch-years", type=float, default=5, help="years between those anchor points")
@@ -408,6 +415,12 @@ def main():
     ap.add_argument("--svg-top", type=int, default=1, help="how many matches to chart")
     ap.add_argument("--json-dir", default=WEB_DIR, help="where the JSON goes (default public/cycles)")
     args = ap.parse_args()
+
+    # The cycle set the lectures work with. 78.5 is half of 157, which is half
+    # of 314 — the harmonic chain back to the 1720 tulip top.
+    if args.preset == "course" and not args.lag_years:
+        args.lag_years = "4,28,56,60,78.5,157,314"
+    args.lags = [float(x) for x in args.lag_years.split(",")] if args.lag_years else []
 
     if args.all:
         paths = sorted(glob.glob(os.path.join(DATA_DIR, "*.csv")))

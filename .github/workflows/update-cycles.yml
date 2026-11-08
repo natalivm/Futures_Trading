@@ -40,6 +40,9 @@ jobs:
             --min-years "${{ inputs.min_years || '3' }}" \
             --max-years "${{ inputs.max_years || '100' }}"
 
+      - name: Recompute the election-cycle table
+        run: python3 cycles/election_cycle.py --all --json
+
       - name: Commit if changed
         run: |
           git config user.name "github-actions[bot]"
