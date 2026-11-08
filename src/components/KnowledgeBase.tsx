@@ -75,12 +75,9 @@ export default function KnowledgeBase() {
         />
         <nav aria-label="Contents">
           <ol className="kb-toc">
-            {written.map((c, i) => (
+            {written.map(c => (
               <li key={c.id} className={active === c.id ? 'on' : ''}>
-                <button onClick={() => jump(c.id)}>
-                  <span className="num">{i + 1}</span>
-                  <span>{c.title}</span>
-                </button>
+                <button onClick={() => jump(c.id)}>{c.title}</button>
               </li>
             ))}
           </ol>
@@ -91,36 +88,38 @@ export default function KnowledgeBase() {
         <header className="kb-doc-head">
           <h1>Knowledge base</h1>
           <p className="muted lead">
-            Market Forecast Mastery, read front to back: the premise, the two ways to forecast, what
-            the scanner found when the claims were tested, and how to use a cycle without fooling
-            yourself. {articleCount} sections, in order — it is one argument, so it is one page.
+            Market Forecast Mastery, read front to back — {articleCount} sections in order, because
+            it is one argument.
           </p>
         </header>
 
         {written.length === 0 && <p className="muted">Nothing matches “{query}”.</p>}
 
-        {written.map((chapter, i) => (
-          <section key={chapter.id} id={`ch-${chapter.id}`} data-chapter={chapter.id} className="kb-chapter">
-            <div className="kb-chapter-head">
-              <span className="kb-chapter-num">{i + 1}</span>
-              <div>
-                <h2>{chapter.title}</h2>
-                <p className="muted">{chapter.description}</p>
-              </div>
-            </div>
+        {written.map(chapter => {
+          // One section in a chapter needs no section heading — the chapter
+          // line already named it. Several do, and the body headings then drop
+          // a level under them.
+          const titled = chapter.articles.length > 1;
+          return (
+            <section key={chapter.id} id={`ch-${chapter.id}`} data-chapter={chapter.id} className="kb-chapter">
+              <h2 className="kb-chapter-head">
+                <span className="kb-chapter-name">{chapter.title}</span>
+                <span className="muted"> — {chapter.description}</span>
+              </h2>
 
-            {chapter.articles.map(article => (
-              <article key={article.id} id={`kb-${article.id}`} className="kb-section">
-                <h3>{article.title}</h3>
-                {/* `summary` is deliberately not rendered: it restated the heading,
-                    and the body then restated it again. It stays on the record as
-                    search text and as the one-line description of each section. */}
-                {article.source && <p className="muted small kb-source">Source: {article.source}</p>}
-                <ArticleBody body={article.body} />
-              </article>
-            ))}
-          </section>
-        ))}
+              {chapter.articles.map(article => (
+                <article key={article.id} id={`kb-${article.id}`} className="kb-section">
+                  {/* `summary` is deliberately not rendered: it restated the heading,
+                      and the body then restated it again. It stays on the record as
+                      search text and as the one-line description of each section. */}
+                  {titled && <h3>{article.title}</h3>}
+                  {article.source && <p className="muted small kb-source">Source: {article.source}</p>}
+                  <ArticleBody body={article.body} level={titled ? 4 : 3} />
+                </article>
+              ))}
+            </section>
+          );
+        })}
 
         {pending.length > 0 && (
           <section className="kb-chapter kb-pending">

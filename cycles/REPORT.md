@@ -1,6 +1,6 @@
 # Cycle report
 
-Generated 2026-11-08 17:27 UTC from commit a81d8a8.
+Generated 2026-11-08 19:26 UTC from commit be51e1a.
 
 ## Fetch log
 
@@ -9,22 +9,22 @@ Generated 2026-11-08 17:27 UTC from commit a81d8a8.
 ^DJI
   yahoo: 8775 rows (1992-01-02 → 2026-11-06)
   ! stooq ^dji: https://stooq.com: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'; https://stooq.pl: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'
-  Dow Jones Industrial Average: 8775 rows (1992-01-02 → 2026-11-06), +268 new
+  Dow Jones Industrial Average: 8775 rows (1992-01-02 → 2026-11-06), +0 new
 
 ^GSPC
   yahoo: 24831 rows (1927-12-30 → 2026-11-06)
   ! stooq ^spx: https://stooq.com: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'; https://stooq.pl: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'
-  S&P 500: 24837 rows (1927-12-30 → 2026-11-06), +10496 new
+  S&P 500: 24837 rows (1927-12-30 → 2026-11-06), +0 new
 
 ^IXIC
   yahoo: 14057 rows (1971-02-05 → 2026-11-06)
   ! stooq ^ndq: https://stooq.com: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'; https://stooq.pl: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'
-  Nasdaq Composite: 14057 rows (1971-02-05 → 2026-11-06), +1 new
+  Nasdaq Composite: 14057 rows (1971-02-05 → 2026-11-06), +0 new
 
 ^NDX
   yahoo: 10356 rows (1985-10-01 → 2026-11-06)
   ! stooq ^ndx: https://stooq.com: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'; https://stooq.pl: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'
-  Nasdaq 100: 10356 rows (1985-10-01 → 2026-11-06), +87 new
+  Nasdaq 100: 10356 rows (1985-10-01 → 2026-11-06), +0 new
 
 ^RUT
   yahoo: 9865 rows (1987-09-10 → 2026-11-06)
@@ -34,19 +34,29 @@ Generated 2026-11-08 17:27 UTC from commit a81d8a8.
 ES=F
   yahoo: 6600 rows (2000-09-18 → 2026-11-06)
   ! stooq es.f: https://stooq.com: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'; https://stooq.pl: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'
-  E-mini S&P 500 continuous futures: 6600 rows (2000-09-18 → 2026-11-06), +201 new
+  E-mini S&P 500 continuous futures: 6600 rows (2000-09-18 → 2026-11-06), +0 new
 
 CL=F
   yahoo: 6581 rows (2000-08-23 → 2026-11-06)
   ! stooq cl.f: https://stooq.com: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'; https://stooq.pl: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'
-  WTI crude oil continuous futures: 6581 rows (2000-08-23 → 2026-11-06), +201 new
+  WTI crude oil continuous futures: 6581 rows (2000-08-23 → 2026-11-06), +0 new
 
 GC=F
   yahoo: 6573 rows (2000-08-30 → 2026-11-06)
   ! stooq gc.f: https://stooq.com: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'; https://stooq.pl: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'
-  Gold continuous futures: 6573 rows (2000-08-30 → 2026-11-06), +201 new
+  Gold continuous futures: 6573 rows (2000-08-30 → 2026-11-06), +0 new
 
-8 file(s) updated.
+ZB=F
+  yahoo: 6568 rows (2000-09-21 → 2026-11-06)
+  ! stooq zb.f: https://stooq.com: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'; https://stooq.pl: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'
+  US 30-year Treasury bond futures: 6568 rows (2000-09-21 → 2026-11-06), +0 new
+
+TSLA
+  yahoo: 4116 rows (2010-06-29 → 2026-11-06)
+  ! stooq tsla.us: https://stooq.com: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'; https://stooq.pl: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>T'
+  Tesla: 4116 rows (2010-06-29 → 2026-11-06), +0 new
+
+10 file(s) updated.
 ```
 
 ## Price files
@@ -61,6 +71,9 @@ GC=F
 | IXIC.csv | 14057 | 1971-02-05 | 2026-11-06 |
 | NDX.csv | 10356 | 1985-10-01 | 2026-11-06 |
 | RUT.csv | 9871 | 1987-09-01 | 2026-11-06 |
+| TSLA.csv | 4116 | 2010-06-29 | 2026-11-06 |
+| ZB_F.csv | 6568 | 2000-09-21 | 2026-11-06 |
+| ZB_F_weekly.csv | 1365 | 2000-09-18 | 2026-11-06 |
 
 ## Equity cycles — named offsets
 
@@ -228,6 +241,37 @@ RUT: 9871 bars, 1987-09-01 → 2026-11-06
      9.1y back  corr +0.936  swing +0.685  daily +0.065  top  1.22%  |  held -0.03 (worst -0.65) over 5 earlier epochs
             analog 2015-12-14 → 2017-09-12   forecast +25.2% over 230 bars
   wrote public/cycles/RUT.json
+
+TSLA: 4116 bars, 2010-06-29 → 2026-11-06
+     8.3y back  corr +0.864  swing +0.610  daily +0.130  top  0.03%  |  held +0.47 (worst +0.47) over 1 earlier epochs
+            analog 2016-10-05 → 2018-07-05   forecast -41.4% over 230 bars
+    11.3y back  corr +0.669  swing +0.539  daily +0.065  top  2.57%  |  no earlier epoch testable
+            analog 2013-10-16 → 2015-07-16   forecast -23.4% over 230 bars
+     5.0y back  corr +0.610  swing +0.033  daily +0.010  top  4.45%  |  held -0.26 (worst -0.26) over 1 earlier epochs
+            analog 2020-01-28 → 2021-10-22   forecast -3.9% over 230 bars
+    12.2y back  corr +0.606  swing +0.191  daily +0.092  top  5.21%  |  no earlier epoch testable
+            analog 2012-11-13 → 2014-08-13   forecast +1.7% over 230 bars
+     3.9y back  corr +0.597  swing +0.075  daily +0.063  top  6.61%  |  held +0.12 (worst -0.42) over 2 earlier epochs
+            analog 2021-03-11 → 2022-12-06   forecast +12.2% over 230 bars
+  wrote public/cycles/TSLA.json
+
+ZB_F: 6568 bars, 2000-09-21 → 2026-11-06
+     4.2y back  corr +0.846  swing +0.195  daily +0.102  top  0.02%  |  held +0.18 (worst -0.77) over 4 earlier epochs
+            analog 2020-11-09 → 2022-08-09   forecast -7.3% over 230 bars
+    20.3y back  corr +0.786  swing +0.222  daily +0.054  top  1.94%  |  no earlier epoch testable
+            analog 2004-09-27 → 2006-06-27   forecast +4.0% over 230 bars
+     8.2y back  corr +0.773  swing +0.193  daily +0.074  top  2.48%  |  held +0.33 (worst +0.11) over 3 earlier epochs
+            analog 2016-11-16 → 2018-08-17   forecast +9.5% over 230 bars
+    13.1y back  corr +0.756  swing +0.604  daily +0.061  top  3.20%  |  held -0.07 (worst -0.86) over 2 earlier epochs
+            analog 2011-12-08 → 2013-09-10   forecast +6.8% over 230 bars
+     9.5y back  corr +0.610  swing +0.066  daily +0.048  top 10.98%  |  held -0.43 (worst -0.75) over 2 earlier epochs
+            analog 2015-08-03 → 2017-05-04   forecast -3.5% over 230 bars
+  wrote public/cycles/ZB_F.json
+
+ZB_F_weekly: 1365 bars, 2000-09-18 → 2026-11-06
+     3.5y back  corr -0.370  swing +0.016  daily +0.096  top  0.59%  |  no earlier epoch testable
+            analog 2001-08-13 → 2010-01-11   forecast +36.2% over 230 bars
+  wrote public/cycles/ZB_F_weekly.json
 ```
 
 ## Named-cycle overlays (equities)
@@ -262,6 +306,10 @@ GSPC: 24837 bars, 1927-12-30 → 2026-11-06
             analog 2003-02-03 → 2004-10-28   forecast +9.5% over 230 bars
     28.0y back  corr +0.873  swing +0.252  daily -0.018  pre-specified  |  held +0.35 (worst -0.15) over 5 earlier epochs
             analog 1997-01-29 → 1998-10-23   forecast +18.0% over 230 bars
+    60.0y back  corr -0.279  swing +0.182  daily +0.071  pre-specified  |  held +0.54 (worst +0.08) over 5 earlier epochs
+            analog 1965-01-20 → 1966-10-14   forecast +36.1% over 230 bars
+    78.5y back  corr -0.530  swing -0.461  daily +0.035  pre-specified  |  held -0.44 (worst -0.66) over 3 earlier epochs
+            analog 1946-06-25 → 1948-03-30   forecast -4.0% over 230 bars
   wrote public/cycles/GSPC_named.json
 ```
 
@@ -285,6 +333,35 @@ CL_F: 6580 bars, 2000-08-23 → 2026-11-06
 GC_F: 6573 bars, 2000-08-30 → 2026-11-06
   24.5y: not enough history (18.9y available)
   no offsets scored
+```
+
+## Named-cycle overlays (Tesla)
+
+```
+
+TSLA: 4116 bars, 2010-06-29 → 2026-11-06
+     4.0y back  corr +0.561  swing +0.138  daily -0.025  pre-specified  |  held +0.29 (worst -0.04) over 2 earlier epochs
+            analog 2021-02-03 → 2022-10-31   forecast +8.1% over 230 bars
+     6.8y back  corr -0.084  swing +0.354  daily +0.047  pre-specified  |  held +0.82 (worst +0.82) over 1 earlier epochs
+            analog 2018-04-16 → 2020-01-13   forecast +540.2% over 230 bars
+    11.7y back  corr +0.593  swing -0.058  daily +0.063  pre-specified  |  no earlier epoch testable
+            analog 2013-06-07 → 2015-03-06   forecast -8.0% over 230 bars
+  wrote public/cycles/TSLA_named.json
+```
+
+## Named-cycle overlays (US 30-year bonds, inversion allowed)
+
+```
+inversion allowed on ZB_F — an upside-down match scores as a match, so read the swing figure against a control that does not exist yet
+
+ZB_F: 6568 bars, 2000-09-21 → 2026-11-06
+     1.6y back  corr +0.268  swing +0.242  daily +0.023  pre-specified  |  held -0.05 (worst -0.83) over 4 earlier epochs
+            analog 2023-07-17 → 2025-04-11
+     3.1y back  corr +0.451  swing +0.109  daily +0.011  pre-specified  |  held -0.10 (worst -0.76) over 4 earlier epochs
+            analog 2021-12-16 → 2023-09-18   forecast +1.6% over 230 bars
+     4.7y back  corr +0.375  swing +0.170  daily +0.066  pre-specified  |  held +0.04 (worst -0.51) over 3 earlier epochs
+            analog 2020-05-20 → 2022-02-15   forecast -11.1% over 230 bars
+  wrote public/cycles/ZB_F_named.json
 ```
 
 ## Composite — where the named cycles agree
@@ -501,6 +578,90 @@ RUT
     6 months   up             2 up / 0 down   lean +1.00   weighted +17.5%
     12 months  up             2 up / 0 down   lean +1.00   weighted +14.2%
   wrote public/cycles/RUT_composite.json
+
+TSLA
+  4116 bars, 2010-06-29 → 2026-11-06, window 440
+
+     cycle    price   swing   worst  weight   3-month
+        4y  +0.561  +0.138  -0.04    0.00   -15.5%
+      6.8y  -0.084  +0.354  +0.82    0.73   +40.0%
+    11.65y  +0.593  -0.058     n/a    0.00   +21.6%
+       17y  — needs 19y of history
+    19.08y  — needs 21y of history
+       22y  — needs 24y of history
+     24.5y  — needs 26y of history
+       27y  — needs 29y of history
+       28y  — needs 30y of history
+       56y  — needs 58y of history
+       60y  — needs 62y of history
+     78.5y  — needs 80y of history
+      157y  — needs 159y of history
+      314y  — needs 316y of history
+
+  Agreement
+    1 month    up             1 up / 0 down   lean +1.00   weighted +52.4%
+    3 months   up             1 up / 0 down   lean +1.00   weighted +40.0%
+    6 months   up             1 up / 0 down   lean +1.00   weighted +214.6%
+    12 months  up             1 up / 0 down   lean +1.00   weighted +805.2%
+  wrote public/cycles/TSLA_composite.json
+
+ZB_F
+  6568 bars, 2000-09-21 → 2026-11-06, window 440
+
+     cycle    price   swing   worst  weight   3-month
+        4y  +0.791  +0.317  -0.12    0.00   +3.0%
+      6.8y  -0.638  -0.005  -0.45    0.00   +12.4%
+    11.65y  -0.788  -0.398  -0.14    0.00   +5.8%
+       17y  +0.097  -0.037  +0.26    0.00   -0.4%
+    19.08y  +0.215  +0.060  -0.06    0.00   +4.8%
+       22y  -0.005  -0.303     n/a    0.00   +0.7%
+     24.5y  — needs 26y of history
+       27y  — needs 29y of history
+       28y  — needs 30y of history
+       56y  — needs 58y of history
+       60y  — needs 62y of history
+     78.5y  — needs 80y of history
+      157y  — needs 159y of history
+      314y  — needs 316y of history
+
+  Agreement
+    1 month    no usable cycle 0 up / 0 down   lean +0.00   weighted —
+    3 months   no usable cycle 0 up / 0 down   lean +0.00   weighted —
+    6 months   no usable cycle 0 up / 0 down   lean +0.00   weighted —
+    12 months  no usable cycle 0 up / 0 down   lean +0.00   weighted —
+
+  No cycle on this market clears the swing and epoch floors, so there is
+  no composite to read. That is a result, not a gap.
+  wrote public/cycles/ZB_F_composite.json
+
+ZB_F_weekly
+  1365 bars, 2000-09-18 → 2026-11-06, window 440
+
+     cycle    price   swing   worst  weight   3-month
+        4y  — needs 6y of history
+      6.8y  — needs 9y of history
+    11.65y  — needs 13y of history
+       17y  — needs 19y of history
+    19.08y  — needs 21y of history
+       22y  — needs 24y of history
+     24.5y  — needs 26y of history
+       27y  — needs 29y of history
+       28y  — needs 30y of history
+       56y  — needs 58y of history
+       60y  — needs 62y of history
+     78.5y  — needs 80y of history
+      157y  — needs 159y of history
+      314y  — needs 316y of history
+
+  Agreement
+    1 month    no usable cycle 0 up / 0 down   lean +0.00   weighted —
+    3 months   no usable cycle 0 up / 0 down   lean +0.00   weighted —
+    6 months   no usable cycle 0 up / 0 down   lean +0.00   weighted —
+    12 months  no usable cycle 0 up / 0 down   lean +0.00   weighted —
+
+  No cycle on this market clears the swing and epoch floors, so there is
+  no composite to read. That is a result, not a gap.
+  wrote public/cycles/ZB_F_weekly_composite.json
 ```
 
 ## Four-year election cycle
@@ -602,6 +763,42 @@ RUT
 
   Pre-election years up 67% of the time (6/9). Down years: 2007 (-2.8%), 2011 (-5.5%), 2015 (-5.7%)
   wrote public/cycles/RUT_election.json
+
+TSLA
+  16 full years, 2011–2026
+
+  cycle year         n   up  up rate     mean   median    worst
+  1 post-election    4    4     100%   112.7%    47.7%    11.4%
+  2 midterm          4    2      50%    -7.7%    -6.7%   -65.0%
+  3 pre-election     4    4     100%    35.6%    16.8%     7.2%
+  4 election         4    3      75%   203.4%    40.5%   -11.0%
+
+  Pre-election years up 100% of the time (4/4). Down years: none
+  wrote public/cycles/TSLA_election.json
+
+ZB_F
+  26 full years, 2001–2026
+
+  cycle year         n   up  up rate     mean   median    worst
+  1 post-election    7    3      43%    -5.0%    -3.1%   -16.4%
+  2 midterm          7    3      43%    -0.8%    -2.4%   -21.9%
+  3 pre-election     6    4      67%     5.5%     5.4%    -3.0%
+  4 election         6    4      67%     3.9%     2.4%    -8.9%
+
+  Pre-election years up 67% of the time (4/6). Down years: 2003 (-3.0%), 2023 (-0.3%)
+  wrote public/cycles/ZB_F_election.json
+
+ZB_F_weekly
+  26 full years, 2001–2026
+
+  cycle year         n   up  up rate     mean   median    worst
+  1 post-election    7    3      43%    -5.5%    -4.8%   -18.3%
+  2 midterm          7    3      43%    -0.5%    -1.8%   -20.7%
+  3 pre-election     6    4      67%     5.4%     5.4%    -2.7%
+  4 election         6    4      67%     4.2%     2.9%    -8.7%
+
+  Pre-election years up 67% of the time (4/6). Down years: 2003 (-1.8%), 2023 (-2.7%)
+  wrote public/cycles/ZB_F_weekly_election.json
 ```
 
 ## Ad-hoc: ^DJI at 60 year(s), window 440

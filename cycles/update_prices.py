@@ -63,6 +63,15 @@ INDEXES = {
     # The course's bond work is on the CBOT 30-year future, where the
     # 82-week count and its 246-week multiple come from.
     "ZB=F":  ("US 30-year Treasury bond futures", "zb.f"),
+    # Single stocks are fair game for the same machinery, with one caveat the
+    # indexes do not have: the history is as old as the listing. Tesla's
+    # record starts in 2010, so the long equity clocks cannot be tested on it
+    # at all and the scanner says so rather than reaching for a shorter one.
+    "TSLA":  ("Tesla", "tsla.us"),
+    # The Nasdaq-100 ETF. ^NDX above is the same index with a far longer
+    # record (1985 against 1999), so QQQ is here because it is the thing
+    # people actually trade, not because it adds history.
+    "QQQ":   ("Invesco QQQ Trust", "qqq.us"),
 }
 
 
