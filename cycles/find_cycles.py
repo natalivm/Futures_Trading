@@ -431,6 +431,9 @@ def main():
     ap.add_argument("--svg-top", type=int, default=1, help="how many matches to chart")
     ap.add_argument("--as-of", help="pretend today is this date (YYYY-MM-DD) — checks a published claim on its own terms")
     ap.add_argument("--json-dir", default=WEB_DIR, help="where the JSON goes (default public/cycles)")
+    ap.add_argument("--json-suffix", default="",
+                    help="append to the JSON filename, e.g. _named — so a named-cycle run does not "
+                         "overwrite the open search's output")
     args = ap.parse_args()
 
     if args.preset and not args.lag_years:
@@ -471,7 +474,7 @@ def main():
         if not report:
             continue
 
-        out = os.path.join(args.json_dir, f"{slug}.json")
+        out = os.path.join(args.json_dir, f"{slug}{args.json_suffix}.json")
         os.makedirs(args.json_dir, exist_ok=True)
         with open(out, "w") as fh:
             json.dump(report, fh, separators=(",", ":"))

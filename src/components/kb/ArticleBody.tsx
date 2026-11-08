@@ -1,7 +1,6 @@
 import { type KbBlock } from '../../lib/kbBlocks';
 import CycleOverlay from './CycleOverlay';
 import NoiseCycleDemo from './NoiseCycleDemo';
-import TradingViewChart from './TradingViewChart';
 
 /** Renders an article's blocks. A plain string is still a paragraph. */
 export default function ArticleBody({ body }: { body: KbBlock[] }) {
@@ -26,14 +25,11 @@ export default function ArticleBody({ body }: { body: KbBlock[] }) {
               </aside>
             );
 
-          case 'chart':
-            return (
-              <TradingViewChart key={i} symbol={block.symbol} label={block.label}
-                                interval={block.interval} range={block.range} caption={block.caption} />
-            );
-
           case 'overlay':
-            return <CycleOverlay key={i} series={block.series} label={block.label} caption={block.caption} />;
+            return (
+              <CycleOverlay key={i} series={block.series} label={block.label}
+                            lagYears={block.lagYears} caption={block.caption} />
+            );
 
           case 'demo':
             return <NoiseCycleDemo key={i} caption={block.caption} />;
