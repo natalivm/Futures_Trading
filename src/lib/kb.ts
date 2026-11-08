@@ -197,7 +197,14 @@ const sixtyYear: KbArticle = {
         { rule: 'Window', detail: '440 trading days — about 22 months.' },
         { rule: 'Offset', detail: '60 years, named in advance rather than searched for.' },
         { rule: 'Command', detail: 'find_cycles.py --symbol ^DJI --lag-years 60 --window 440' },
+        { rule: 'Measurable on', detail: 'The S\u0026P, not the Dow. Yahoo\u2019s Dow record starts in 1992, so 60 years cannot be measured on it and the figure above says so. The S\u0026P reaches 1927.' },
       ],
+    },
+    {
+      kind: 'callout',
+      tone: 'key',
+      title: 'Tested on the S&P, it was the strongest claim in this course \u2014 and then it decayed',
+      text: 'Run on the S&P as of 30 June 2022, the pre-specified 60-year offset scores 0.922 on price and 0.457 on swing \u2014 the only swing figure anywhere in these pages to clear the 0.449 a random walk reaches, and its analog is 1960-09 to 1962-06, exactly the stretch the course points at. The same offset today reads \u22120.279 on price and 0.182 on swing. The window the claim was made on matched; the window since has not. Its forward call fared better than the overlay did: +29.6% projected over eleven months against +10.4% delivered, so the direction held and a third of the size.',
     },
     { kind: 'heading', text: 'The claim' },
     {
