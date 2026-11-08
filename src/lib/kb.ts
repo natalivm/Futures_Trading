@@ -879,86 +879,6 @@ const multiplesRule: KbArticle = {
   ],
 };
 
-/**
- * The moon section, with its own numbers attached.
- *
- * This one came with a statistic ("you win about 70% of the time"), which is
- * rare enough in the course to be worth taking literally and testing.
- */
-const moonCycles: KbArticle = {
-  id: 'moon-node-cycles',
-  title: 'Moon cycles, and the three lengths people confuse',
-  summary: 'Rahu and Ketu conjunctions as swing triggers \u2014 the 70% claim measured, and what survives it.',
-  source: 'Market Forecast Mastery \u2014 Allen Reminick; tested with cycles/backtest_moon.py',
-  updated: TODAY,
-  body: [
-    {
-      kind: 'table',
-      caption: 'Three cycles get called \u201cthe lunar cycle\u201d. A test run on the wrong one tests nothing.',
-      head: ['Cycle', 'Length', 'What it is'],
-      rows: [
-        ['Synodic', '29.53 d', 'New moon to new moon \u2014 what most people mean, because you can see it'],
-        ['Sidereal', '27.32 d', 'The moon once round the zodiac'],
-        ['Draconic', '27.21 d', 'North node to north node \u2014 the one the course trades'],
-      ],
-    },
-    {
-      kind: 'rules',
-      items: [
-        { rule: 'Rahu', detail: 'The north node. Moon conjunct Rahu is the moon crossing the ecliptic going north.' },
-        { rule: 'Ketu', detail: 'The south node, the crossing going south, about a fortnight later.' },
-        { rule: 'Finding them needs no zodiac', detail: 'They are the two zeros of the moon\u2019s ecliptic latitude each draconic month \u2014 arithmetic on a timestamp.' },
-        { rule: 'What they are for', detail: 'A swing-trade trigger: a date to look at, not a direction to take.' },
-      ],
-    },
-    { kind: 'heading', text: 'The three claims, measured' },
-    {
-      kind: 'table',
-      caption: 'S&P 500, 2010\u20132026, held four weeks. The last column is the whole result.',
-      head: ['Horizon', 'Ketu win', 'Rahu win', 'Any day at all'],
-      rows: [
-        ['1 week', '60.6%', '61.5%', '60.1%'],
-        ['2 weeks', '64.2%', '62.8%', '63.5%'],
-        ['To the next node', '65.5%', '67.7%', '66.2%'],
-        ['4 weeks', '67.3%', '67.3%', '67.2%'],
-      ],
-    },
-    {
-      kind: 'list',
-      items: [
-        '\u201cBuy at Ketu and you win about 70% of the time.\u201d The rate is real \u2014 67.3% over four weeks. Buying on any day at all over four weeks wins 67.2%. The number is the market\u2019s drift over a month, measured at the node.',
-        '\u201cRahu is more bearish than bullish.\u201d No. Rahu wins as often as Ketu at every horizon and more at one of them. On the full record since 1928, a randomly-phased schedule beats the real four-week Ketu rate 91% of the time.',
-        '\u201cLast month tends to be the opposite.\u201d True, and not lunar. Draconic-month returns carry a real negative lag-1 autocorrelation \u2014 \u22120.159 on the S&P since 2010, \u22120.109 on ES since 2000 \u2014 but cut the same series into 19-bar blocks at an arbitrary phase and it reads \u22120.162, marginally stronger. It is short-horizon mean reversion. Any block of that length does it.',
-        '\u201cTwo, four, six and eight months back tend to be the same.\u201d Not found. Every even lag sits inside the shuffle band since 2010, and on the full record the pattern is incoherent \u2014 lag 3 holds, lag 4 goes the wrong way.',
-      ],
-    },
-    {
-      kind: 'callout',
-      tone: 'key',
-      title: 'The framing outlives the statistics',
-      text: 'The lecture is explicit that the conjunction is not a direction \u2014 \u201cit isn\u2019t either\u201d, some months bullish, some bearish, no statistical meaning in a normal market. What it asks is whether the market is repeating what it did a month ago. That question costs nothing to ask and the indicator is built for it: each completed draconic month\u2019s move, and whether it matches the one in progress. What does not survive is the part that got turned into a win rate.',
-    },
-    {
-      kind: 'callout',
-      tone: 'warn',
-      title: 'Six rows out of six is rarer than a coin, and still means nothing',
-      text: 'The panel marks each earlier month same or opposite against the rule, and a full house of six looks like a 1-in-64 event. It is not, because the rows share boundaries and are not independent: measured across the S&P from 1928, 6/6 turns up on 1.1% of days against the 1.6% coin flips would give, and 0/6 on 1.0% against 1.6% \u2014 the whole distribution is squeezed toward the middle. A panel cut at an arbitrary phase reaches a full house as often or oftener 40% of the time, and what follows a 6/6 day is not distinguishable from what follows any other day. It is a striking thing to look at and it is not a signal.',
-    },
-    {
-      kind: 'callout',
-      tone: 'warn',
-      title: 'Daily or finer \u2014 a monthly chart aliases this cycle into fiction',
-      text: 'A 27.21-day cycle sampled once every 30.44 days does not come out slow, it comes out aliased: the beat period is 1 \u00f7 |1/27.21 \u2212 1/30.44| = 257 days, about 8.4 months. Run on a monthly chart the first version of the indicator duly marked \u201cRahu\u201d every eight or nine months \u2014 measured gaps of 8.1, 8.9, 8.0, 8.0, 9.0, 9.0 \u2014 and filled its table with confident nonsense. It now refuses anything coarser than weekly and says why. Nyquist wants two samples per cycle, so 13.6-day bars is the floor; weekly clears it and can only place a crossing to the week.',
-    },
-    {
-      kind: 'callout',
-      tone: 'note',
-      title: 'Why the ephemeris can be trusted here',
-      text: 'cycles/moon.py is checked against five published solar eclipses \u2014 a solar eclipse is a new moon at a node, so both routines have to land together. Every new moon comes within nine minutes of the catalogued time and every eclipse carries a node crossing within hours. Measured back from its own roots the draconic month reads 27.2141 days against the book\u2019s 27.2122, and the synodic 29.530567 against 29.530588.',
-    },
-  ],
-};
-
 // ── Using a forecast ──
 
 const rulesOfAnalysis: KbArticle = {
@@ -1152,7 +1072,7 @@ export const categories: KbCategory[] = [
     id: 'cycles',
     title: 'Technique 1 — locating cycles',
     description: 'The scanner that searches every offset for the one today’s market rhymes with, and the controls that say which scores to believe.',
-    articles: [cycleScanner, multiplesRule, moonCycles],
+    articles: [cycleScanner, multiplesRule],
   },
   {
     id: 'catalogue',
