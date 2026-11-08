@@ -60,6 +60,9 @@ INDEXES = {
     "ES=F":  ("E-mini S&P 500 continuous futures", "es.f"),
     "CL=F":  ("WTI crude oil continuous futures", "cl.f"),
     "GC=F":  ("Gold continuous futures", "gc.f"),
+    # The course's bond work is on the CBOT 30-year future, where the
+    # 82-week count and its 246-week multiple come from.
+    "ZB=F":  ("US 30-year Treasury bond futures", "zb.f"),
 }
 
 

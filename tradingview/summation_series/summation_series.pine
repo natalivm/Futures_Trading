@@ -82,7 +82,7 @@ showIntervals = input.bool(true, "Report recurring H-H / L-L intervals", group=G
 showCounts = input.bool(true, "Label every pivot with its count", group=G_VIEW)
 showTable  = input.bool(true, "Show the summary table", group=G_VIEW)
 chainCol   = input.color(color.new(color.aqua, 0), "Chain", inline="col", group=G_VIEW)
-plainCol   = input.color(color.new(color.gray, 30), "Other pivots", inline="col", group=G_VIEW)
+plainCol   = input.color(#C792EA, "Other pivots", inline="col", group=G_VIEW)
 projCol    = input.color(color.new(color.orange, 0), "Projection", inline="col", group=G_VIEW)
 
 // ta.* has to be evaluated on every bar to keep its state, so it cannot live
@@ -480,7 +480,7 @@ if barstate.islast
                          xloc=xloc.bar_index, yloc=isHigh ? yloc.abovebar : yloc.belowbar,
                          style=label.style_none,
                          textcolor=inChain ? chainCol : plainCol,
-                         size=inChain ? size.normal : size.tiny)
+                         size=inChain ? size.large : size.normal)
                     array.push(drawnLabels, cl)
 
         // Confirmed cycles get their own marker — these are the ones the

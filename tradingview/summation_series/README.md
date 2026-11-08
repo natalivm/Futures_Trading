@@ -89,6 +89,31 @@ counts before it, never from the predicted value, so drift cannot accumulate.
 | **Tolerance** | How far a pivot may sit from the exact sum. The larger of *n* bars or *x* %, so small terms get the bar allowance and large ones the percentage. |
 | **Shortest chain** | 3 is one addition and happens constantly by chance. 4–5 is where it starts to mean something. |
 
+## Multiples, and cycles that repeat upside down
+
+Two mechanisms from the US 30-year bond chart, both implemented.
+
+**The interval may be a multiple of a count.** The bond chain gives 9, 21, 30,
+51, 82 — and the one that works is **82 × 3 = 246 weeks**, which never appears
+as a label. `--preset bonds` carries 82 and 246 weeks as 1.57 and 4.72 years.
+
+**A cycle can repeat inverted.** On that chart the highest high lines up with
+a major low, so every rally maps to a decline and every decline to a rally —
+and the week counts still match exactly, leg for leg: A→B a rally of N weeks
+mirrors a decline of N weeks, B→C a decline mirrors a rally, C→D a rally
+mirrors what became a crash. `--allow-invert` scores the magnitude of the
+correlation and records the polarity; the overlay then draws the analog
+flipped and tags it.
+
+What it forecasts is still the **leg length, not the move**. C→D ran 26 or 27
+weeks, so the mirrored decline had that long to run — the rally it mirrored
+was small and the decline was a crash.
+
+> An inverted match roughly doubles the number of patterns that can be called
+> a fit, so it roughly doubles the chance of finding one by accident. The
+> noise bar has **not** been re-measured for inverted matching; assume the
+> real bar is higher than the table says until it has been.
+
 ## Which chain wins: exactness, not length
 
 The class offered 0, 3, 7, 10, 16, 26, 42 and was corrected: *"your intention

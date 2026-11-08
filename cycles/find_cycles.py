@@ -60,6 +60,9 @@ PRESETS = {
     "sp500":    [4, 6.8, 11.65, 22, 28],
     "crude":    [17, 19.08, 27],
     "gold":     [24.5],
+    # 82 weeks is the bond base count; the course's working interval is
+    # 82 x 3 = 246 weeks, which in years is 1.57 and 4.72.
+    "bonds":    [1.57, 3.14, 4.72],
 }
 
 
@@ -95,6 +98,17 @@ def _moments(xs):
     mean = sum(xs) / n
     var = sum((x - mean) ** 2 for x in xs) / n
     return mean, math.sqrt(var)
+
+
+def best_polarity(a, b):
+    """Correlation allowing an inverted match, as (score, inverted).
+
+    The bond chart repeats upside down: a low lands where a high was, and
+    every leg mirrors. The shape agreement is just as real, so score the
+    magnitude and record which way round it went.
+    """
+    r = correlation(a, b)
+    return (abs(r), r < 0)
 
 
 def correlation(a, b):
@@ -356,8 +370,13 @@ def analyse(symbol, dates, closes, args):
     for lag, corr in matches:
         start = n - window - lag
         analog, future, projected = project(closes, lag, window, horizon)
-        ret_corr = correlation(log_returns(analog), cur_returns)
-        swing_corr = correlation(log_returns(analog, args.swing), cur_swing)
+        if args.allow_invert:
+            ret_corr, _ = best_polarity(log_returns(analog), cur_returns)
+            swing_corr, inverted = best_polarity(log_returns(analog, args.swing), cur_swing)
+        else:
+            ret_corr = correlation(log_returns(analog), cur_returns)
+            swing_corr = correlation(log_returns(analog, args.swing), cur_swing)
+            inverted = False
         epochs = stability(closes, lag, window, args.epochs,
                            int(args.epoch_years * TRADING_DAYS_PER_YEAR), args.swing)
         held = [e["corr"] for e in epochs]
@@ -370,6 +389,7 @@ def analyse(symbol, dates, closes, args):
             "corr": round(corr, 4),
             "retCorr": round(ret_corr, 4),
             "swingCorr": round(swing_corr, 4),
+            "inverted": inverted,
             "pctBetter": round(better * 100, 2) if better is not None else None,
             "preSpecified": bool(args.lags),
             "stability": epochs,
@@ -419,6 +439,9 @@ def main():
     ap.add_argument("--preset", choices=sorted(PRESETS),
                     help="a named cycle set from the lectures: course (all), equities, crude, gold")
     ap.add_argument("--swing", type=int, default=21, help="bars per swing-return block (default 21 ≈ monthly)")
+    ap.add_argument("--allow-invert", action="store_true",
+                    help="also accept an inverted repeat, where a low lines up with a high and every "
+                         "leg mirrors — the shape of the 246-week bond cycle")
     ap.add_argument("--epochs", type=int, default=5, help="earlier anchor points used to check the cycle held")
     ap.add_argument("--epoch-years", type=float, default=5, help="years between those anchor points")
     ap.add_argument("--horizon", type=int, default=230, help="trading days to project forward (default 230 ≈ 11 months)")

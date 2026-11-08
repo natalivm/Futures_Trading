@@ -673,6 +673,64 @@ const composite: KbArticle = {
   ],
 };
 
+const invertedCycles: KbArticle = {
+  id: 'cycle-inverted-bonds',
+  title: 'Multiples, and cycles that repeat upside down',
+  summary: 'US 30-year bonds at 82 × 3 = 246 weeks, where a low lands on a high and every leg mirrors.',
+  source: 'Market Forecast Mastery — Allen Reminick',
+  updated: TODAY,
+  body: [
+    {
+      kind: 'overlay',
+      series: 'ZB_F',
+      label: 'US 30-year bonds — the 246-week interval',
+      lagYears: 4.72,
+      caption: 'Drawn inverted when the scan finds the match is an inverted one. 246 weeks is 4.72 years, which is how the interval is expressed on a daily series.',
+    },
+    {
+      kind: 'rules',
+      items: [
+        { rule: 'Market', detail: 'US 30-year Treasury bond futures, weekly on the course chart.' },
+        { rule: 'Base count', detail: '82 weeks — it appears twice on the chart, high to high.' },
+        { rule: 'Working interval', detail: '82 × 3 = 246 weeks. Not a count on the chart; a multiple of one.' },
+        { rule: 'Polarity', detail: 'Inverted. The highest high lines up with a major low.' },
+        { rule: 'Command', detail: 'find_cycles.py --symbol ZB=F --preset bonds --allow-invert' },
+      ],
+    },
+    { kind: 'heading', text: 'Two new ideas' },
+    {
+      kind: 'list',
+      items: [
+        'The interval you trade may be a MULTIPLE of a count, not a count. The chain gives 9, 21, 30, 51, 82 — and the one that works is 82 × 3.',
+        'A cycle can repeat INVERTED. Here the high aligns with a low, so every rally maps to a decline and every decline to a rally.',
+        'An inverted match is not a weaker match. The week counts still line up exactly; only the sign flips.',
+        'Go back far enough and the inversion may resolve: six 82s would be high to high again. Half a cycle is still usable.',
+      ],
+    },
+    { kind: 'heading', text: 'How the legs mirrored' },
+    {
+      kind: 'rules',
+      items: [
+        { rule: 'A → B', detail: 'A rally of N weeks out of the low maps to a decline of exactly N weeks from the high, 246 weeks later.' },
+        { rule: 'B → C', detail: 'A decline maps to a rally, again to the week.' },
+        { rule: 'C → D', detail: 'A rally maps to a decline — and that one came through as a crash.' },
+      ],
+    },
+    {
+      kind: 'callout',
+      tone: 'key',
+      title: 'The forecast is the leg count, not the move',
+      text: 'Knowing C → D ran 26 or 27 weeks tells you how long the mirrored decline has to run, not how far. The rally it mirrored was small and the decline was a crash — you got more than the analog promised, which is the same lesson as the Bitcoin case: the dates are the forecast, the magnitude is not.',
+    },
+    {
+      kind: 'callout',
+      tone: 'warn',
+      title: 'What makes this one hard to trust',
+      text: 'An inverted match doubles the number of patterns that can be called a fit, so it roughly doubles the chance of finding one by accident. The scanner only accepts an inversion when --allow-invert is set, and the noise bar has not been re-measured for inverted matching — assume the bar is higher than the table says until it has been.',
+    },
+  ],
+};
+
 // ── Using a forecast ──
 
 const rulesOfAnalysis: KbArticle = {
@@ -872,7 +930,7 @@ export const categories: KbCategory[] = [
     id: 'catalogue',
     title: 'The cycle catalogue',
     description: 'The specific cycles the course works with — equities, crude and gold — the evidence for each, and where each points.',
-    articles: [sixtyYear, seventyEightYear, spShortCycles, electionCycle, crudeCycles, metonicCycle, goldCycle, composite],
+    articles: [sixtyYear, seventyEightYear, spShortCycles, electionCycle, crudeCycles, metonicCycle, goldCycle, invertedCycles, composite],
   },
   {
     id: 'using',
