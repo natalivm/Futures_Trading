@@ -31,11 +31,11 @@ const TODAY = '2026-11-08';
 
 // ── The course ──
 
-const lesson1: KbArticle = {
-  id: 'mfm-lesson-1',
-  title: 'Lesson 1 — What this course is about',
+const premise: KbArticle = {
+  id: 'mfm-premise',
+  title: 'What this is about',
   summary: 'The premise, the sources, the two ways to forecast, and the three techniques.',
-  source: 'Market Forecast Mastery, Lesson 1 — Allen Reminick',
+  source: 'Market Forecast Mastery — Allen Reminick',
   updated: TODAY,
   body: [
     { kind: 'heading', text: 'The premise' },
@@ -73,7 +73,7 @@ const lesson1: KbArticle = {
         'The Momentum Balance Technique — proprietary; when a move is likely to continue, and the price target for it.',
       ],
     },
-    'The rest of the course applies those three to live charts, lesson by lesson.',
+    'Everything that follows applies those three to live charts.',
   ],
 };
 
@@ -83,7 +83,7 @@ const waveMechanics: KbArticle = {
   id: 'wave-mechanics',
   title: 'Wave mechanics — the approach we are not using',
   summary: 'Decomposition: find the component cycles, add them, project. Why the course defers it.',
-  source: 'Market Forecast Mastery, Lesson 1 — Allen Reminick',
+  source: 'Market Forecast Mastery — Allen Reminick',
   updated: TODAY,
   body: [
     { kind: 'heading', text: 'How it works' },
@@ -122,7 +122,7 @@ const cycleScanner: KbArticle = {
   id: 'cycle-scanner',
   title: 'Finding repeating cycles in the indexes',
   summary: 'What the scanner does, and which of its four scores to believe.',
-  source: 'Market Forecast Mastery, Lesson 1; cycles/README.md',
+  source: 'Market Forecast Mastery; cycles/README.md',
   updated: TODAY,
   body: [
     { kind: 'heading', text: 'What it does' },
@@ -181,25 +181,33 @@ const sixtyYear: KbArticle = {
   id: 'cycle-60-year',
   title: 'The 60-year cycle',
   summary: '2022 against 1962 at 93%, the forward call it made, and where it puts 2026.',
-  source: 'Market Forecast Mastery, Lesson 1 — Allen Reminick',
+  source: 'Market Forecast Mastery — Allen Reminick',
   updated: TODAY,
   body: [
-    { kind: 'heading', text: 'The claim' },
-    {
-      kind: 'list',
-      items: [
-        'Dow, 2022 (ending April) against 1962, over about 440 trading days — roughly 22 months.',
-        '93% correlated. The down move, the low, and high after low after high all line up in sequence.',
-        'Checked historically: the window taken back 25 years, against 60 years before that, still over 90%.',
-        'Reported as holding at roughly 90% accuracy since 2022.',
-      ],
-    },
     {
       kind: 'overlay',
       series: 'DJI',
       label: 'The 60-year overlay',
       lagYears: 60,
-      caption: 'The claim as a chart, from our own data — when there is enough of it.',
+    },
+    {
+      kind: 'rules',
+      items: [
+        { rule: 'Market', detail: 'Dow Jones Industrial Average, daily closes.' },
+        { rule: 'Window', detail: '440 trading days — about 22 months.' },
+        { rule: 'Offset', detail: '60 years, named in advance rather than searched for.' },
+        { rule: 'Command', detail: 'find_cycles.py --symbol ^DJI --lag-years 60 --window 440' },
+      ],
+    },
+    { kind: 'heading', text: 'The claim' },
+    {
+      kind: 'list',
+      items: [
+'2022, ending April, against 1962.',
+        '93% correlated. The down move, the low, and high after low after high all line up in sequence.',
+        'Checked historically: the window taken back 25 years, against 60 years before that, still over 90%.',
+        'Reported as holding at roughly 90% accuracy since 2022.',
+      ],
     },
     { kind: 'heading', text: 'Why it is not self-fulfilling' },
     {
@@ -240,14 +248,7 @@ const sixtyYear: KbArticle = {
       kind: 'callout',
       tone: 'warn',
       title: 'Not yet tested on our own data',
-      text: 'Our Dow history starts in 1992, and a 60-year offset needs 62 years before it can be measured once. Stooq, the source reaching back to 1896, is blocked from the runner. Until that is fixed the 93% is the course’s number, not ours.',
-    },
-    {
-      kind: 'rules',
-      items: [
-        { rule: 'To test it', detail: 'find_cycles.py --symbol ^DJI --lag-years 60 --window 440' },
-        { rule: 'What to read', detail: 'The swing correlation and the worst epoch — not the headline 93%.' },
-      ],
+      text: 'Stooq, the only free source reaching back to 1896, is blocked from GitHub’s runners by IP reputation — so the Dow we hold starts in 1992. Until someone runs the fetch from a home connection, the 93% is the course’s number, not ours.',
     },
   ],
 };
@@ -256,25 +257,33 @@ const seventyEightYear: KbArticle = {
   id: 'cycle-78-year',
   title: 'The 78.5-year cycle and the 157 / 314 chain',
   summary: 'The Depression against the financial crisis, and the harmonic argument that reaches 2034.',
-  source: 'Market Forecast Mastery, Lesson 1 — Allen Reminick',
+  source: 'Market Forecast Mastery — Allen Reminick',
   updated: TODAY,
   body: [
-    { kind: 'heading', text: 'The claim' },
-    {
-      kind: 'list',
-      items: [
-        'Dow: 2007–08 into the March 2009 low, against 1930 into 1931–32.',
-        'About 345 trading days, roughly 17 months. The two crises line up 78 years apart.',
-        '78.5 years is half of 157; 157 is half of 314.',
-        'The 314-year cycle reaches back to the speculative top of 1720, putting the next turn at 1720 + 314 = 2034.',
-      ],
-    },
     {
       kind: 'overlay',
       series: 'GSPC',
       label: 'The 78.5-year overlay',
       lagYears: 78.5,
-      caption: 'The Depression against the financial crisis needs a century of data. Until that loads, the picker shows what the same market does have.',
+    },
+    {
+      kind: 'rules',
+      items: [
+        { rule: 'Market', detail: 'S&P 500 daily closes — the Dow is the course’s chart, but ours starts in 1992.' },
+        { rule: 'Window', detail: '345 trading days — about 17 months.' },
+        { rule: 'Offset', detail: '78.5 years. Half of 157, which is half of 314.' },
+        { rule: 'What would make it real', detail: 'The offset holding at epochs containing no crisis. If it only fits when one end is 1929–32, it is an observation about two crises.' },
+        { rule: 'Command', detail: 'find_cycles.py --symbol ^DJI --lag-years 78.5 --window 345 --epochs 6' },
+      ],
+    },
+    { kind: 'heading', text: 'The claim' },
+    {
+      kind: 'list',
+      items: [
+        'Dow: 2007–08 into the March 2009 low, against 1930 into 1931–32.',
+'The two crises line up 78 years apart.',
+        'The 314-year cycle reaches back to the speculative top of 1720, putting the next turn at 1720 + 314 = 2034.',
+      ],
     },
     {
       kind: 'callout',
@@ -300,13 +309,6 @@ const seventyEightYear: KbArticle = {
         'A hindsight alignment of two famous crashes is weaker evidence, however striking the chart.',
       ],
     },
-    {
-      kind: 'rules',
-      items: [
-        { rule: 'The test that would settle it', detail: 'find_cycles.py --symbol ^DJI --lag-years 78.5 --window 345 --epochs 6' },
-        { rule: 'What would make it real', detail: 'The offset holding at epochs containing no crisis. If it only fits when one end is 1929–32, it is an observation about two crises.' },
-      ],
-    },
   ],
 };
 
@@ -314,7 +316,7 @@ const spShortCycles: KbArticle = {
   id: 'cycle-sp-short',
   title: 'The S&P short cycles — 11.65, 22 and 6.8 years',
   summary: 'Three claims, each re-measured as of the date it was made. One holds, one does not, one cannot be tested.',
-  source: 'Market Forecast Mastery, Lesson 1; measured 2026-11-08',
+  source: 'Market Forecast Mastery; measured 2026-11-08',
   updated: TODAY,
   body: [
     { kind: 'heading', text: 'What the slides claim' },
@@ -386,7 +388,7 @@ const electionCycle: KbArticle = {
   id: 'cycle-election',
   title: 'The four-year election cycle',
   summary: 'High near the election, low near the midterms, strength in the pre-election year — measured, not quoted.',
-  source: 'Market Forecast Mastery, Lesson 1; measured 2026-11-08',
+  source: 'Market Forecast Mastery; measured 2026-11-08',
   updated: TODAY,
   body: [
     {
@@ -448,24 +450,31 @@ const crudeCycles: KbArticle = {
   id: 'cycle-crude-17',
   title: 'Crude oil: the 17-year cycle',
   summary: '1997–2000 against 2014–2017 at 77% — and why a lower number can be better evidence.',
-  source: 'Market Forecast Mastery, Lesson 1 — Allen Reminick',
+  source: 'Market Forecast Mastery — Allen Reminick',
   updated: TODAY,
   body: [
-    {
-      kind: 'list',
-      items: [
-        '650 trading days — about three and a half years — with the two periods 17 years apart.',
-        'December 1997 to May 2000 against December 2014 to 15 May 2017.',
-        'The last two and a half years of it are 77% correlated.',
-        'The 17-year and 27-year cycles in crude agree with each other both before and after that moment.',
-      ],
-    },
     {
       kind: 'overlay',
       series: 'CL_F',
       label: 'Crude, the 17-year overlay',
       lagYears: 17,
-      caption: 'Today’s crude against the same span 17 years earlier. Scored as a named interval, not picked out of a search.',
+    },
+    {
+      kind: 'rules',
+      items: [
+        { rule: 'Market', detail: 'WTI crude oil, daily closes.' },
+        { rule: 'Window', detail: '650 trading days — about three and a half years.' },
+        { rule: 'Offset', detail: '17 years. The 27-year interval agrees with it either side.' },
+        { rule: 'Command', detail: 'find_cycles.py --symbol CL=F --preset crude --window 650' },
+      ],
+    },
+    {
+      kind: 'list',
+      items: [
+        'December 1997 to May 2000 against December 2014 to 15 May 2017.',
+        'The last two and a half years of it are 77% correlated.',
+        'The 17-year and 27-year cycles in crude agree with each other both before and after that moment.',
+      ],
     },
     {
       kind: 'callout',
@@ -490,12 +499,6 @@ const crudeCycles: KbArticle = {
       title: 'The division of labour',
       text: 'The analog did not generate the entry — the broken downtrend line did. The analog supplied the conviction to take a signal that would otherwise have looked like another bounce in a bear market.',
     },
-    {
-      kind: 'rules',
-      items: [
-        { rule: 'To test it', detail: 'find_cycles.py --symbol CL=F --preset crude --window 650' },
-      ],
-    },
   ],
 };
 
@@ -503,14 +506,29 @@ const metonicCycle: KbArticle = {
   id: 'cycle-metonic-19',
   title: 'The 19-year Metonic cycle — crude oil and war',
   summary: 'Iraq 2003 and Ukraine 2022 lined up in crude, including the ten months before either began.',
-  source: 'Market Forecast Mastery, Lesson 1 — Allen Reminick',
+  source: 'Market Forecast Mastery — Allen Reminick',
   updated: TODAY,
   body: [
     {
+      kind: 'overlay',
+      series: 'CL_F',
+      label: 'Crude, the 19-year overlay',
+      lagYears: 19.08,
+    },
+    {
+      kind: 'rules',
+      items: [
+        { rule: 'Market', detail: 'WTI crude oil, daily closes.' },
+        { rule: 'Window', detail: '360 trading days — roughly 20 per month, about 18 months.' },
+        { rule: 'Offset', detail: '19 years and 1 month — the Metonic interval.' },
+        { rule: 'Command', detail: 'find_cycles.py --symbol CL=F --lag-years 19.08 --window 360' },
+      ],
+    },
+    {
       kind: 'list',
       items: [
-        'Interval: 19 years and 1 month. Slide dated 21 June 2022, about 360 trading days.',
-        'Green is the 2003 Gulf War pattern, red is 2022. The slide calls for higher prices until 25 August.',
+'The slide is dated 21 June 2022 and calls for higher prices until 25 August.',
+'Green is the 2003 Gulf War pattern, red is 2022.',
         'Russia invaded Ukraine 24 February 2022; the US invaded Iraq in March 2003.',
         'For roughly ten months before each date crude traced the same path — then the initial spike, the pullback, the recovery, in both cases.',
       ],
@@ -520,13 +538,6 @@ const metonicCycle: KbArticle = {
       tone: 'key',
       title: 'The preparatory period is the forecasting value',
       text: 'The match before the event is what could have been traded. The spike on the day could not.',
-    },
-    {
-      kind: 'overlay',
-      series: 'CL_F',
-      label: 'Crude, the 19-year overlay',
-      lagYears: 19.08,
-      caption: 'The Metonic interval on crude. Switch to “What happened next” for the path the analog took after this point.',
     },
     { kind: 'heading', text: 'Three periods that get conflated' },
     {
@@ -553,12 +564,6 @@ const metonicCycle: KbArticle = {
       title: 'The 2033 convergence depends on which start date you pick',
       text: '2014 + 19 = 2033, which agrees with the long cycles — if the Ukraine conflict is dated from the annexation of Crimea. From the 2022 invasion it gives 2041. Choosing the date that makes cycles agree is the error this knowledge base exists to prevent.',
     },
-    {
-      kind: 'rules',
-      items: [
-        { rule: 'To test it', detail: 'find_cycles.py --symbol CL=F --lag-years 19.08 --window 360' },
-      ],
-    },
   ],
 };
 
@@ -566,24 +571,32 @@ const goldCycle: KbArticle = {
   id: 'cycle-gold-24',
   title: 'Gold: the 24.5-year cycle',
   summary: 'Seven years of gold against the same seven years 24.5 years earlier — the longest window in the course.',
-  source: 'Market Forecast Mastery, Lesson 1 — Allen Reminick',
+  source: 'Market Forecast Mastery — Allen Reminick',
   updated: TODAY,
   body: [
-    {
-      kind: 'list',
-      items: [
-        '1,800 trading days — about seven years. The longest window of any example in the lesson.',
-        'Present market 1 May 2010 to 11 July 2017, against the same span 24.5 years earlier.',
-        'The two hug each other for roughly seven years: up move, down move, up, down. Not perfect, high correlation.',
-        'The practical claim: knowing gold’s general direction, you would have been out of it in 2011 and short afterwards.',
-      ],
-    },
     {
       kind: 'overlay',
       series: 'GC_F',
       label: 'Gold, the 24.5-year overlay',
       lagYears: 24.5,
-      caption: 'Gold needs about 32 years of history before a 24.5-year interval can be measured once. The picker shows what is available meanwhile.',
+    },
+    {
+      kind: 'rules',
+      items: [
+        { rule: 'Market', detail: 'Gold, daily closes.' },
+        { rule: 'Window', detail: '1,800 trading days — about seven years, the longest here.' },
+        { rule: 'Offset', detail: '24.5 years. Not a round number and with no stated mechanism.' },
+        { rule: 'Expect few epochs', detail: 'Gold history here starts in 2000, and a 24.5-year offset on a seven-year window needs ~32 years before even one epoch check is possible.' },
+        { rule: 'Command', detail: 'find_cycles.py --symbol GC=F --lag-years 24.5 --window 1800 --epochs 4' },
+      ],
+    },
+    {
+      kind: 'list',
+      items: [
+        'Present market 1 May 2010 to 11 July 2017, against the same span 24.5 years earlier.',
+        'The two hug each other for roughly seven years: up move, down move, up, down. Not perfect, high correlation.',
+        'The practical claim: knowing gold’s general direction, you would have been out of it in 2011 and short afterwards.',
+      ],
     },
     {
       kind: 'list',
@@ -593,13 +606,6 @@ const goldCycle: KbArticle = {
         'It is presented as located in the data rather than derived, which makes the pre-specified re-test more important, not less.',
       ],
     },
-    {
-      kind: 'rules',
-      items: [
-        { rule: 'To test it', detail: 'find_cycles.py --symbol GC=F --lag-years 24.5 --window 1800 --epochs 4' },
-        { rule: 'Expect few epochs', detail: 'Gold futures history runs from the mid-1970s, so a 24.5-year offset with a seven-year window needs ~32 years before one epoch check is possible.' },
-      ],
-    },
   ],
 };
 
@@ -607,7 +613,7 @@ const composite: KbArticle = {
   id: 'cycle-composite',
   title: 'Reading cycles together — the composite',
   summary: 'No single cycle is the forecast. Where the clocks agree, and what the course expects from 2027 and 2034.',
-  source: 'Market Forecast Mastery, Lesson 1 — Allen Reminick',
+  source: 'Market Forecast Mastery — Allen Reminick',
   updated: TODAY,
   body: [
     {
@@ -673,7 +679,7 @@ const rulesOfAnalysis: KbArticle = {
   id: 'rules-of-analysis',
   title: 'The rules, in order',
   summary: 'The whole method as ten rules.',
-  source: 'Distilled from the lessons; the long form is cycles/METHOD.md',
+  source: 'Distilled from the course; the long form is cycles/METHOD.md',
   updated: TODAY,
   body: [
     { kind: 'heading', text: 'Finding a cycle' },
@@ -722,7 +728,7 @@ const usingForecasts: KbArticle = {
   id: 'using-a-cycle-forecast',
   title: 'Using a cycle forecast correctly',
   summary: 'What a roadmap can and cannot tell you, and the traps — statistical and emotional.',
-  source: 'Market Forecast Mastery, Lesson 1, plus the control runs in cycles/README.md',
+  source: 'Market Forecast Mastery, plus the control runs in cycles/README.md',
   updated: TODAY,
   body: [
     { kind: 'heading', text: 'What it is' },
@@ -848,7 +854,7 @@ export const categories: KbCategory[] = [
     id: 'course',
     title: 'Market Forecast Mastery — the course',
     description: 'The premise, the law of periodicity, and where the knowledge comes from — Gann, Baumring, Reminick.',
-    articles: [lesson1],
+    articles: [premise],
   },
   {
     id: 'approaches',

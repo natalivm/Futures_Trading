@@ -245,11 +245,13 @@ export default function CycleOverlay({ series, label, lagYears, caption }: Props
       </div>
 
       <figcaption>
-        {caption ?? 'Both paths rescaled to 0–100, the way the course slides draw them.'}{' '}
-        {marketLabel(slug)}, {report.historyStart} → {report.historyEnd}, {report.window}-day window.{' '}
-        {match.preSpecified
-          ? 'This offset was named in advance.'
-          : 'This offset was found by searching, so read the swing and worst-epoch scores before the price correlation — a random walk scores about 0.95 on price alone.'}
+        {/* Short on purpose. The market is in the picker, the window and offset
+            are in the spec beside the figure, the dates are in the legend, and
+            a fallback already has its own note — restating any of that here is
+            the duplication this caption used to be. */}
+        {caption ?? 'Both paths rescaled to 0–100, the way the course slides draw them.'}
+        {exact && !match.preSpecified &&
+          ' Found by searching, so read the swing and worst-epoch scores first.'}
       </figcaption>
     </figure>
   );

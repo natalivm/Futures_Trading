@@ -30,12 +30,17 @@ import json
 import os
 import sys
 import time
+import datetime as dt
 import urllib.error
 import urllib.parse
 import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(HERE, "data")
+
+# 1900-01-01. Negative timestamps are how you ask Yahoo for everything it has
+# without tripping the range=max downsampling.
+EPOCH_1900 = -2208988800
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -114,16 +119,20 @@ def fetch_stooq(code):
 def fetch_yahoo(symbol, period1=None):
     """Daily history from Yahoo's chart API. Returns [(YYYY-MM-DD, close)] oldest first.
 
-    `period1=None` asks for `range=max` rather than a start timestamp. Unix
-    time starts in 1970, so `period1=0` is not "everything" — it is "since
-    1970", and it quietly cut the S&P 500 off at 1970 when its history runs
-    back to 1927. There is no timestamp that means "the beginning"; the range
-    parameter is the only way to ask for it.
+    `period1=None` means "from the beginning", which is EPOCH_1900 rather
+    than `range=max`.
+
+    Two traps, both met the hard way. `period1=0` is not the beginning — Unix
+    time starts in 1970, so it silently cut the S&P off at 1970 when its
+    history runs to 1927. And `range=max` IGNORES `interval=1d`: it answers
+    with monthly or quarterly bars, which then merge into the file as rows
+    dated the first of the month carrying that month's closing price. That is
+    worse than missing history, because it looks like data.
     """
     sym = urllib.parse.quote(symbol, safe="")
-    window = ("range=max" if period1 is None
-              else f"period1={int(period1)}&period2={int(time.time()) + 86400}")
-    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}?{window}&interval=1d"
+    start = EPOCH_1900 if period1 is None else int(period1)
+    url = (f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}"
+           f"?period1={start}&period2={int(time.time()) + 86400}&interval=1d")
     data = json.loads(_get(url))
     result = (data.get("chart") or {}).get("result")
     if not result:
@@ -140,6 +149,26 @@ def fetch_yahoo(symbol, period1=None):
         rows.append((time.strftime("%Y-%m-%d", time.gmtime(ts)), float(close)))
     rows.sort()
     return rows
+
+
+def looks_daily(rows):
+    """Is this a daily series, or did the API quietly downsample?
+
+    Two tells, either of which is conclusive. A daily close cannot fall on a
+    weekend. And daily bars sit about one to four calendar days apart, while
+    monthly bars sit about thirty.
+    """
+    if len(rows) < 30:
+        return True, ""
+    weekend = sum(1 for d, _ in rows if dt.date.fromisoformat(d).weekday() >= 5)
+    if weekend > len(rows) * 0.02:
+        return False, f"{weekend} of {len(rows)} rows fall on a weekend"
+    gaps = sorted((dt.date.fromisoformat(rows[i + 1][0]) - dt.date.fromisoformat(rows[i][0])).days
+                  for i in range(len(rows) - 1))
+    median = gaps[len(gaps) // 2]
+    if median > 4:
+        return False, f"median gap {median} days — not a daily series"
+    return True, ""
 
 
 # ── Storage ──
@@ -195,6 +224,9 @@ def update_symbol(symbol, source, dry_run, full=False):
     if source in ("both", "stooq") and stooq_code:
         try:
             rows = fetch_stooq(stooq_code)
+            ok, why = looks_daily(rows)
+            if not ok:
+                raise ValueError(f"refused: {why}")
             pulled.append(rows)
             print(f"  stooq: {len(rows)} rows ({rows[0][0]} → {rows[-1][0]})" if rows else "  stooq: empty")
         except Exception as e:
@@ -208,6 +240,9 @@ def update_symbol(symbol, source, dry_run, full=False):
                    else time.time() - 120 * 86400)
         try:
             rows = fetch_yahoo(symbol, period1)
+            ok, why = looks_daily(rows)
+            if not ok:
+                raise ValueError(f"refused: {why}")
             pulled.append(rows)
             print(f"  yahoo: {len(rows)} rows ({rows[0][0]} → {rows[-1][0]})" if rows else "  yahoo: empty")
         except Exception as e:
@@ -229,6 +264,54 @@ def update_symbol(symbol, source, dry_run, full=False):
     return changed, None
 
 
+def clean_file(path, dry_run=True):
+    """Strip rows that are not daily closes.
+
+    Repairs files already polluted by a range=max fetch. Three shapes, all of
+    them impossible for a real daily close:
+
+      * dated on a weekend;
+      * dated the first of a month, carrying that month's closing value;
+      * dated the first of a quarter, carrying that quarter's closing value.
+
+    A monthly bar whose date happens to be a trading day overwrote a real
+    close, and the true value cannot be recovered from the file — so it is
+    dropped too. One missing session is harmless to the scanner; a price from
+    four weeks in the future sitting at the start of the month is not.
+    """
+    rows = load_csv(path)
+    if not rows:
+        return 0, 0
+    last_in_month, last_in_quarter = {}, {}
+    for date, close in rows:
+        last_in_month[date[:7]] = close
+        last_in_quarter[(date[:4], (int(date[5:7]) - 1) // 3)] = close
+
+    rows_per_month = {}
+    for date, _ in rows:
+        rows_per_month[date[:7]] = rows_per_month.get(date[:7], 0) + 1
+
+    def is_bogus(date, close):
+        day = dt.date.fromisoformat(date)
+        if day.weekday() >= 5:
+            return True                       # markets are shut; cannot be a close
+        if day.day != 1:
+            return False                      # coarse bars are always dated the 1st
+        if rows_per_month[date[:7]] < 2:
+            return False                      # nothing to compare it against
+        if abs(close - last_in_month[date[:7]]) < 1e-9:
+            return True                       # carries the month's closing value
+        quarter = (date[:4], (day.month - 1) // 3)
+        return day.month in (1, 4, 7, 10) and abs(close - last_in_quarter[quarter]) < 1e-9
+
+    kept = [(d, c) for d, c in rows if not is_bogus(d, c)]
+    dropped = len(rows) - len(kept)
+
+    if dropped and not dry_run:
+        save_csv(path, kept)
+    return dropped, len(kept)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--symbols", help="comma-separated subset, e.g. ^DJI,^GSPC")
@@ -236,8 +319,23 @@ def main():
     ap.add_argument("--full", action="store_true",
                     help="ask Yahoo for the whole series rather than the recent tail — needed once to "
                          "backfill files written before the range=max fix")
+    ap.add_argument("--clean", action="store_true",
+                    help="strip non-daily rows from the stored files and exit — repairs a file "
+                         "polluted by a range=max fetch")
     ap.add_argument("--dry-run", action="store_true", help="fetch and report, write nothing")
     args = ap.parse_args()
+
+    if args.clean:
+        total = 0
+        for symbol in (args.symbols.split(",") if args.symbols else list(INDEXES)):
+            path = os.path.join(DATA_DIR, f"{slug(symbol.strip())}.csv")
+            if not os.path.exists(path):
+                continue
+            dropped, kept = clean_file(path, args.dry_run)
+            total += dropped
+            print(f"{symbol.strip():6} dropped {dropped:4} non-daily rows, {kept} remain")
+        print(f"\n{total} row(s) {'would be' if args.dry_run else ''} removed.")
+        return 0
 
     symbols = [s.strip() for s in args.symbols.split(",")] if args.symbols else list(INDEXES)
     unknown = [s for s in symbols if s not in INDEXES]

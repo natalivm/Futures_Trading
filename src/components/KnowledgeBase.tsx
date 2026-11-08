@@ -112,7 +112,9 @@ export default function KnowledgeBase() {
             {chapter.articles.map(article => (
               <article key={article.id} id={`kb-${article.id}`} className="kb-section">
                 <h3>{article.title}</h3>
-                <p className="kb-section-sum">{article.summary}</p>
+                {/* `summary` is deliberately not rendered: it restated the heading,
+                    and the body then restated it again. It stays on the record as
+                    search text and as the one-line description of each section. */}
                 {article.source && <p className="muted small kb-source">Source: {article.source}</p>}
                 <ArticleBody body={article.body} />
               </article>

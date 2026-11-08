@@ -1,7 +1,7 @@
 # Cycles
 
 Finding where history is repeating in the major indexes — the synthesis /
-pattern-recognition approach from Market Forecast Mastery Lesson 1, not
+pattern-recognition approach from Market Forecast Mastery, not
 decomposition.
 
 Two scripts, standard library only, no pip install:

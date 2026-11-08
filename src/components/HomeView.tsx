@@ -41,12 +41,12 @@ export default function HomeView({ symbol, logCount, onGo }: Props) {
           <span className="door-icon" aria-hidden="true">📚</span>
           <h2>Knowledge base</h2>
           <p>
-            Market Forecast Mastery, lesson by lesson — the premise, the two ways to forecast and the
+            Market Forecast Mastery in one place — the premise, the two ways to forecast and the
             three techniques — plus the Matrixchannel rules the desk trades by.
           </p>
           <ul className="door-list">
             <li>{articleCount > 0 ? `${articleCount} article${articleCount === 1 ? '' : 's'} published` : 'First articles going up'}, {categories.length} sections mapped</li>
-            <li>Lesson notes: Gann · Baumring · Reminick</li>
+            <li>Gann · Baumring · Reminick</li>
             <li>Series &amp; sequences · Slide · Momentum Balance</li>
           </ul>
           <span className="door-cta">Browse the knowledge base →</span>
