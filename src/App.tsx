@@ -3,6 +3,8 @@ import AiHistory from './components/AiHistory';
 import AiPanel from './components/AiPanel';
 import ChartStage, { type ChartStageHandle } from './components/ChartStage';
 import DecisionPanel, { type Draft } from './components/DecisionPanel';
+import HomeView from './components/HomeView';
+import KnowledgeBase from './components/KnowledgeBase';
 import LogView from './components/LogView';
 import RulesView from './components/RulesView';
 import {
@@ -10,12 +12,10 @@ import {
   type AiCheck, type AiSettings, type SnapshotImage,
 } from './lib/ai';
 import { TabCapture } from './lib/capture';
+import { NAV, pageFromHash, type Page } from './lib/nav';
 import { evaluate, freshObservation, riskPlan, verdict, type ObsField, type Observation } from './lib/rules';
 import { SCHEMA_VERSION, useStored, type Decision, type LogEntry } from './lib/store';
 import { streams, type Timeframe } from './lib/streams';
-
-type Page = 'live' | 'log' | 'rules';
-const PAGES: [Page, string][] = [['live', 'Live desk'], ['log', 'Signal log'], ['rules', 'Rules']];
 
 const initialDraft: Draft = {
   symbol: '@ES', price: '', direction: 'long', setup: 'reversal', full: true,
@@ -24,11 +24,6 @@ const initialDraft: Draft = {
 const freshObservations = (): Record<Timeframe, Observation> => ({ '5m': freshObservation(), '60m': freshObservation() });
 const wait = (ms: number) => new Promise(r => setTimeout(r, ms));
 const AI_LINK_MINUTES = 30;
-
-function pageFromHash(): Page {
-  const h = location.hash.slice(1);
-  return PAGES.some(([p]) => p === h) ? (h as Page) : 'live';
-}
 
 function notify(title: string, body: string) {
   try {
@@ -257,21 +252,26 @@ export default function App() {
   return (
     <div className={`app ${page === 'live' ? 'is-live' : ''}`}>
       <header className="top">
-        <a className="brand" href="#live" onClick={() => go('live')}>
+        <a className="brand" href="#home" onClick={() => go('home')}>
           <span className="mark">M</span>
-          <span>Futures Desk<small>Matrixchannel · {draft.symbol || '@ES'}</small></span>
+          <span className="label">Futures Desk<small>Matrixchannel · {draft.symbol || '@ES'}</small></span>
         </a>
         <nav>
-          {PAGES.map(([p, label]) => (
-            <button key={p} className={p === page ? 'nav on' : 'nav'} onClick={() => go(p)}>
+          {NAV.map(({ id, label }) => (
+            <button key={id} className={id === page ? 'nav on' : 'nav'} onClick={() => go(id)}>
               {label}
-              {p === 'log' && log.length > 0 && <span className="count">{log.length}</span>}
+              {id === 'log' && log.length > 0 && <span className="count">{log.length}</span>}
             </button>
           ))}
         </nav>
         {aiBusy && <span className="top-status">{aiBusy}</span>}
       </header>
 
+      {page === 'home' && (
+        <main className="page">
+          <HomeView symbol={draft.symbol} logCount={log.length} onGo={go} />
+        </main>
+      )}
       {page === 'live' && (
         <main className={`desk ${ui.focus ? 'focus' : ''}`}>
           <ChartStage
@@ -325,6 +325,11 @@ export default function App() {
             }}
           />
           <AiHistory version={historyVersion} onDeleted={id => lastCheck?.id === id && setLastCheck(null)} />
+        </main>
+      )}
+      {page === 'kb' && (
+        <main className="page">
+          <KnowledgeBase onGo={go} />
         </main>
       )}
       {page === 'rules' && (
