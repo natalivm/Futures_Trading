@@ -32,6 +32,16 @@ Open the Pine editor, clear it, paste the whole file, Save, Add to chart.
    about what comes next is the evidence. In the gold example both said five to
    six weeks up, worth roughly $200 — a trade with a stop under the nearby low.
    Two that disagree is no signal at all.
+7. **Agreement is a schedule, not a verdict.** Cycles drift in and out of sync.
+   Where they say the same thing you can act; where they diverge you stand
+   aside; when they agree again you act again. The course takes *three*
+   separate trades out of the same pair that way, re-entering each time the two
+   paths re-converge.
+
+What a window tells you is **direction and a minimum duration**, never the
+size. In the course's third trade one analog ran three weeks and the other
+six; you could not know which. So take the three you are given and trail a
+stop under the low in case it turns into six.
 
 > "The summation series is a growth process that connects the past through a
 > sequence of collapsing points to the present."
@@ -63,6 +73,20 @@ counts before it, never from the predicted value, so drift cannot accumulate.
 | **Pivots to keep** | How far back the count reaches. The most recent N are kept and older ones dropped, so if the numbers stop too early raise this — the course labels out past 130, 180, sometimes a couple of hundred. Default 80, up to 150. The chain search grows with the square of it. |
 | **Tolerance** | How far a pivot may sit from the exact sum. The larger of *n* bars or *x* %, so small terms get the bar allowance and large ones the percentage. |
 | **Shortest chain** | 3 is one addition and happens constantly by chance. 4–5 is where it starts to mean something. |
+
+## The agreement ribbon
+
+The forward band is the part to read. Walking the two confirmed cycles forward
+week by week on real gold from July 2022:
+
+```
+week 1 → 26   ▲ · · · · · · · · · · · · ▼ ▼ · · · · · ▼ ▲ ▲ · · ·
+              ▲ agree up    ▼ agree down    · disagree, stand aside
+```
+
+Agree, then twelve weeks of divergence where there is nothing to do, then
+agreement again, twice more. That shape *is* the method — the gaps are as
+much the output as the bands.
 
 ## Run end to end on real gold weekly data
 
