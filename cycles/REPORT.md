@@ -1,6 +1,6 @@
 # Cycle report
 
-Generated 2026-11-08 16:12 UTC from commit 8ce07f0.
+Generated 2026-11-08 16:14 UTC from commit 44656cc.
 
 ## Fetch log
 
@@ -328,11 +328,9 @@ RUT
   wrote public/cycles/RUT_election.json
 ```
 
-## Ad-hoc: ^DJI at 60 year(s), window 440
+## Ad-hoc: S&P at 96 year(s), window 440
 
 ```
-
-DJI: 8775 bars, 1992-01-02 → 2026-11-06
-  60y: not enough history (33.1y available)
-  no offsets scored
+No price data for: S&P.csv
+Run `python3 cycles/update_prices.py` first.
 ```
