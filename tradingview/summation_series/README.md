@@ -384,6 +384,12 @@ counts pivots on, and two scripts fighting over one pane is worse than one
 script with a switch. The two are independent: nothing in the counting reads
 the moon and nothing here reads the chain.
 
+The section is **on by default**. It shipped off, on the reasoning that most
+of the time you are here for the counting, and the effect was that it looked
+like it had never been added — a feature nobody can find is not a default,
+it is a bug. Untick `Mark moon-Rahu / moon-Ketu conjunctions` in group 7 to
+get the plain counting panel back.
+
 Its table has its own corner (bottom right by default). "Middle right" was
 the first default and was wrong: the summation table at top right runs to
 twelve rows, which reaches into the middle of the pane, so the two drew over
@@ -480,12 +486,20 @@ backtest above answers it: nothing reliable. The calendar is there so you can
 see the dates coming, which is what the lecture uses them for.
 
 ```
-Ahead   date (UT)           in     astronomy, not a forecast
-Rahu    2026-11-17 11:45     9 d
-Ketu    2026-11-30 03:39    22 d
-Rahu    2026-12-14 13:02    36 d
-Ketu    2026-12-27 08:07    49 d
+Ahead       date (UT)           in     astronomy, not a forecast
+new moon    2026-11-09 07:04     1 d   synodic 29.53 d
+Rahu        2026-11-17 11:45     9 d   draconic 27.21 d
+full moon   2026-11-24 14:58    17 d   synodic 29.53 d
+Ketu        2026-11-30 03:39    22 d   draconic 27.21 d
+new moon    2026-12-09 00:55    31 d   synodic 29.53 d
+Rahu        2026-12-14 13:02    36 d   draconic 27.21 d
 ```
+
+Node crossings are always listed; new and full moons join them when `Also
+mark new and full moons` is on. The two interleave rather than coincide —
+they are different cycles of different lengths, which is the thing the
+lecture opens by clearing up — so each row names which cycle it belongs to
+and the list is in date order.
 
 **The dates are exact; the line positions are not.** Placing a date on a
 future bar needs an average bar spacing, and holidays and half-days make that

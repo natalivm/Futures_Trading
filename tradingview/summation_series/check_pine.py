@@ -66,7 +66,12 @@ def check(path):
         r"indicator|plot|plotshape|barstate|timestamp|request|alert|fixnan|syminfo|hline)$")
     called = set(re.findall(r"(?<![.\w])([a-z][A-Za-z0-9_]*)\s*\(", src))
     for name in sorted(called - defined):
-        if not builtin.match(name) and f"{name}(" not in strings and name not in strings.split():
+        # The string test has to allow whitespace before the paren: a table
+        # header reading "date (UT)" is prose, and matching only "date(" let
+        # it through as a phantom call. A linter that cries wolf gets ignored,
+        # which costs more than the check is worth.
+        in_prose = re.search(rf"(?<![.\w]){re.escape(name)}\s*\(", strings) is not None
+        if not builtin.match(name) and not in_prose and name not in strings.split():
             bad.append(f"{name}() is called but never defined")
 
     # a user function must sit at global scope

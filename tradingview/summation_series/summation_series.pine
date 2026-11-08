@@ -107,9 +107,13 @@ atr14 = ta.atr(14)
 
 // ── 7 · Moon node cycles ──
 // A separate method on the same chart: the moon's conjunctions with the
-// lunar nodes, which the course uses as a swing-trade trigger. Off by
-// default, because most of the time you are here for the counting.
-showMoon   = input.bool(false, "Mark moon-Rahu / moon-Ketu conjunctions", group=G_MOON,
+// lunar nodes, which the course uses as a swing-trade trigger.
+//
+// ON by default. It shipped off, on the reasoning that most of the time you
+// are here for the counting, and the result was that the section looked
+// like it had not been added at all. A feature nobody can find is not a
+// default, it is a bug.
+showMoon   = input.bool(true, "Mark moon-Rahu / moon-Ketu conjunctions", group=G_MOON,
      tooltip="Rahu is the moon crossing the ecliptic going north, Ketu the crossing going south about a fortnight later. Finding them needs no zodiac: they are the two zeros of the moon's latitude each draconic month (27.21 days).")
 showPhase  = input.bool(false, "Also mark new and full moons", group=G_MOON,
      tooltip="The SYNODIC cycle, 29.53 days — a different cycle from the node one, marked separately so the two are never confused.")
@@ -356,7 +360,7 @@ unixMsFromJd(float j) =>
 // three dropped ones total under 0.04 degrees, which is under five minutes of
 // relative motion and invisible on any bar this runs on. The LATITUDE series
 // above is complete, because that is the one the node crossings come from.
-elongation(float jd) =>
+elongRaw(float jd) =>
     float t  = (jd - 2451545.0) / 36525.0
     float D  = math.toradians(297.8501921 + 445267.1114034 * t - 0.0018819 * t * t)
     float M  = math.toradians(357.5291092 + 35999.0502909 * t - 0.0001536 * t * t)
@@ -383,7 +387,52 @@ elongation(float jd) =>
          + (0.019993 - 0.000101 * t) * math.sin(2 * M)
          + 0.000289 * math.sin(3 * M)
     float sunL = L0 + C
-    ((moonL - sunL) % 360 + 540) % 360 - 180
+    ((moonL - sunL) % 360 + 360) % 360
+
+// Folded to (-180, 180]: zero at new moon, +/-180 at full.
+elongation(float jd) =>
+    ((elongRaw(jd) + 180) % 360) - 180
+
+// And the other zero: this one passes through 0 at FULL moon, with no fold,
+// so a root finder can bisect it without meeting the cliff that the folded
+// form has half a cycle from its root.
+opposition(float jd) =>
+    elongRaw(jd) - 180
+
+// The syzygies still to come — the SYNODIC cycle, 29.53 days, which is not
+// the node cycle above and is listed separately for that reason. The moon
+// moves about 12.2 degrees a day against the sun, so a daily step never
+// skips one and never mistakes the fold for a root.
+nextPhases(float fromJd, int want, int maxDays) =>
+    array<float> jds = array.new<float>()
+    array<bool>  isNew = array.new<bool>()
+    float pn = elongation(fromJd)
+    float pf = opposition(fromJd)
+    for d = 1 to maxDays
+        float j = fromJd + d
+        float cn = elongation(j)
+        float cf = opposition(j)
+        bool hitNew  = pn < 0 and cn >= 0 and math.abs(pn) < 90 and math.abs(cn) < 90
+        bool hitFull = pf < 0 and cf >= 0
+        if hitNew or hitFull
+            float lo = j - 1
+            float hi = j
+            float flo = hitNew ? pn : pf
+            for _it = 1 to 40
+                float mid = (lo + hi) / 2.0
+                float fm = hitNew ? elongation(mid) : opposition(mid)
+                if flo * fm <= 0
+                    hi := mid
+                else
+                    lo := mid
+                    flo := fm
+            array.push(jds, (lo + hi) / 2.0)
+            array.push(isNew, hitNew)
+            if array.size(jds) >= want
+                break
+        pn := cn
+        pf := cf
+    [jds, isNew]
 
 // ── The timeframe has to be able to hold the cycle ──
 
@@ -1196,7 +1245,33 @@ if barstate.islast and showMoon and (monthsBack > 0 or aheadN > 0)
     if tfUsable and aheadN > 0
         int lookback = math.min(bar_index, 100)
         float msPerBar = lookback > 0 ? (time - time[lookback]) / lookback : 86400000.0
-        [fjd, fasc] = nextNodes(julian(time) + 0.05, aheadN, 420)
+        float j0 = julian(time) + 0.05
+        [njd, nasc] = nextNodes(j0, aheadN, 420)
+        [pjd, pnew] = showPhase ? nextPhases(j0, aheadN, 420)
+             : [array.new<float>(), array.new<bool>()]
+        // Merge two already-sorted lists into one calendar. Nodes are the
+        // draconic cycle and phases the synodic one — different lengths and
+        // different events, so they interleave rather than coincide, and
+        // keeping them in one date-ordered list is the whole point of a
+        // calendar.
+        array<float> fjd  = array.new<float>()
+        array<int>   fkind = array.new<int>()   // 0 Rahu, 1 Ketu, 2 new, 3 full
+        int ni = 0
+        int pi = 0
+        for _m = 1 to aheadN
+            bool haveN = ni < array.size(njd)
+            bool haveP = pi < array.size(pjd)
+            if not haveN and not haveP
+                break
+            bool takeNode = haveN and (not haveP or array.get(njd, ni) <= array.get(pjd, pi))
+            if takeNode
+                array.push(fjd, array.get(njd, ni))
+                array.push(fkind, array.get(nasc, ni) ? 0 : 1)
+                ni += 1
+            else
+                array.push(fjd, array.get(pjd, pi))
+                array.push(fkind, array.get(pnew, pi) ? 2 : 3)
+                pi += 1
         table.cell(moonTbl, 0, monthsBack + 2, "Ahead", bgcolor=color.new(color.black, 20),
              text_color=color.white, text_size=size.small)
         table.cell(moonTbl, 1, monthsBack + 2, "date (UT)", bgcolor=color.new(color.black, 20),
@@ -1208,17 +1283,22 @@ if barstate.islast and showMoon and (monthsBack > 0 or aheadN > 0)
         if array.size(fjd) > 0
             for i = 0 to array.size(fjd) - 1
                 float j = array.get(fjd, i)
-                bool isRahu = array.get(fasc, i)
+                int kind = array.get(fkind, i)
+                bool isRahu = kind == 0
+                bool isNode = kind < 2
+                color kc = kind == 0 ? rahuCol : kind == 1 ? ketuCol : phaseCol
+                string kname = kind == 0 ? "Rahu" : kind == 1 ? "Ketu" :
+                     kind == 2 ? "new moon" : "full moon"
                 float ms = unixMsFromJd(j)
                 int days = int(math.round((ms - time) / 86400000.0))
                 int row = monthsBack + 3 + i
-                table.cell(moonTbl, 0, row, isRahu ? "Rahu" : "Ketu",
-                     text_color=isRahu ? rahuCol : ketuCol, text_size=size.tiny)
+                table.cell(moonTbl, 0, row, kname, text_color=kc, text_size=size.tiny)
                 table.cell(moonTbl, 1, row, str.format_time(int(ms), "yyyy-MM-dd HH:mm", "UTC"),
                      text_color=color.new(color.white, 20), text_size=size.tiny)
                 table.cell(moonTbl, 2, row, str.tostring(days) + " d",
                      text_color=color.gray, text_size=size.tiny)
-                table.cell(moonTbl, 3, row, "", text_size=size.tiny)
+                table.cell(moonTbl, 3, row, isNode ? "draconic 27.21 d" : "synodic 29.53 d",
+                     text_color=color.new(color.gray, 30), text_size=size.tiny)
                 // These redraw every last bar, so they belong in the arrays
                 // that get wiped and rebuilt — unlike the historical node
                 // marks, which stay where they were put.
@@ -1226,13 +1306,15 @@ if barstate.islast and showMoon and (monthsBack > 0 or aheadN > 0)
                 if off > 0 and off < 480
                     line fl = line.new(bar_index + off, low, bar_index + off, high,
                          xloc=xloc.bar_index, extend=extend.both,
-                         color=color.new(isRahu ? rahuCol : ketuCol, 55),
+                         color=color.new(kc, isNode ? 55 : 75),
                          style=line.style_dotted, width=1)
                     array.push(drawnLines, fl)
                     label flb = label.new(bar_index + off, high,
-                         (isRahu ? "Rahu " : "Ketu ") + str.format_time(int(ms), "d MMM", "UTC"),
+                         (kind == 0 ? "Rahu " : kind == 1 ? "Ketu " :
+                              kind == 2 ? "● " : "○ ") +
+                         str.format_time(int(ms), "d MMM", "UTC"),
                          xloc=xloc.bar_index, yloc=yloc.abovebar,
                          style=label.style_label_down,
-                         color=color.new(isRahu ? rahuCol : ketuCol, 35),
+                         color=color.new(kc, isNode ? 35 : 60),
                          textcolor=color.white, size=size.tiny)
                     array.push(drawnLabels, flb)
