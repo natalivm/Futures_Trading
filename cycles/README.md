@@ -168,6 +168,57 @@ exceptions usually cited are 1931 and 2015. This script settles it on our own
 data. With roughly 25 pre-election years in a century, one extra miss moves
 the rate by four points, so read it as a tilt rather than a law.
 
+## Pre-specified hypotheses
+
+R7 says an interval named in advance is far stronger evidence than the best of
+a search, and the control run shows why: naming the offset removed the random
+walk's false 50-year cycle entirely (0.086 against 0.947). The weak form is
+cheap to produce and this file is where the strong form gets its starting
+line — written down on the day it was named, so the scores cannot be quietly
+revised afterwards.
+
+### Nasdaq, 27.3 and 28 years — named 2026-11-09
+
+An open search on `^NDX` over 3–30 years at an 11-month window returned
+**27.3 years** as its best offset: price +0.907, swing **+0.580**, worst epoch
++0.19, top 0.01% of ~6,800 offsets, analog 1998-07 → 1999-06. It was the only
+candidate in that whole exercise to clear both the swing line a random walk
+reaches (0.449) and a positive worst epoch. **28 years** is the course's own
+equity clock, a few weeks away from it.
+
+Re-tested as named offsets at the standard 440-day window, on the day they
+were named:
+
+| offset | price | swing | heldMean / heldMin | analog | 230-bar projection |
+| --- | --- | --- | --- | --- | --- |
+| 27.3y | +0.913 | +0.353 | +0.58 / **+0.54** | 1997-10 → 1999-07 | +41.3% |
+| 28.0y | +0.892 | +0.316 | +0.24 / −0.22 | 1997-01 → 1998-10 | +94.2% |
+
+**Neither clears the controls, and that is the point.** Swing falls from 0.580
+to 0.353 as soon as the offset is the round number rather than the exact bar
+the search optimised to — shape agreement that halves under a few days of
+shift is being fitted. What survives is the epoch behaviour: 27.3 held +0.54
+at its worst earlier anchor, the best of anything measured here, though only
+two anchors are testable on a 41-year record.
+
+So they are carried, not traded. The weekly run scores both on `^NDX` from
+here, and `QQQ` carries them too — its record starts in 1999, so the script
+reports "not enough history" until roughly April 2028 for 27.3 and December
+2028 for 28, at which point the test begins on the tradeable series as well.
+
+What would change the reading, in the order it matters:
+
+- **heldMin stays positive and swing rises above 0.449** across several
+  windows, not just one — that is a cycle.
+- **heldMin goes negative** at any later anchor. A cycle that stops having
+  held is not a cycle, whatever it scores today.
+- The offset's score depending on the window length, as it already does.
+
+And one caution that is not statistical: an analog mapping the present onto
+1997–99 is the one a person most wants to believe, and what followed *that*
+window is not part of what the method forecasts. Direction and a minimum
+duration, never the end of the move.
+
 ## Automation
 
 `.github/workflows/update-cycles.yml` runs the whole pipeline on GitHub's
