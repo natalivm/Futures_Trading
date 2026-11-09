@@ -203,7 +203,34 @@ def phases(start_jd, end_jd):
                    + [(j, "full") for j in _roots(opp, start_jd, end_jd, 1.0)]))
 
 
+def calendar(days=120, from_jd=None):
+    """The node crossings and syzygies still to come."""
+    import datetime as _dt
+    j0 = from_jd if from_jd is not None else jd_from_unix(_dt.datetime.now(_dt.UTC).timestamp())
+    rows = [(j, k) for j, k in node_crossings(j0, j0 + days)]
+    rows += [(j, k) for j, k in phases(j0, j0 + days)]
+    rows.sort()
+    return j0, rows
+
+
+def _print_calendar(days):
+    j0, rows = calendar(days)
+    print(f"from {iso(j0)} UT, the next {days} days\n")
+    print(f"  {'what':<10} {'when (UT)':<18} {'in'}")
+    for j, k in rows:
+        name = {"rahu": "Rahu", "ketu": "Ketu", "new": "new moon", "full": "full moon"}[k]
+        print(f"  {name:<10} {iso(j):<18} {j - j0:5.1f} d")
+    print("\n  These dates are astronomy, not a forecast. What the market does on")
+    print("  them is a separate question — see cycles/backtest_moon.py.")
+
+
 if __name__ == "__main__":
+    import sys as _sys
+    if "--ahead" in _sys.argv:
+        i = _sys.argv.index("--ahead")
+        _print_calendar(int(_sys.argv[i + 1]) if len(_sys.argv) > i + 1 else 120)
+        raise SystemExit(0)
+
     # Eclipses are the check: a solar eclipse is a new moon AT a node, so both
     # routines have to land on the same day, and a published one pins them.
     print("validation — a solar eclipse is a new moon within hours of a node\n")

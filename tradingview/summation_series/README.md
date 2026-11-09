@@ -186,6 +186,50 @@ are close-based. The date agreement is real; the direction agreement is not.
 Future dates are extrapolated from the last bar's spacing, so on a weekly
 chart a label can sit a few days off a real session.
 
+## The "Projection step" row lands at chance
+
+The panel's one forward-looking number projects turn dates. It does not work,
+and the measurement is in `cycles/backtest_projection.py`.
+
+Two readings of how to project were in the code and its comment at the same
+time. The comment claimed the chain was **mirrored** around the anchor —
+turns at anchor + 11, +27, +38, +64 — while the code repeated a **constant**
+step, the widest gap in the chain. Both were scored, walking forward so
+nothing is fitted on data it then predicts.
+
+The control has to be matched on **tolerance**, and that is the whole story.
+A hit allows 2% of the offset, so a 427-bar projection gets a ±8-bar window
+while an 11-bar one gets ±1. With a strength-5 pivot every nine bars the wide
+window catches something almost regardless — which is how the constant step
+first measured **89%** and looked superb. Against random future bars judged
+at the same tolerance, chance is 90%.
+
+Pooled over four indices and four definitions of what counts as a turn:
+
+| projection | hit rate | chance, same tolerances | edge | n |
+|---|---|---|---|---|
+| constant step | 55.9% | 56.4% | **−0.5 pts** | 9,940 |
+| mirrored chain | 36.5% | 36.9% | **−0.4 pts** | 20,672 |
+
+Sixteen cells, edges scattering from −3.9 to +3.1 with no pattern by symbol or
+by how major a turn has to be. One intermediate result looked promising — ES
+at +8.1 points against major turns — and it was an artifact of using a single
+random draw per projection as the control; at 25 draws the same cell reads
++3.1 and its neighbours go negative.
+
+So the row still prints its number and draws its dashed lines, because a date
+to watch costs nothing, but it is printed in plain grey rather than the
+projection colour and carries **`· lands at chance`**. The comment that
+claimed a mirror has been corrected to describe what the code does, and why
+the series cannot in fact be continued forward: the gaps contract into the
+anchor (166, 97, 64, 36, 26, 11, 16, 11) and the recursion collapses one step
+past it.
+
+Note what this does **not** touch: the confirm-level and chain machinery above
+are scored separately, and the agreement ribbon below projects dates by a
+different mechanism — analog pivots carried forward — which is not what was
+measured here.
+
 ## The agreement ribbon
 
 The forward band is the part to read. Walking the two confirmed cycles forward
@@ -329,3 +373,189 @@ runs the body with `i = 0` and then `i = -1`. Every cleanup and reporting
 loop here had that shape. All fourteen are now wrapped in
 `if array.size(x) > 0`, and one history lookup that a long chain term could
 push beyond `max_bars_back` is bounds-checked as well.
+
+---
+
+# Moon node cycles (group 7)
+
+A second method in the same script, off by default. The course uses the
+moon's node conjunctions as the swing-trade trigger on the same charts it
+counts pivots on, and two scripts fighting over one pane is worse than one
+script with a switch. The two are independent: nothing in the counting reads
+the moon and nothing here reads the chain.
+
+The section is **on by default**. It shipped off, on the reasoning that most
+of the time you are here for the counting, and the effect was that it looked
+like it had never been added — a feature nobody can find is not a default,
+it is a bug. Untick `Mark moon-Rahu / moon-Ketu conjunctions` in group 7 to
+get the plain counting panel back.
+
+Its table has its own corner (bottom right by default). "Middle right" was
+the first default and was wrong: the summation table at top right runs to
+twelve rows, which reaches into the middle of the pane, so the two drew over
+each other and both became unreadable. Only corners a twelve-row table cannot
+reach are offered now and its labels live in their own ring buffer — the
+summation drawing is wiped and rebuilt on every last bar, while node marks
+are historical and should stay where they were put. `Label only the last N`
+exists because TradingView allows 500 labels per script and the pivot counts
+already want most of them.
+
+## Three cycles, three lengths
+
+They are routinely confused and they are not interchangeable. A test run on
+the wrong one tests nothing.
+
+| cycle | length | what it is |
+|---|---|---|
+| synodic | 29.53 d | new moon to new moon — what most people mean |
+| sidereal | 27.32 d | the moon once round the zodiac |
+| **draconic** | **27.21 d** | **north node to north node — the one traded here** |
+
+Moon conjunct Rahu (north node) is the moon crossing the ecliptic going north;
+Ketu (south node) is the crossing going south, a fortnight later. So no zodiac
+is needed to find them — they are the two zeros of the moon's ecliptic latitude
+each draconic month, which is arithmetic on the bar's timestamp.
+
+Positions come from Meeus, *Astronomical Algorithms* ch. 47 and 25, transcribed
+term for term from `cycles/moon.py`. That file is checked against five
+published solar eclipses: every new moon lands within nine minutes of the
+catalogued time, and every eclipse carries a node crossing within hours, as one
+must. Measured back from its own roots, the draconic month comes out at
+27.2141 days against the book's 27.2122 and the synodic at 29.530567 against
+29.530588.
+
+### What the backtest found
+
+`python3 cycles/backtest_moon.py --symbol GSPC --from 2010-01-01`
+
+**"Buy at a Ketu conjunction and you win about 70% of the time" — the rate is
+real and the edge is not.** Over 2010–2026 a Ketu entry held four weeks wins
+67.3% of the time. Buying on *any* day and holding four weeks wins **67.2%**.
+The number is the market's drift over a month, measured at the node.
+
+| horizon | Ketu win | Rahu win | **any day** |
+|---|---|---|---|
+| 1 week | 60.6% | 61.5% | 60.1% |
+| 2 weeks | 64.2% | 62.8% | 63.5% |
+| to next node | 65.5% | 67.7% | 66.2% |
+| 4 weeks | 67.3% | 67.3% | 67.2% |
+
+**"Rahu is more bearish than bullish" — no.** Rahu wins as often as Ketu at
+every horizon, and at the node-to-node horizon it wins *more* (67.7% against
+65.5%). On the full S&P record back to 1928 the four-week Ketu rate is beaten
+by a randomly-phased schedule 91% of the time.
+
+**"Last month tends to be the opposite" — true, and not lunar.** Draconic-month
+returns carry a real negative lag-1 autocorrelation: −0.159 on the S&P since
+2010, −0.109 on ES since 2000, both outside the 95% band of shuffled months.
+But cut the same series into 19-bar blocks starting at an **arbitrary** phase
+and the figure is −0.162 (S&P) — marginally *more* negative than the lunar one.
+It is short-horizon mean reversion, which any block of that length shows. The
+moon contributes nothing to it.
+
+**"Two, four, six and eight months back tend to be the same" — not found.**
+Every even lag sits inside the shuffle band on the 2010–2026 window, and on the
+full record the pattern is incoherent: lag 3 holds, lag 4 goes the wrong way,
+lags 6 and 8 hold.
+
+### So why mark them at all
+
+Because the lecture's own framing survives its statistics. It is explicit that
+the question is not whether a conjunction is bullish — *"it isn't either"* —
+but whether the market is repeating what it did a month ago. That is a reading
+aid, and the table is built for it: each completed draconic month's move, and
+whether it matches the one in progress, with the rule of thumb printed beside
+each row as a prediction to read the row against rather than as a result.
+
+Nothing here scores a setup, and nothing colours a conjunction as a signal.
+
+### The calendar ahead
+
+`Project this many conjunctions ahead` (default 6) adds a calendar section to
+the lunar table and marks the dates on the chart as dotted lines.
+
+**This is the one projection on the panel that is not a forecast.** Everything
+else that points forward here was measured and lands at chance. A node
+crossing is astronomy: the ephemeris is checked against five published solar
+eclipses and lands within minutes of each, and the Pine root-finder was
+verified against the Python one to the millisecond across six future
+crossings. The dates are not in doubt.
+
+What the market does on them is an entirely separate question, and the
+backtest above answers it: nothing reliable. The calendar is there so you can
+see the dates coming, which is what the lecture uses them for.
+
+```
+Ahead       date (UT)           in     astronomy, not a forecast
+new moon    2026-11-09 07:04     1 d   synodic 29.53 d
+Rahu        2026-11-17 11:45     9 d   draconic 27.21 d
+full moon   2026-11-24 14:58    17 d   synodic 29.53 d
+Ketu        2026-11-30 03:39    22 d   draconic 27.21 d
+new moon    2026-12-09 00:55    31 d   synodic 29.53 d
+Rahu        2026-12-14 13:02    36 d   draconic 27.21 d
+```
+
+Node crossings are always listed; new and full moons join them when `Also
+mark new and full moons` is on. The two interleave rather than coincide —
+they are different cycles of different lengths, which is the thing the
+lecture opens by clearing up — so each row names which cycle it belongs to
+and the list is in date order.
+
+**The dates are exact; the line positions are not.** Placing a date on a
+future bar needs an average bar spacing, and holidays and half-days make that
+an estimate, so a mark can stand a bar or two off its true date. Read the
+table for the date and the line for roughly where it falls.
+
+The same calendar outside TradingView, with new and full moons included:
+
+```bash
+python3 cycles/moon.py --ahead 60
+```
+
+### Settings
+
+- **What to mark** — node conjunctions, optionally new and full moons (the
+  *synodic* cycle, kept separate so the two are never mixed up), vertical lines.
+- **Earlier months** — how many back to compare, up to eight.
+- **Display** — colours.
+
+Start on a daily chart. A node crossing is dated to the bar it falls in, so a
+daily bar resolves it to the day and an hourly bar to the hour, which is as
+fine as the course works.
+
+### Daily or finer — the section refuses anything coarser than weekly
+
+A 27.21-day cycle sampled once every 30.44 days does not come out slow, it
+comes out **aliased**. The beat period is
+
+    1 / |1/27.21 − 1/30.44| = 257 days ≈ 8.4 months
+
+and that is exactly what the first version did on a monthly chart: it marked
+"Rahu" every eight or nine months and filled the table with confident
+nonsense. Measured gaps were 8.1, 8.9, 8.0, 8.0, 9.0, 9.0 months against the
+8.4 the arithmetic predicts — the diagnosis to a tenth of a month.
+
+Nyquist wants two samples per cycle, so 13.6-day bars is the theoretical
+floor. Weekly clears it and is allowed, with the header saying the comparison
+is bar-resolution only. Monthly and above are refused and the table says why.
+A wrong answer delivered confidently is worse than no answer.
+
+### How often does the panel read 6/6, and does it mean anything
+
+Six rows all matching the odd/opposite, even/same rule looks like 1-in-64.
+It is not, because the rows are not independent — consecutive months share a
+boundary — and the measured distribution is squeezed toward the middle:
+
+| rows matching | share of days (S&P 1928–2026) | if the rows were coin flips |
+|---|---|---|
+| 0/6 | 1.0% | 1.6% |
+| 3/6 | 30.7% | 31.2% |
+| **6/6** | **1.1%** | **1.6%** |
+
+A full house is **rarer** than chance, not commoner, and a panel cut at an
+arbitrary phase reaches it as often or oftener 40% of the time. Forward
+returns after a 6/6 day are not distinguishable from any other day at n=252,
+and the 2010–2026 subsample that looks dramatic (12.5% win rate over ten
+bars) rests on 24 days.
+
+`python3 cycles/backtest_moon.py --symbol GSPC` prints all of it.
