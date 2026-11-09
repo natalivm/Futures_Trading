@@ -13,6 +13,8 @@ interface Match {
   analogCloses: number[];
   forecastCloses: number[];
   forecastChangePct?: number | null;
+  /** Today's forward dates the projected path is drawn on. */
+  forecastDates?: string[];
   preSpecified?: boolean;
 }
 
@@ -33,11 +35,26 @@ function normalize(xs: number[]) {
   return hi === lo ? xs.map(() => 50) : xs.map(x => ((x - lo) * 100) / (hi - lo));
 }
 
-function path(series: number[], w: number, h: number, pad: number, span: number, offset = 0) {
+/** x of bar `i + offset`, in the plot area between the left pad and the axis. */
+function xOf(i: number, w: number, padL: number, padR: number, span: number) {
+  return padL + (i * (w - padL - padR)) / span;
+}
+
+/** y of a 0-100 value. Vertical padding is the same top and bottom. */
+function yOf(v: number, h: number, pad: number) {
+  return h - pad - (v * (h - pad * 2)) / 100;
+}
+
+function path(series: number[], w: number, h: number, padL: number, padR: number,
+              pad: number, span: number, offset = 0) {
   return series
-    .map((v, i) =>
-      `${(pad + ((i + offset) * (w - pad * 2)) / span).toFixed(1)},${(h - pad - (v * (h - pad * 2)) / 100).toFixed(1)}`)
+    .map((v, i) => `${xOf(i + offset, w, padL, padR, span).toFixed(1)},${yOf(v, h, pad).toFixed(1)}`)
     .join(' ');
+}
+
+/** Tick labels: cents under $100, one decimal to $1000, whole numbers above. */
+function money(p: number) {
+  return p >= 1000 ? p.toFixed(0) : p >= 100 ? p.toFixed(1) : p.toFixed(2);
 }
 
 /**
@@ -165,7 +182,36 @@ export default function CycleOverlay({ series, label, lagYears, caption }: Props
   const span = view === 'overlay'
     ? Math.max(cur.length, ana.length) - 1 || 1
     : combinedNorm.length - 1 || 1;
-  const splitX = pad + ((report.currentCloses.length - 1) * (w - pad * 2)) / span;
+  const padL = pad;
+  const padR = 58;                    // room for the price axis on the right
+  const splitX = xOf(report.currentCloses.length - 1, w, padL, padR, span);
+
+  // What the drawn line is worth in money. The forecast view draws one series
+  // in today's prices, so its axis is exact. The overlay view rescales the two
+  // windows independently — the same height is a different price on each — so
+  // the axis belongs to the current line and the analog's own range goes in
+  // the legend rather than pretending to share a scale.
+  const priceSeries = view === 'forecast' && combined.length ? combined : report.currentCloses;
+  const priceLo = Math.min(...priceSeries);
+  const priceHi = Math.max(...priceSeries);
+  const priceAt = (v: number) => priceLo + (v * (priceHi - priceLo)) / 100;
+  const anaLo = Math.min(...match.analogCloses);
+  const anaHi = Math.max(...match.analogCloses);
+
+  // Where the projected path turns, in today's prices and on today's dates.
+  // These are the analog's own highs and lows carried across, not a forecast
+  // of size: the method calls timing and direction, and the magnitude comes
+  // from the rescaling, so read them as levels to watch rather than targets.
+  const turnAt = (pickMax: boolean) => {
+    if (!forecast.length) return null;
+    let best = 0;
+    forecast.forEach((v, i) => {
+      if (pickMax ? v > forecast[best] : v < forecast[best]) best = i;
+    });
+    return { i: best, price: forecast[best], date: match.forecastDates?.[best] };
+  };
+  const projHigh = view === 'forecast' ? turnAt(true) : null;
+  const projLow = view === 'forecast' ? turnAt(false) : null;
 
   return (
     <figure className="kb-figure">
@@ -204,32 +250,58 @@ export default function CycleOverlay({ series, label, lagYears, caption }: Props
       <svg viewBox={`0 0 ${w} ${h}`} className="kb-demo-chart" role="img"
            aria-label={`${marketLabel(slug)}: the present window against a stretch ${match.lagYears.toFixed(1)} years earlier`}>
         {[0, 25, 50, 75, 100].map(v => (
-          <line key={v} x1={pad} x2={w - pad}
-                y1={h - pad - (v * (h - pad * 2)) / 100} y2={h - pad - (v * (h - pad * 2)) / 100}
-                className="kb-demo-grid" />
+          <g key={v}>
+            <line x1={padL} x2={w - padR} y1={yOf(v, h, pad)} y2={yOf(v, h, pad)} className="kb-demo-grid" />
+            <text className="kb-demo-axis" x={w - padR + 7} y={yOf(v, h, pad)} dominantBaseline="middle">
+              {money(priceAt(v))}
+            </text>
+          </g>
         ))}
         {view === 'overlay' ? (
           <>
-            <polyline className="kb-demo-analog" points={path(ana, w, h, pad, span)} />
-            <polyline className="kb-demo-current" points={path(cur, w, h, pad, span)} />
+            <polyline className="kb-demo-analog" points={path(ana, w, h, padL, padR, pad, span)} />
+            <polyline className="kb-demo-current" points={path(cur, w, h, padL, padR, pad, span)} />
           </>
         ) : (
           <>
             <line x1={splitX} x2={splitX} y1={pad} y2={h - pad} className="kb-demo-split" />
             <polyline className="kb-demo-analog"
-                      points={path(combinedNorm.slice(report.currentCloses.length), w, h, pad, span,
+                      points={path(combinedNorm.slice(report.currentCloses.length), w, h, padL, padR, pad, span,
                                    report.currentCloses.length)} />
             <polyline className="kb-demo-current"
-                      points={path(combinedNorm.slice(0, report.currentCloses.length), w, h, pad, span)} />
+                      points={path(combinedNorm.slice(0, report.currentCloses.length), w, h, padL, padR, pad, span)} />
+            {[[projHigh, 'hi'], [projLow, 'lo']].map(([t, kind]) => {
+              const turn = t as { i: number; price: number } | null;
+              if (!turn) return null;
+              const n = report.currentCloses.length;
+              return (
+                <circle key={kind as string} className={`kb-demo-turn ${kind}`} r={3.5}
+                        cx={xOf(n + turn.i, w, padL, padR, span)}
+                        cy={yOf(combinedNorm[n + turn.i], h, pad)} />
+              );
+            })}
           </>
         )}
       </svg>
 
+      {view === 'forecast' && projHigh && projLow && (
+        <p className="kb-demo-turns">
+          Where this path turns, on today's scale: <strong className="hi">{money(projHigh.price)}</strong>
+          {projHigh.date && <> around {projHigh.date}</>} and{' '}
+          <strong className="lo">{money(projLow.price)}</strong>
+          {projLow.date && <> around {projLow.date}</>}.
+          <span className="muted"> Levels to watch, not targets — the analog's own swing rescaled to this
+          window, and the method calls timing and direction, never size.</span>
+        </p>
+      )}
+
       <div className="kb-demo-side row">
         <p className="kb-demo-legend">
           <span className="swatch now" /> now: {report.currentStart} → {report.currentEnd}
+          <span className="muted small"> · {money(Math.min(...report.currentCloses))}–{money(Math.max(...report.currentCloses))}</span>
           <br />
           <span className="swatch then" /> analog: {match.analogStart} → {match.analogEnd}
+          <span className="muted small"> · {money(anaLo)}–{money(anaHi)}</span>
           {match.inverted && <span className="kb-inverted"> inverted</span>}
         </p>
         <dl className="kb-demo-scores">
@@ -254,7 +326,8 @@ export default function CycleOverlay({ series, label, lagYears, caption }: Props
             are in the spec beside the figure, the dates are in the legend, and
             a fallback already has its own note — restating any of that here is
             the duplication this caption used to be. */}
-        {caption ?? 'Both paths rescaled to 0–100, the way the course slides draw them.'}
+        {caption ?? 'The axis is this market’s own price. Overlay scales each window to its own range — ' +
+                    'the way the course slides draw them — so the analog’s prices are the ones in the legend.'}
         {exact && !match.preSpecified &&
           ' Found by searching, so read the swing and worst-epoch scores first.'}
       </figcaption>

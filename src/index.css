@@ -1574,6 +1574,26 @@ td input.note {
 }
 
 .kb-demo-grid { stroke: var(--border); stroke-width: 1; }
+
+/* The price axis. The overlay view rescales each window to its own range, so
+   this labels the current line only — the analog's range is in the legend. */
+.kb-demo-axis {
+  fill: var(--muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.kb-demo-turn.hi { fill: var(--sell); }
+.kb-demo-turn.lo { fill: var(--buy); }
+
+.kb-demo-turns {
+  padding: 0 14px 2px;
+  font-size: 13px;
+}
+
+.kb-demo-turns strong { font-variant-numeric: tabular-nums; }
+.kb-demo-turns .hi { color: var(--sell); }
+.kb-demo-turns .lo { color: var(--buy); }
 .kb-demo-analog { fill: none; stroke: #8e99a8; stroke-width: 1.6; }
 .kb-demo-current { fill: none; stroke: var(--accent); stroke-width: 1.8; }
 .kb-demo-split { stroke: var(--text); stroke-dasharray: 4 3; opacity: 0.5; }
