@@ -230,6 +230,77 @@ are scored separately, and the agreement ribbon below projects dates by a
 different mechanism — analog pivots carried forward — which is not what was
 measured here.
 
+## Checked against another counting indicator
+
+A second implementation of the same method was compared line by line. Two of
+its ideas are better than what was here and have been taken; three of its
+choices are wrong, and one of those is wrong in a way that matters a lot.
+
+**Taken: `barstate.isconfirmed` on pivot collection.** `ta.pivothigh` only
+returns a value `right` bars after the fact, which looks settled — but on the
+bar in progress the current high still feeds the comparison, so a pivot can
+appear mid-session and be taken back by the close. Pushing it then leaves a
+phantom count in the arrays for good, because nothing ever removes one. The
+other indicator guards this and this one did not.
+
+**Taken: more than one chain on the chart.** A chart carries several candidate
+chains and the reader should see them, not just the winner. Runner-ups are
+now drawn as connecting lines, one colour each, capped by
+`Also draw runner-up chains`.
+
+**But gated, which is the whole difference.** The other indicator draws every
+chain of **three terms or more** (`minHits = 3`). Three is below the noise
+floor by construction — measured on random pivots, a chain reaches 5 terms at
+20 pivots and 10 at 150 — so almost everything it draws is what random data
+produces. Run its rules over the same four charts this repo carries data for:
+
+| chart | its rules draw | this one draws |
+|---|---|---|
+| S&P 500 | 41 series over 94 of 150 pivots | 0 |
+| QQQ | 42 series over 99 pivots | 0 |
+| E-mini | 46 series over 100 pivots | 0 |
+| Gold | 44 series over 103 pivots | 0 |
+
+Zero is the right answer on all four: nothing on them clears the noise bar,
+which is also what every panel screenshot of this indicator has said — 6 vs 8,
+8 vs 8. A chart with forty colour-coded series on it discriminates nothing.
+
+**Wrong: it counts gaps, not spans.** Its ages are `zeroBar - pivotBar` with
+no `+ 1`. The course's labels are spans — the pivot bar itself is one — which
+is why this repo's opening section exists. Shifting the gold chain down by one
+turns the course's published `6, 23, 30, 52, 83, 132` into `5, 22, 29, 51, 82,
+131`, which matches nothing it prints. The chain still *forms*, because the
+shift costs one bar at every link and a ±3 tolerance absorbs it, so the fault
+is silent: the recursion being fitted is `a + b = c + 1`.
+
+**Wrong, or at least arbitrary: a chain may only open on two adjacent pivots.**
+Its seed loop takes `ages[i]` and `ages[i-1]`, so the two smallest terms must
+be consecutive turns. Nothing in the method requires that, and the course's own
+chains skip pivots freely. This one searches every pair.
+
+**Wrong: the labels print the theoretical term, not the measured one.** A pivot
+at age 172 matched to a target of 173 is labelled `173`. Combined with the two
+faults above, the printed number is twice removed from anything countable on
+the chart. This one prints the real count and puts the worst link error in the
+panel header.
+
+**A wash: flat tolerance versus scaled.** Theirs allows a flat ±3 bars at every
+term; this one allows `max(1 bar, 2%)`. Both accept both of the course's
+published chains, and neither is obviously tighter against noise:
+
+| tolerance | accepts bitcoin | accepts gold | noise bar at 20 / 80 / 150 pivots |
+|---|---|---|---|
+| flat ±3 (theirs) | yes | yes | 6 / 9 / 10 |
+| **max(1, 2%) (ours)** | **yes** | **yes** | **6 / 9 / 10** |
+| flat ±1 | yes | **no** | 5 / 7 / 7 |
+| exact | yes | **no** | 4 / 5 / 5 |
+
+There is a real argument for flat — a miscount is a bar error and does not
+scale with the term — and it measures the same, so this was left alone rather
+than churned. What the table does settle is the floor: anything tighter than 3
+at the long end throws away the course's own gold chain, whose last link is
+`52 + 83 = 135` against a published `132`.
+
 ## The agreement ribbon
 
 The forward band is the part to read. Walking the two confirmed cycles forward

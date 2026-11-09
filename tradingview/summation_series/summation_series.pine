@@ -93,6 +93,8 @@ multK      = input.int(5, "times 1..N", minval=1, maxval=8, inline="mult", group
      tooltip="\"I try to use numbers bigger than 50. If the number is smaller than 50 the cycles aren't big enough to repeat long enough.\"")
 
 // ── 5 · Display ──
+maxSeries  = input.int(3, "Also draw runner-up chains", minval=0, maxval=6, group=G_SERIES,
+     tooltip="Every other chain that CLEARS THE NOISE BAR, drawn as a connecting line in its own colour. The gate is the point: a chart can carry dozens of chains and almost all of them are what random pivots produce — measured, random reaches 5 terms at 20 pivots and 10 at 150, so a three-term 'series' is noise by construction. Only chains longer than that bar are drawn.")
 showCounts = input.bool(true, "Label every pivot with its count", group=G_VIEW)
 showTable  = input.bool(true, "Show the summary table", group=G_VIEW)
 chainCol   = input.color(color.new(color.aqua, 0), "Chain", inline="col", group=G_VIEW)
@@ -140,12 +142,19 @@ var array<int>   pvTime  = array.new<int>()
 ph = ta.pivothigh(leftBars, rightBars)
 pl = ta.pivotlow(leftBars, rightBars)
 
-if usePivotHighs and not na(ph)
+// barstate.isconfirmed matters here and is easy to miss. ta.pivothigh only
+// returns a value `right` bars after the fact, which looks settled — but on
+// the bar in progress the current high still feeds the comparison, so a
+// pivot can appear mid-session and be taken back by the close. Pushing it
+// then leaves a phantom count in the arrays for good, because nothing ever
+// removes one. Borrowed from the indicator this was compared against, which
+// gets this right.
+if usePivotHighs and not na(ph) and barstate.isconfirmed
     array.push(pvBar, bar_index - rightBars)
     array.push(pvPrice, ph)
     array.push(pvHigh, true)
     array.push(pvTime, time[rightBars])
-if usePivotLows and not na(pl)
+if usePivotLows and not na(pl) and barstate.isconfirmed
     array.push(pvBar, bar_index - rightBars)
     array.push(pvPrice, pl)
     array.push(pvHigh, false)
@@ -231,6 +240,16 @@ gridChain(int M, int tol, bool wantHigh) =>
                 if array.size(run) > array.size(best)
                     best := run
     best
+
+// A colour per runner-up chain, so two series crossing the same pivots stay
+// tellable apart.
+seriesColor(int i) =>
+    switch i % 5
+        0 => #FFD54F
+        1 => #81C784
+        2 => #BA68C8
+        3 => #4FC3F7
+        => #FF8A65
 
 // Closes over [startBar, startBar+len), oldest first.
 windowVals(startBar, len) =>
@@ -602,6 +621,14 @@ if barstate.islast
         // a long exact-looking chain reads worse than a short sloppy one.
         float chainWorst = 0.0
 
+        // The bar every chain is measured against, needed before the scan so
+        // a clearing chain can be collected as it is found rather than by
+        // running the whole O(m^2) search twice.
+        int nbar = noiseBar(array.size(counts), tolBars, tolPct)
+        array<int> seedA = array.new<int>()
+        array<int> seedB = array.new<int>()
+        array<int> seedL = array.new<int>()
+
         int m = array.size(counts)
         if m >= 2
             for a = 0 to m - 2
@@ -621,6 +648,10 @@ if barstate.islast
                                 y := array.get(counts, k)
                             else
                                 extending := false
+                        if len > nbar and array.size(seedA) < 60
+                            array.push(seedA, a)
+                            array.push(seedB, b)
+                            array.push(seedL, len)
                         if len >= 3 and len < MAXL
                             float meanErr = err / (len - 2)
                             if meanErr < array.get(bestM, len)
@@ -786,6 +817,82 @@ if barstate.islast
                          textcolor=inChain ? chainCol : plainCol,
                          size=inChain ? size.large : size.normal)
                     array.push(drawnLabels, cl)
+
+        // ── Runner-up chains ──
+        //
+        // The indicator this was compared against draws EVERY chain of three
+        // terms or more, one colour each. Three is the part that does not
+        // survive measurement: random pivots reach five terms at 20 pivots
+        // and ten at 150, so a three-term series is noise by construction and
+        // a chart covered in them discriminates nothing. The idea is good
+        // though — a chart carries several candidate chains and the reader
+        // should see them — so the same thing is drawn here with the noise
+        // bar as the gate, and only chains longer than it are eligible.
+        //
+        // Drawn as a connecting line rather than as labels: the counts are
+        // already labelled once, and relabelling them per series is how the
+        // other one ends up unreadable.
+        int seriesShown = 0
+        if maxSeries > 0 and array.size(seedA) > 0
+            array<int> usedIdx = array.new<int>()
+            if array.size(bestChain) > 0
+                for i = 0 to array.size(bestChain) - 1
+                    array.push(usedIdx, array.get(bestChain, i))
+            for pass = 1 to maxSeries
+                // longest seed still unspent
+                int pickS = -1
+                int pickLen = 0
+                if array.size(seedL) > 0
+                    for q = 0 to array.size(seedL) - 1
+                        if array.get(seedL, q) > pickLen
+                            pickLen := array.get(seedL, q)
+                            pickS := q
+                if pickS < 0
+                    break
+                array.set(seedL, pickS, 0)          // spent
+                // rebuild it
+                array<int> mem = array.new<int>()
+                int ia = array.get(seedA, pickS)
+                int ib = array.get(seedB, pickS)
+                array.push(mem, ia)
+                array.push(mem, ib)
+                int x3 = array.get(counts, ia)
+                int y3 = array.get(counts, ib)
+                bool go3 = true
+                while go3
+                    int k3 = nearestIdx(counts, x3 + y3)
+                    if k3 >= 0 and array.get(counts, k3) > y3
+                        array.push(mem, k3)
+                        x3 := y3
+                        y3 := array.get(counts, k3)
+                    else
+                        go3 := false
+                // a chain that mostly retreads one already drawn says nothing
+                int overlap = 0
+                if array.size(mem) > 0
+                    for q = 0 to array.size(mem) - 1
+                        if array.indexof(usedIdx, array.get(mem, q)) >= 0
+                            overlap += 1
+                if overlap * 2 <= array.size(mem) and array.size(mem) >= 2
+                    color sc = seriesColor(seriesShown)
+                    for q = 0 to array.size(mem) - 2
+                        int p1 = array.get(cIdx, array.get(mem, q))
+                        int p2 = array.get(cIdx, array.get(mem, q + 1))
+                        line sl = line.new(array.get(pvBar, p1), array.get(pvPrice, p1),
+                             array.get(pvBar, p2), array.get(pvPrice, p2),
+                             xloc=xloc.bar_index, color=color.new(sc, 40),
+                             style=line.style_dotted, width=1)
+                        array.push(drawnLines, sl)
+                    label sll = label.new(array.get(pvBar, array.get(cIdx, array.get(mem, array.size(mem) - 1))),
+                         array.get(pvPrice, array.get(cIdx, array.get(mem, array.size(mem) - 1))),
+                         str.tostring(array.size(mem)) + " terms",
+                         xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_none,
+                         textcolor=sc, size=size.tiny)
+                    array.push(drawnLabels, sll)
+                    if array.size(mem) > 0
+                        for q = 0 to array.size(mem) - 1
+                            array.push(usedIdx, array.get(mem, q))
+                    seriesShown += 1
 
         // Confirmed cycles get their own marker — these are the ones the
         // course would act on, not every chain member.
@@ -1160,7 +1267,8 @@ if barstate.islast
                  text_color=consensus ? (meanMove > 0 ? color.lime : color.red) : color.gray, text_size=size.tiny)
             table.cell(info, 0, 11, "Noise bar", text_color=color.gray, text_size=size.tiny)
             table.cell(info, 1, 11, str.tostring(chainLen) + " vs " + str.tostring(nb) +
-                 (beatsNoise ? "  clears it" : "  random reaches this"),
+                 (beatsNoise ? "  clears it" : "  random reaches this") +
+                 (seriesShown > 0 ? "  ·  " + str.tostring(seriesShown) + " more clear it" : ""),
                  text_color=beatsNoise ? color.lime : color.red, text_size=size.tiny)
 
 
