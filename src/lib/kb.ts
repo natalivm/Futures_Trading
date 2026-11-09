@@ -961,6 +961,126 @@ const moonCycles: KbArticle = {
 };
 
 /**
+ * The short-term half of the lunar work: not when a node crossing falls, but
+ * what to do with the month between two of them. Separate from
+ * `moonCycles` because the claims are different claims and they fail
+ * differently — the interval here is sound and the reading of it is not.
+ */
+const lunarOverlay: KbArticle = {
+  id: 'lunar-overlay',
+  title: 'The one-month overlay on an hourly chart',
+  summary: '444 hours really is a lunar month. Everything the overlay is then read for sits at or below its own neighbours.',
+  source: 'Market Forecast Mastery \u2014 Allen Reminick, 23 Sep 2026; tested with cycles/backtest_lunar_overlay.py',
+  updated: TODAY,
+  body: [
+    'Two vertical lines on a 60-minute chart, one lunar month apart, slid along until the older one sits under a turn. The month behind the first line is then read as the template for the month ahead of the second: where its turns fell, which way up it ran, how long each swing lasted. “The moon is the most important short-term indicator.” It is the one piece of the method that operates in hours rather than years, and until now it was the one piece that had never been measured, because every price file in this project was daily.',
+    { kind: 'heading', text: 'The interval is right, and it is not the obvious one' },
+    {
+      kind: 'table',
+      caption: 'ES hourly, 13,694 bars, Jun 2024 \u2192 Nov 2026. Bar counts are the window whose median span matches the month \u2014 not an average bars-per-day, which weekends dilute by four days.',
+      head: ['Month', 'Length', 'Bars on a 23-hour session'],
+      rows: [
+        ['Draconic', '27.2122 d', '425'],
+        ['Sidereal', '27.3217 d', '428'],
+        ['Synodic', '29.5306 d', '472'],
+        ['The lecture\u2019s count', '28.04 d', '444'],
+      ],
+    },
+    {
+      kind: 'list',
+      items: [
+        '444 bars span 28.04 calendar days, which is the sidereal month to within 17 hours and the draconic to within 20. It is emphatically not the synodic month, which wants 472.',
+        'That is the right answer for the right reason: the course trades node crossings, and the node month is the draconic one. A round number arrived at by eye on a chart landed within a day of the astronomy.',
+        '\u201cThe number of bars can be a little bit less one month, a little bit more another.\u201d True and quantified. A month of 23-hour sessions with no holiday is 449 bars, and every closed session takes 23 off \u2014 which is exactly the 444-to-449 spread.',
+      ],
+    },
+    {
+      kind: 'callout',
+      tone: 'warn',
+      title: '444 is a count of futures hours, not a count of bars',
+      text: 'The number only means a lunar month on a nearly round-the-clock session. On QQQ\u2019s regular hours the same file averages 7.0 bars a session, so 444 of them span 92 days \u2014 3.4 lunar months. Anyone carrying the number across to a cash-hours chart is overlaying a quarter and calling it a month. The script refuses to name a month when the closest one is more than two days out, and says what the count actually spans instead.',
+    },
+    { kind: 'heading', text: 'The control is the offset\u2019s own neighbourhood' },
+    'Three things are then read off the overlay, and each is a claim. Turns line up — “this low over here … it’s within a few hours of that high”. The month repeats upside down, and the month before it right side up. And duration carries across: “because this rally lasted longer, it indicates we’re probably going to go down further, or at least longer.”',
+    'Each is scored against every lag from 300 to 620 bars, with the neighbourhood of the real one excluded. A nearby lag sees nearly the same bars, nearly the same volatility and nearly the same number of pivots, so if one month back is special, 444 has to beat 441 and 447 and 500 — not merely score well in isolation.',
+    {
+      kind: 'table',
+      caption: 'Pivots at strength 6 (one every 10 bars), matched within \u00b16 hours. 29 lunar months of data.',
+      head: ['Claim', 'At 444', 'Band median', 'Rank in band'],
+      rows: [
+        ['Turns line up a month apart', '84.5% matched', '85.3%', '21st percentile'],
+        ['Last month runs opposite (lag 1)', '\u22120.140', '\u22120.054', '76th'],
+        ['Month before runs the same way (lag 2)', '\u22120.173', '\u22120.151', '45th'],
+        ['Swing length carries across', '\u22120.050', '\u22120.007', '7th'],
+      ],
+    },
+    {
+      kind: 'callout',
+      tone: 'key',
+      title: 'The overlay cannot tell you which way up to read it',
+      text: 'Of the turns that do match a month back, 51% are the same kind of turn and 49% the opposite — and that split stays between 44% and 53% across every pivot definition tried. This is the structural objection, and it is worse than a weak result. The whole procedure is: find the alignment, decide whether the month is running upright or inverted, then project the next turn from it. If the alignment itself is a coin flip on that question, the second step has nothing to read, and a template that can be used either way up fits any outcome after the fact. Watch the lecture do it — the first overlay is upside down, the second is right side up, and whichever one the market then follows is the one that worked.',
+    },
+    { kind: 'heading', text: 'And the two pivot claims move with the pivot definition' },
+    {
+      kind: 'table',
+      caption: '444\u2019s rank inside its own band, at twelve ways of defining a turn. Same data, same lag, same control.',
+      head: ['Strength', 'Window', 'Turns matched', 'Rank', 'Upright', 'Duration corr', 'Rank'],
+      rows: [
+        ['3', '\u00b13 h', '87.2%', '72nd', '49%', '\u22120.058', '0th'],
+        ['3', '\u00b16 h', '98.4%', '83rd', '50%', '\u22120.021', '20th'],
+        ['3', '\u00b112 h', '100.0%', '30th', '50%', '\u22120.024', '13th'],
+        ['6', '\u00b13 h', '59.8%', '36th', '51%', '\u22120.069', '3rd'],
+        ['6', '\u00b16 h', '84.5%', '21st', '51%', '\u22120.050', '7th'],
+        ['6', '\u00b112 h', '98.7%', '66th', '50%', '\u22120.040', '9th'],
+        ['12', '\u00b13 h', '33.5%', '19th', '48%', '\u22120.047', '25th'],
+        ['12', '\u00b16 h', '59.4%', '19th', '48%', '\u22120.024', '34th'],
+        ['12', '\u00b112 h', '91.8%', '90th', '49%', '+0.022', '69th'],
+        ['24', '\u00b13 h', '15.0%', '19th', '53%', '+0.223', '91st'],
+        ['24', '\u00b16 h', '33.3%', '67th', '44%', '+0.024', '58th'],
+        ['24', '\u00b112 h', '59.0%', '83rd', '44%', '+0.037', '62nd'],
+      ],
+    },
+    {
+      kind: 'list',
+      items: [
+        'The alignment rank runs from the 19th percentile to the 90th and the duration rank from the 0th to the 91st. Both are whatever the two knobs are set to. Nothing that moves like that is a property of the market.',
+        'The 100.0% cell is the lesson in one number: at strength 3 a pivot turns up every few bars, so a \u00b112-hour window catches one every single time. A hit rate that cannot go below 100% is not measuring anything, and the raw rates in the lecture are read off exactly that kind of window.',
+        'The duration claim fails on sign as well as on strength. At the settings where there is enough data to mean anything the correlation is negative \u2014 a longer swing a month back goes with a marginally shorter one now, the opposite of the inference drawn from it. The one strongly positive cell, +0.223, rests on 51 matched swings.',
+        'Only the strength-24 rows can even be called sparse-but-suggestive, and they disagree with each other.',
+      ],
+    },
+    { kind: 'heading', text: 'The one number that does not move, and what it is' },
+    {
+      kind: 'list',
+      items: [
+        'The lag-1 block correlation needs no pivots, so it is the same at every setting: \u22120.140 at 444 bars, and \u22120.231 at the draconic 425, against a band median of \u22120.054. Of the four claims it is the only one that ranks well.',
+        'It is also the one already accounted for. The daily work found the same negative lag-1 on the S&P and on ES, and found that cutting either series into blocks of that length at an arbitrary phase reads marginally stronger. It is short-horizon mean reversion; every lag in the 300\u2013620 band is negative.',
+        'And the sample is 30 blocks. The standard error on a correlation from 30 points is about 0.18, so \u22120.140 is inside one standard error of zero. Two years of hourly bars cannot resolve this, in either direction.',
+        'The lag-2 claim \u2014 the month before last repeating right side up \u2014 asks for a positive number. It measures \u22120.173 at 444 and \u22120.017 at the draconic lag. Not weak: the wrong sign.',
+      ],
+    },
+    {
+      kind: 'callout',
+      tone: 'warn',
+      title: 'Gold reverses the only claim that survived on ES',
+      text: 'Gold trades the same 23-hour session, so 444 bars is a lunar month there too — 28.25 days. Its lag-1 correlation at 444 is +0.071 against a band median of +0.057: positive, where the claim needs negative, and no better than its neighbours. QQQ at its own draconic lag reads −0.043 against a band median of −0.417, which puts the lunar lag at the 2nd percentile — less inverted than 98% of the lags around it. A short-term indicator that is “the most important” one would not change sign between the E-mini and gold.',
+    },
+    {
+      kind: 'callout',
+      tone: 'note',
+      title: 'The one roadmap it has produced did better than this',
+      text: 'Measured over 29 months the overlay is indistinguishable from its neighbours, and then the four-turn roadmap called from it on 23 September 2026 hit three turns, two in the exact session, at about one-in-ten against the same shape anchored elsewhere. That is scored in full in the forecast journal. It does not overturn anything here — one favourable draw is what a one-in-ten result means, and this is a sample of one — but it is the reason the honest instruction below is “not on this evidence” rather than “never”, and the reason the journal is being kept.',
+    },
+    {
+      kind: 'callout',
+      tone: 'key',
+      title: 'What survives',
+      text: 'The arithmetic, and the discipline. 444 hours is a lunar month on a futures session to within a day, the holiday variance is real, and the habit of asking every week whether this month is repeating the last one costs nothing and keeps a trader looking at the chart rather than at the news. What does not survive is any use of the answer on this evidence: the turns do not align better than neighbouring lags, the upright-or-inverted reading is a coin flip, the duration inference has the wrong sign, and the one correlation that ranks well is mean reversion that any block of that length produces. Use the overlay as a prompt to look, and keep sizing off what it says about a turn until there are enough scored roadmaps to argue with these numbers.',
+    },
+  ],
+};
+
+/**
  * The forward-looking row, scored. Separate article because it is a result
  * about the tool rather than about the course.
  */
@@ -1188,6 +1308,148 @@ const cycleGlossary: KbArticle = {
  * in method, how we search, what the search found, the rules that came out
  * of it, how to use them, and then reference.
  */
+/**
+ * The second technique in this session, and a different kind of failure from
+ * the overlay: not a weak effect but a circular argument. Kept separate
+ * because the overlay is about the moon and this is about arithmetic.
+ */
+const seriesPhi: KbArticle = {
+  id: 'series-phi',
+  title: 'The series, and why its golden ratios prove nothing',
+  summary: 'Counts of 8, 9, 17, 23, 29, 44, 73, 117 that sum and sit in phi ratios \u2014 which is one observation reported as two.',
+  source: 'Market Forecast Mastery \u2014 Allen Reminick, 23 Sep 2026; tested with cycles/backtest_series_phi.py',
+  updated: TODAY,
+  body: [
+    'Series and sequences are the course’s primary tool, and this is the clearest worked example of one on the record. A low in early September 2026 is taken as a zero point, trading days are counted back from it to each earlier turn — 8, 9, 17, 23, 29, 44, 73 and 116 or 117 — and two things are then said about those counts. They sum: 29 + 44 = 73, and 44 + 73 = 117. And their ratios to the largest are powers of the golden ratio. “In other words, these are all powers of phi … this cycle has an internal structure like a spiral.”',
+    { kind: 'heading', text: 'The arithmetic, checked' },
+    {
+      kind: 'table',
+      caption: 'As stated in the session, against the actual phi powers.',
+      head: ['Ratio', 'Value', 'phi\u207b\u1d4f', 'k', 'Off by'],
+      rows: [
+        ['73 / 117', '0.6239', '0.6180', '1', '0.59 pts'],
+        ['44 / 117', '0.3761', '0.3820', '2', '0.59 pts'],
+        ['29 / 116', '0.2500', '0.2361', '3', '1.39 pts'],
+        ['17 / 116', '0.1466', '0.1459', '4', '0.07 pts'],
+      ],
+    },
+    {
+      kind: 'list',
+      items: [
+        'Three of the four land within 0.6 points, and 17/116 is accurate to four decimal places. The arithmetic is not wrong.',
+        '29/116 is a quarter, not 0.236 \u2014 the session says so itself. It is 6% out, and 6% of 116 sessions is a week.',
+        'The series is not additive throughout. 8 + 9 = 17 holds, then 9 + 17 = 26 against 23, 17 + 29 = 46 against 44, and 23 + 29 = 52 against 44. Three consecutive triples fail, and the terms that fail are kept. The two that hold \u2014 29 + 44 = 73 and 44 + 73 = 117 \u2014 are the two the golden-ratio argument rests on.',
+      ],
+    },
+    { kind: 'heading', text: 'The two claims are one claim' },
+    'Any sequence in which each term is the sum of the previous two approaches the golden ratio, whatever it starts from. That is the defining property of an additive sequence — Fibonacci has no special status in it, and neither does the market. So once 29 + 44 = 73 and 44 + 73 = 117 have been observed, 73/117 ≈ 0.618 and 44/117 ≈ 0.382 are not a second discovery. They are the first one, restated.',
+    {
+      kind: 'table',
+      caption: 'Additive chains from random seeds. No market involved; the last three ratios land on phi powers every time.',
+      head: ['Seed', 'Chain', 'c / e', 'b / e', 'a / e'],
+      rows: [
+        ['18, 24', '18 24 42 66 108 174 282', '0.6170', '0.3830', '0.2340'],
+        ['31, 17', '31 17 48 65 113 178 291', '0.6117', '0.3883', '0.2234'],
+        ['5, 12', '5 12 17 29 46 75 121', '0.6198', '0.3802', '0.2397'],
+        ['9, 25', '9 25 34 59 93 152 245', '0.6204', '0.3796', '0.2408'],
+        ['\u2014 target', 'phi\u207b\u00b9, phi\u207b\u00b2, phi\u207b\u00b3', '0.6180', '0.3820', '0.2361'],
+      ],
+    },
+    {
+      kind: 'callout',
+      tone: 'key',
+      title: 'Row three is the whole argument',
+      text: 'Seeded with 5 and 12, a random additive chain runs 17, 29, 46, 75, 121 — against the session’s 17, 29, 44, 73, 117. Nearly the same numbers, nearly the same ratios, and no chart was consulted. Quoting the sums and the ratios as two mutually supporting findings counts one observation twice, and the observation is two additions.',
+    },
+    { kind: 'heading', text: 'And the ratios survive no control at all' },
+    {
+      kind: 'list',
+      items: [
+        'The freedoms, counted off the session: the zero point is chosen, which turns to count back to are chosen from every pivot on the chart, any of the first eight phi powers may be matched, a day of slack is allowed (“it could be off by a day”), and a quarter may stand in for 0.236.',
+        'Searched under exactly those rules, ES\u2019s best anchor and span put 9 of 24 available counts on a phi power.',
+        'Random walks of the same length and volatility, pivots found the same way and the same search run over them: median 10 of 24, range 8 to 12.',
+        '100% of 200 random walks matched or beat the real chart. Golden internal structure is a property of searching a chart for it, not of this market.',
+      ],
+    },
+    {
+      kind: 'callout',
+      tone: 'warn',
+      title: 'What makes this harder to see than the usual overfit',
+      text: 'The individual steps are all sound. The counts are real, the two sums are exact, the ratios are arithmetically correct to three decimals, and 17/116 = 0.1466 against 0.1459 is genuinely striking on its own. Nothing is fudged. The failure is structural: a true statement about addition is presented as an empirical finding about price, and a search over every anchor, every span and eight phi powers is presented as a prediction. A reader checking each number will find every one of them correct and still be left with nothing that forecasts anything.',
+    },
+    {
+      kind: 'callout',
+      tone: 'note',
+      title: 'What is left, and it is not nothing',
+      text: 'Strip out the phi and the summation and a testable claim remains: that counting trading days back from a significant low lands on turns more often than counting back from an arbitrary day. That is the series technique’s real content, it is measurable with the machinery already here, and it is untouched by any of the above. The session’s own framing points the same way — “this is how you get the big picture, but it’s not as sensitive” — a statement about which timeframe to use, not about spirals.',
+    },
+  ],
+};
+
+/**
+ * The first entry in the journal. The point of the chapter is that a forecast
+ * is only worth anything if it was written down with dates before the fact,
+ * so this records the roadmap as called and scores it without softening it
+ * in either direction — and it is the one result in this project that came
+ * out better than the measurement behind it said it should.
+ */
+const forecastSep2026: KbArticle = {
+  id: 'forecast-2026-09-23',
+  title: '23 September 2026 \u2014 a four-turn roadmap on ES',
+  summary: 'Four dated turns called from the hourly overlays with ES at 7765.25. Three landed, two to the session.',
+  source: 'Market Forecast Mastery session, 23 Sep 2026; scored with cycles/backtest_lunar_overlay.py --forecast',
+  updated: TODAY,
+  body: [
+    'A forecast is only evidence if it was dated before the fact. This one was, and in unusual detail: four turns, each with a day attached and two with an hour, read off two overlays — one month back running upside down, two months back running right side up — and taken only as far as the point where the two stopped agreeing. ES was 7765.25. Every time below is Eastern.',
+    {
+      kind: 'timeline',
+      title: 'Called, and what happened',
+      rows: [
+        { when: '24 Sep \u2014 low', what: '“3 p.m. on one overlay, midnight on the other. I wouldn’t be going long.”', note: 'Hit, same session: 7707.25 at 05:00, 10–18 h before the times named.' },
+        { when: '29 Sep \u2014 high', what: 'A three-day rally into a high on Tuesday, 10–11 a.m.', note: 'Missed. The rally lasted one day, topping 7814.75 on the 25th; through 10–11 a.m. on the 29th the market fell 7747.00 to 7713.00.' },
+        { when: '1 Oct \u2014 low', what: 'A two-day decline into a low on the 1st.', note: 'Hit, same session: 7672.75 at 11:00 — the low of the whole stretch.', now: true },
+        { when: '7 Oct \u2014 high', what: 'Then up until the 7th, where the overlays stop agreeing.', note: 'Hit, one session early: 7897.50 on 6 Oct, +225 points off the 1 Oct low. The 7th was the first down day.' },
+      ],
+    },
+    { kind: 'heading', text: 'Scored against the same shape anchored everywhere else' },
+    'Three of four is only meaningful beside what four dated turns at that spacing hit by luck. So the whole roadmap — same alternation, same gaps of 1, 5, 7 and 12 sessions — is slid to every other anchor in the file and scored the same way. Only its alignment with these particular dates is being tested.',
+    {
+      kind: 'table',
+      caption: 'ES daily sessions rebuilt from the hourly file, 729 of them. “As well” is the share of all other anchors scoring at least as high.',
+      head: ['Turn defined as', 'Tolerance', 'Hit', 'Random mean', 'Anchors as good'],
+      rows: [
+        ['strength 2', 'same session', '2 / 4', '0.52', '9.8%'],
+        ['strength 2', '\u00b11 session', '3 / 4', '1.56', '20.1%'],
+        ['strength 3', 'same session', '2 / 4', '0.38', '5.5%'],
+        ['strength 3', '\u00b11 session', '3 / 4', '1.13', '9.7%'],
+        ['strength 3', '\u00b12 sessions', '3 / 4', '1.87', '27.2%'],
+        ['strength 5', '\u00b11 session', '2 / 4', '0.75', '17.1%'],
+      ],
+    },
+    {
+      kind: 'callout',
+      tone: 'key',
+      title: 'This came out better than the measurement said it should, and both things are true',
+      text: 'The backtest of the overlay finds nothing: turn alignment at the lunar lag sits at the 21st percentile of its own neighbourhood, and the upright-or-inverted reading is a coin flip. Then the one dated roadmap it produced hit three of four turns, two of them in the exact session, at roughly one-in-ten against its own control. There is no contradiction to resolve. A one-in-ten result arrives one time in ten to a method with no edge whatever, and this is one roadmap — n of 1, chosen for scoring because it was the only dated one on the record, which is itself a selection. The measurement describes 29 months; this describes a fortnight. If the overlay has something, more roadmaps scored this way will show it, and nothing else will.',
+    },
+    {
+      kind: 'rules',
+      items: [
+        { rule: 'What the two hits are worth', detail: 'The 1 Oct low and the 6–7 Oct high are the strong part: both are five to twelve sessions out, neither could be reached by reading the next session’s momentum, and the 1 Oct low was the extreme of the whole stretch.' },
+        { rule: 'What the 24 Sep hit is not', detail: 'A direction for the following session. Correct, and the cheapest of the four — the market was already falling into the close when it was called.' },
+        { rule: 'How the miss failed', detail: 'Not by a margin but by inversion: 29 Sep was a decline into an afternoon low where a high was called. The overlay read the month upside down, and that was the hour where reading it the other way up would have been right.' },
+        { rule: 'The honest next step', detail: 'Score every dated roadmap from here on, before knowing the outcome, with the control attached. Four more at one-in-ten would be worth acting on. One is worth recording.' },
+      ],
+    },
+    {
+      kind: 'callout',
+      tone: 'note',
+      title: 'An earlier version of this page scored it wrong',
+      text: 'It was written from the first half of the session only, which contained the 24 Sep low and the 29 Sep high but not the 1 Oct low or the 7 Oct high. On that partial record the 1 Oct low read as a refutation — a lower low after the rally was supposed to have resumed — when in fact it was the third called turn and it landed to the session. The lesson is about scoring, not about the moon: a roadmap has to be recorded in full before the window opens, or the scoring will quietly grade it against whichever calls are remembered.',
+    },
+  ],
+};
+
 export const categories: KbCategory[] = [
   {
     id: 'course',
@@ -1205,7 +1467,7 @@ export const categories: KbCategory[] = [
     id: 'cycles',
     title: 'Locating cycles',
     description: 'searching every offset for the one today’s market rhymes with, and the controls that say which scores to believe.',
-    articles: [cycleScanner, multiplesRule, moonCycles, projectionScored],
+    articles: [cycleScanner, multiplesRule, seriesPhi, moonCycles, lunarOverlay, projectionScored],
   },
   {
     id: 'catalogue',
@@ -1253,7 +1515,7 @@ export const categories: KbCategory[] = [
     id: 'review',
     title: 'Forecast journal & review',
     description: 'recording a forecast on the day it is made, scoring it once the window has passed, and the review that turns a run of calls into a measured hit rate.',
-    articles: [],
+    articles: [forecastSep2026],
   },
 ];
 

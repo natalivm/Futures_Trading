@@ -39,6 +39,13 @@ jobs:
         # the S&P files written before the range=max fix start at 1970.
         run: python3 cycles/update_prices.py --full 2>&1 | tee /tmp/fetch.log
 
+      - name: Refresh hourly bars
+        # Yahoo serves interval=60m for about two years and no further, so
+        # these files are a rolling window that goes stale from the back. A
+        # weekly run is what keeps the lunar overlay testable at all; miss
+        # enough runs and the early months are simply gone.
+        run: python3 cycles/fetch_hourly.py --symbols ES=F,QQQ,GC=F 2>&1 | tee -a /tmp/fetch.log
+
       - name: Run the analysis and write the report
         run: |
           SYMBOL="${{ inputs.symbol }}"
@@ -123,6 +130,17 @@ jobs:
             python3 cycles/composite.py --all --preset course --json
           run_section "Four-year election cycle" \
             python3 cycles/election_cycle.py --all --json
+          # The short-term work, on the hourly files. --robust is the point of
+          # the section: the two pivot claims are reported at twelve
+          # definitions of a turn, and a reader can see their ranks move.
+          run_section "Lunar one-month overlay (ES hourly)" \
+            python3 cycles/backtest_lunar_overlay.py --robust --forecast
+          run_section "Lunar one-month overlay (gold hourly)" \
+            python3 cycles/backtest_lunar_overlay.py --file GC_F_hourly
+          # The daily series and its golden ratios. --tautology is the section's
+          # point and costs nothing; --control is the search over random walks.
+          run_section "Daily series and the golden ratio" \
+            python3 cycles/backtest_series_phi.py --tautology --control --trials 200
 
           if [ -n "$SYMBOL" ]; then
             run_section "Ad-hoc: $SYMBOL at $LAGS year(s), window $WINDOW" \
