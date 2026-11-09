@@ -34,6 +34,9 @@ string G_SHAPE  = "4 · Confirming a cycle"
 string G_PROJ   = "5 · Projection"
 string G_VIEW   = "6 · Display"
 string G_MOON   = "7 · Moon node cycles"
+string G_CC     = "8 · Series counting (imported)"
+string G_ANG    = "9 · Angled lines"
+string G_LVL    = "10 · Planetary levels"
 
 // ── 1 · Pivots ──
 leftBars   = input.int(5, "Pivot strength — left", minval=1, maxval=50, inline="piv", group=G_PIVOT)
@@ -132,6 +135,33 @@ moonPos    = input.string("Bottom right", "Table position",
 rahuCol    = input.color(#EF5350, "Rahu", inline="moonc", group=G_MOON)
 ketuCol    = input.color(#26A69A, "Ketu", inline="moonc", group=G_MOON)
 phaseCol   = input.color(#B0BEC5, "Phase", inline="moonc", group=G_MOON)
+
+// ── 8/9/10 · Imported from the other counting indicator ──
+// Declared here with the rest of the inputs because Pine reads top to bottom
+// and ccShow is read by the label code further down.
+bool ccShow = input.bool(true, "Show cycle counts", group = G_CC)
+int ccLeftBars = input.int(6, "Left pivot bars", minval = 1, group = G_CC)
+int ccRightBars = input.int(6, "Right pivot bars", minval = 1, group = G_CC)
+int ccTolerance = input.int(3, "Series tolerance (bars)", minval = 0, maxval = 10, group = G_CC)
+int ccLookbackBars = input.int(3000, "Maximum age from zero (bars)", minval = 50, maxval = 9000, group = G_CC)
+int ccStoredPivots = input.int(150, "Stored pivots", minval = 20, maxval = 300, group = G_CC)
+int ccMinHits = input.int(3, "Minimum matched terms", minval = 3, maxval = 10, group = G_CC)
+int ccMaxTerms = input.int(14, "Maximum terms per series", minval = 10, maxval = 30, group = G_CC)
+int ccMaxLabels = input.int(200, "Maximum cycle labels", minval = 10, maxval = 450, group = G_CC)
+bool angShow = input.bool(false, "Show angled lines", group = G_ANG)
+float angDegrees = input.float(30.0, "Angle (degrees)", minval = -89.0, maxval = 89.0, group = G_ANG)
+float angSpacing = input.float(21.6, "Vertical spacing (price units)", group = G_ANG)
+int angCount = input.int(10, "Number of angled lines", minval = 1, maxval = 100, group = G_ANG)
+float angStartPrice = input.float(0.0, "Price at anchor of first line", group = G_ANG)
+float angPricePerBar = input.float(1.0, "Slope scale: price units per bar", minval = 0.000001, group = G_ANG)
+int angHalfSpan = input.int(100, "Visible half-span (bars)", minval = 1, maxval = 250, group = G_ANG)
+color angColor = input.color(color.green, "Line color", group = G_ANG)
+int angWidth = input.int(1, "Line width", minval = 1, maxval = 5, group = G_ANG)
+string angStyleInput = input.string("Solid", "Line style", options = ["Solid", "Dashed", "Dotted"], group = G_ANG)
+bool lvlShow = input.bool(false, "Show horizontal levels", group = G_LVL)
+float lvlBaseValue = input.float(4.86, "Base scale value", minval = 0.000001, group = G_LVL)
+int lvlCount = input.int(33, "Number of levels", minval = 1, maxval = 100, group = G_LVL)
+color lvlColor = input.color(color.orange, "Level color", group = G_LVL)
 
 // ── Pivot collection ──
 var array<int>   pvBar   = array.new<int>()
@@ -792,13 +822,18 @@ if barstate.islast
             meanMove /= array.size(confOff)
 
         // ── Draw ──
-        label anchorLbl = label.new(anchorBar, array.get(pvPrice, anchorIdx), "0",
-             xloc=xloc.bar_index, yloc=anchorIsHigh ? yloc.abovebar : yloc.belowbar,
-             style=anchorIsHigh ? label.style_label_down : label.style_label_up,
-             color=color.new(color.yellow, 20), textcolor=color.black, size=size.small)
-        array.push(drawnLabels, anchorLbl)
+        // With the imported counting on, it owns the numbers AND the zero:
+        // its pivots come from its own strength setting, so its anchor can
+        // sit on a different bar from this one's and two zeros on one chart
+        // is worse than either alone.
+        if not ccShow
+            label anchorLbl = label.new(anchorBar, array.get(pvPrice, anchorIdx), "0",
+                 xloc=xloc.bar_index, yloc=anchorIsHigh ? yloc.abovebar : yloc.belowbar,
+                 style=anchorIsHigh ? label.style_label_down : label.style_label_up,
+                 color=color.new(color.yellow, 20), textcolor=color.black, size=size.small)
+            array.push(drawnLabels, anchorLbl)
 
-        if showCounts
+        if showCounts and not ccShow
             if array.size(counts) > 0
                 for i = 0 to array.size(counts) - 1
                     int ci = array.get(cIdx, i)
@@ -1429,3 +1464,171 @@ if barstate.islast and showMoon and (monthsBack > 0 or aheadN > 0)
                          color=color.new(kc, isNode ? 35 : 60),
                          textcolor=color.white, size=size.tiny)
                     array.push(drawnLabels, flb)
+
+
+// ══════════════════ IMPORTED: Cycle Counting + Angles + Levels ══════════════
+//
+// Taken from "Cycle Counting + Angles + Planetary Levels (Fixed)" and kept
+// as its own section rather than merged into the search above, so it behaves
+// exactly as it does in that script. Identifiers are prefixed cc/ang/lvl
+// because this file already declares leftBars, rightBars and a pivot set of
+// its own, and Pine refuses a redeclaration.
+//
+// It keeps its own pivot arrays, its own tolerance and its own labels. The
+// counting above is untouched and the two can run side by side; with this on,
+// the search's own per-pivot labels step aside so the numbers are not drawn
+// twice.
+
+// ======================== CYCLE COUNTING ========================
+
+// Locate the pivot nearest a theoretical cycle number, without reusing
+// the same pivot in one series. Matches with smaller deviations come first.
+ccMatch(int target, int olderThanAge, array<int> ages, int allowedDeviation) =>
+    int found = -1
+    for deviation = 0 to allowedDeviation
+        int lowerAge = target - deviation
+        if lowerAge > olderThanAge
+            int lowerIndex = array.indexof(ages, lowerAge)
+            if lowerIndex >= 0
+                found := lowerIndex
+                break
+        if deviation > 0
+            int upperAge = target + deviation
+            if upperAge > olderThanAge
+                int upperIndex = array.indexof(ages, upperAge)
+                if upperIndex >= 0
+                    found := upperIndex
+                    break
+    found
+
+ccSeriesColor(int seed) =>
+    switch seed % 6
+        0 => color.aqua
+        1 => color.yellow
+        2 => color.lime
+        3 => color.fuchsia
+        4 => color.orange
+        => color.silver
+
+float ccPivotHigh = ta.pivothigh(high, ccLeftBars, ccRightBars)
+float ccPivotLow = ta.pivotlow(low, ccLeftBars, ccRightBars)
+var array<int> ccPivotBars = array.new<int>()
+var array<float> ccPivotPrices = array.new<float>()
+var array<bool> ccPivotIsHigh = array.new<bool>()
+
+if not na(ccPivotHigh) and barstate.isconfirmed
+    array.push(ccPivotBars, bar_index - ccRightBars)
+    array.push(ccPivotPrices, ccPivotHigh)
+    array.push(ccPivotIsHigh, true)
+if not na(ccPivotLow) and barstate.isconfirmed
+    array.push(ccPivotBars, bar_index - ccRightBars)
+    array.push(ccPivotPrices, ccPivotLow)
+    array.push(ccPivotIsHigh, false)
+
+// Keep the three arrays aligned and bounded.
+while array.size(ccPivotBars) > ccStoredPivots
+    array.shift(ccPivotBars)
+    array.shift(ccPivotPrices)
+    array.shift(ccPivotIsHigh)
+
+var array<label> ccLabels = array.new<label>()
+
+// ======================== ANGLED LINES ========================
+var array<line> angLines = array.new<line>()
+// Anchor at the first available chart bar so the geometry stays fixed
+// as the last bar advances; changing available history can change this anchor.
+var int angAnchorBar = na
+if barstate.isfirst
+    angAnchorBar := bar_index
+
+// ======================== PLANETARY LEVELS ========================
+var array<line> lvlLines = array.new<line>()
+
+// Redraw only the current set of drawings, deleting old object IDs.
+if barstate.islast
+    while array.size(ccLabels) > 0
+        label.delete(array.pop(ccLabels))
+    while array.size(angLines) > 0
+        line.delete(array.pop(angLines))
+    while array.size(lvlLines) > 0
+        line.delete(array.pop(lvlLines))
+
+    // --------- Cycle counting ---------
+    int ccN = array.size(ccPivotBars)
+    if ccShow and ccN > 0
+        int zeroIndex = ccN - 1
+        int zeroBar = array.get(ccPivotBars, zeroIndex)
+        float zeroPrice = array.get(ccPivotPrices, zeroIndex)
+        bool zeroHigh = array.get(ccPivotIsHigh, zeroIndex)
+        label zeroLabel = label.new(x = zeroBar, y = zeroPrice, text = "0", style = zeroHigh ? label.style_label_down : label.style_label_up, color = color.gray, textcolor = color.white, size = size.small)
+        array.push(ccLabels, zeroLabel)
+
+        array<int> ccAges = array.new<int>()
+        for i = 0 to ccN - 1
+            array.push(ccAges, zeroBar - array.get(ccPivotBars, i))
+
+        array<int> ccLabeled = array.new<int>()
+        int ccDrawn = 0
+        if ccN >= 3
+            // a is the younger nonzero pivot, b is the next older pivot.
+            for i = ccN - 2 to 1
+                if ccDrawn >= ccMaxLabels
+                    break
+                int a = array.get(ccAges, i)
+                int b = array.get(ccAges, i - 1)
+                if a > 0 and b > a and b <= ccLookbackBars
+                    array<int> matchedIndexes = array.from(i, i - 1)
+                    array<int> sequenceNumbers = array.from(a, b)
+                    int prevA = a
+                    int prevB = b
+                    int lastMatchedAge = b
+
+                    for step = 3 to ccMaxTerms
+                        int target = prevA + prevB
+                        if target > ccLookbackBars
+                            break
+                        int matchIndex = ccMatch(target, lastMatchedAge, ccAges, ccTolerance)
+                        if matchIndex < 0
+                            break
+                        array.push(matchedIndexes, matchIndex)
+                        array.push(sequenceNumbers, target)
+                        lastMatchedAge := array.get(ccAges, matchIndex)
+                        prevA := prevB
+                        prevB := target
+
+                    if array.size(matchedIndexes) >= ccMinHits
+                        color seriesCol = ccSeriesColor(i)
+                        // safe: matchedIndexes holds at least ccMinHits terms
+                        for k = 0 to array.size(matchedIndexes) - 1
+                            if ccDrawn >= ccMaxLabels
+                                break
+                            int pIndex = array.get(matchedIndexes, k)
+                            if array.indexof(ccLabeled, pIndex) < 0
+                                int x = array.get(ccPivotBars, pIndex)
+                                float y = array.get(ccPivotPrices, pIndex)
+                                bool isHigh = array.get(ccPivotIsHigh, pIndex)
+                                int sequenceNumber = array.get(sequenceNumbers, k)
+                                label lbl = label.new(x = x, y = y, text = str.tostring(sequenceNumber), style = isHigh ? label.style_label_down : label.style_label_up, color = color.new(seriesCol, 15), textcolor = color.black, size = size.tiny)
+                                array.push(ccLabels, lbl)
+                                array.push(ccLabeled, pIndex)
+                                ccDrawn += 1
+
+    // --------- Angled lines ---------
+    if angShow
+        int x1 = math.max(0, bar_index - angHalfSpan)
+        int x2 = bar_index + angHalfSpan
+        float lineSlope = math.tan(angDegrees * 3.141592653589793 / 180.0) * angPricePerBar
+        angLineStyle = angStyleInput == "Dashed" ? line.style_dashed : angStyleInput == "Dotted" ? line.style_dotted : line.style_solid
+        for i = 0 to angCount - 1
+            float yAtAnchor = angStartPrice + angSpacing * i
+            float y1 = yAtAnchor + lineSlope * (x1 - angAnchorBar)
+            float y2 = yAtAnchor + lineSlope * (x2 - angAnchorBar)
+            line ln = line.new(x1 = x1, y1 = y1, x2 = x2, y2 = y2, color = angColor, width = angWidth, style = angLineStyle, extend = extend.both)
+            array.push(angLines, ln)
+
+    // --------- Horizontal planetary levels ---------
+    if lvlShow
+        for i = 1 to lvlCount
+            float level = lvlBaseValue * i
+            line ln = line.new(x1 = bar_index - 1, y1 = level, x2 = bar_index, y2 = level, color = lvlColor, width = 1, extend = extend.both)
+            array.push(lvlLines, ln)

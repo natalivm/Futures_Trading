@@ -230,6 +230,37 @@ are scored separately, and the agreement ribbon below projects dates by a
 different mechanism — analog pivots carried forward — which is not what was
 measured here.
 
+## The imported counting (groups 8, 9, 10)
+
+The other indicator's cycle counting is now **in this script**, as its own
+section, on by default, exactly as it behaves there. Its angled lines (group
+9) and planetary levels (group 10) came with it and are off by default, as
+they are in the original.
+
+It keeps its own pivot arrays, its own strength setting (6/6 against this
+script's 5/5), its own tolerance and its own labels, so nothing about it is
+filtered through the search above. Two things step aside when it is on:
+
+- the search's **per-pivot count labels**, so the numbers are not drawn twice;
+- the search's **`0` anchor label**, because its pivots come from a different
+  strength setting and its zero can sit on a different bar — two zeros on one
+  chart is worse than either alone.
+
+Everything else in the panel still runs on the search's own counting: the
+chain, the noise bar, the multiples, the shape confirmation, the agreement
+ribbon. So the labels on the chart and the table at the corner are now two
+independent readings of the same chart, which is the point.
+
+Identifiers are prefixed `cc` / `ang` / `lvl` because this file already
+declares `leftBars`, `rightBars` and a pivot set of its own, and Pine refuses
+a redeclaration. The inputs sit with the other inputs rather than beside the
+logic, because Pine reads top to bottom and `ccShow` has to be readable where
+the label code stands down.
+
+The section below records what was measured about the two approaches before
+this was imported. It is kept as a record, not as an argument — the imported
+counting is the one drawing the numbers now.
+
 ## Checked against another counting indicator
 
 A second implementation of the same method was compared line by line. Two of
