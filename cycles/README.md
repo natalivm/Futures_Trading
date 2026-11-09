@@ -11,6 +11,8 @@ python3 cycles/update_prices.py                      # refresh cycles/data/*.csv
 python3 cycles/find_cycles.py --preset course        # the lectures' cycle set
 python3 cycles/composite.py --symbol ^GSPC --preset sp500   # where cycles agree
 python3 cycles/election_cycle.py --symbol ^DJI       # the four-year cycle statistic
+python3 cycles/fetch_hourly.py                       # hourly bars, for the short-term work
+python3 cycles/backtest_lunar_overlay.py --robust --forecast
 ```
 
 **[METHOD.md](METHOD.md) is the method in rules** — the lectures distilled to
@@ -167,6 +169,94 @@ note that 2008 was an election year rather than a pre-election year, and the
 exceptions usually cited are 1931 and 2015. This script settles it on our own
 data. With roughly 25 pre-election years in a century, one extra miss moves
 the rate by four points, so read it as a tilt rather than a law.
+
+## fetch_hourly.py and backtest_lunar_overlay.py
+
+The short-term half of the method works in hours, not years, and nothing else
+here can see it: every other file in `cycles/data/` is daily.
+
+`fetch_hourly.py` writes `cycles/data/<SLUG>_hourly.csv` (`ts,open,high,low,close`,
+UTC, oldest first) from Yahoo's `interval=60m`, which serves roughly the last
+two years and no further. **These files are a rolling window, not a history.**
+Two years is about 29 lunar months — enough to rank a one-month offset against
+its neighbours, nowhere near enough for anything annual. Nothing in the long
+cycle work should touch them.
+
+`backtest_lunar_overlay.py` tests the one-month overlay: two vertical lines on
+a 60-minute chart a lunar month apart, the older month read as the template
+for the newer. Four claims, and the control throughout is **the offset's own
+neighbourhood** — every lag from 300 to 620 bars scored the same way, with the
+real one's neighbourhood excluded. A lag 3 bars away sees nearly the same
+bars, the same volatility and the same pivot count, so it is the tightest null
+available: if one month back is special, 444 has to beat 441 and 447 and 500.
+
+```bash
+python3 cycles/fetch_hourly.py --symbols ES=F,QQQ,GC=F
+python3 cycles/backtest_lunar_overlay.py --robust --forecast
+python3 cycles/backtest_lunar_overlay.py --file GC_F_hourly
+```
+
+The result, in one line: the interval is right and the reading of it is not.
+444 hours is the sidereal month to within 17 hours on a 23-hour session — good
+arithmetic, arrived at by eye. But turn alignment at 444 sits at the 21st
+percentile of its own band, the matched turns split 51/49 upright against
+inverted so the overlay cannot say which way up to read the month, the
+duration inference has the wrong sign, and the one claim that ranks well is
+the lag-1 block correlation already attributed to generic mean reversion by
+`backtest_moon.py`. `--robust` is the reason to believe that: it reruns the
+two pivot claims at twelve definitions of a turn, and their ranks swing from
+the 0th percentile to the 91st.
+
+Two traps worth keeping in mind before reusing this machinery:
+
+- **444 is a count of futures hours, not of bars.** On QQQ's regular hours the
+  same count spans 92 days — 3.4 lunar months. The script refuses to name a
+  month when the nearest is more than two days from the measured span.
+- **Bars-per-day averages lie about window spans.** `13694 / 874` says 444
+  bars is 28.35 days; the median actual 444-bar window is 28.04. Weekends and
+  holidays dilute the average in a way a single window is not diluted, and the
+  difference was enough to pick the wrong month.
+
+`--forecast` scores the four-turn roadmap called in the 23 Sep 2026 session,
+which is the one piece of this material that was dated and unambiguous before
+the fact. It is also the one result here that came out better than the
+backtest behind it: three of four turns landed, two in the exact session, at
+roughly one-in-ten against the same shape anchored everywhere else in the
+file. One roadmap at one-in-ten is what no edge at all produces one time in
+ten, so it is recorded rather than concluded from.
+
+## backtest_series_phi.py
+
+The other technique in that session, and a different kind of failure. Trading
+days are counted back from a low — 8, 9, 17, 23, 29, 44, 73, 116/117 — and two
+things reported: the counts sum (29 + 44 = 73, 44 + 73 = 117) and their ratios
+to the largest are powers of the golden ratio (0.618, 0.382, 0.236, 0.146).
+
+```bash
+python3 cycles/backtest_series_phi.py --tautology --control
+```
+
+The arithmetic is correct and the conclusion does not follow, for two reasons
+the script demonstrates rather than asserts:
+
+- **The two claims are one claim.** Every additive sequence converges on phi
+  whatever it starts from. `--tautology` seeds random chains and prints their
+  ratios: seeded with 5 and 12 one of them runs 17, 29, 46, 75, 121 against
+  the session's 17, 29, 44, 73, 117 — nearly the same numbers, no chart
+  consulted. Quoting the sums *and* the ratios counts one observation twice.
+- **The ratios survive no control.** `--control` searches ES for the anchor and
+  span that fit best, allowing every pivot as a count, any of the first eight
+  phi powers, a day of slack and a quarter standing in for 0.236 — the same
+  freedoms the session takes. ES manages 9 of 24 counts on a phi power.
+  Random walks manage a median of 10, and 100% of 200 of them match or beat
+  it.
+
+Note also that the series is not additive throughout: 8 + 9 = 17 holds, then
+three consecutive triples fail, and the failing terms are kept anyway.
+
+What is untouched by all of this, and still testable with the machinery here,
+is whether counting back from a significant low lands on turns more often than
+counting back from an arbitrary day.
 
 ## Pre-specified hypotheses
 
