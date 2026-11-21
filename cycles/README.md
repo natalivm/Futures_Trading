@@ -384,6 +384,44 @@ control suggested.
 Current state of the register: Reminick 3 of 4 (2 on closes), AstroTimeCycles
 0 of 2 with its invalidation tripped, and one open call lodged 21 November.
 
+## brief.py
+
+The one-page situation brief — the thing you actually post. It answers one
+question from the only evidence on this record with a sample worth the name:
+after a fall like the one just finished, what has historically happened next?
+
+```bash
+python3 cycles/brief.py                 # writes cycles/briefs/<sym>-brief-<date>.html
+python3 cycles/brief.py --pdf           # and prints it to PDF
+python3 cycles/brief.py --symbol DJI --title "Is the Dow done falling?"
+```
+
+Every analogue in the file that matches the current session on two conditions
+— a five-session fall at least as steep, and a 40-day low — is measured, and
+the sheet draws the distribution of what followed. Nothing on it is typed in:
+the figures, the copy, the index name and the start year all come from the
+data, so running it next week produces next week's brief. `--pdf` shells out
+to a headless Chrome or Chromium if one is on PATH and tells you how to print
+it by hand if not.
+
+### The third figure is the honest one
+
+The brief has three charts, and the third is not decoration. The median
+*level* at each horizon sits above the signal day almost immediately, while
+three in four analogues make a lower close at some point — the dips are real
+but their timing varies, so they do not survive the median. A sheet showing
+only the fan would read as "straight up from here", which is the opposite of
+what the data says. So the trough gets its own figure and a callout naming
+what the median line hides.
+
+Colours follow the data-viz palette and were run through its validator.
+Red-against-green failed CVD separation (ΔE 4.1 for deuteranopia), so the
+confirmation level is a neutral dashed line with a text label and only the
+decline carries red; blue-against-red passes every check.
+
+The sheet is sized to exactly one A4 page — if you edit the copy, re-render
+and check it still fits rather than trusting it.
+
 ## Pre-specified hypotheses
 
 R7 says an interval named in advance is far stronger evidence than the best of
