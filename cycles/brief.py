@@ -47,6 +47,7 @@ NAMES = {
     "GSPC": "S&amp;P 500", "DJI": "Dow Jones Industrial Average", "IXIC": "Nasdaq Composite",
     "NDX": "Nasdaq 100", "RUT": "Russell 2000", "ES_F": "E-mini S&amp;P 500",
     "QQQ": "QQQ", "GC_F": "Gold", "CL_F": "WTI crude", "ZB_F": "US 30-year bonds",
+    "SMH": "Semiconductors (SMH)",
 }
 
 

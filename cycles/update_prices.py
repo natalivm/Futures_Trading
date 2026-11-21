@@ -72,6 +72,10 @@ INDEXES = {
     # record (1985 against 1999), so QQQ is here because it is the thing
     # people actually trade, not because it adds history.
     "QQQ":   ("Invesco QQQ Trust", "qqq.us"),
+    # The semiconductor ETF. A sector with its own cycle and far more
+    # amplitude than the indexes, which makes it a useful stress test for
+    # anything calibrated on them.
+    "SMH":   ("VanEck Semiconductor ETF", "smh.us"),
 }
 
 
