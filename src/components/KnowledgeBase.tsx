@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { articleCount, categories } from '../lib/kb';
 import { blockText } from '../lib/kbBlocks';
-import ArticleBody from './kb/ArticleBody';
+import Section from './kb/Section';
 
 /**
  * The knowledge base is one document, not a set of tabs.
@@ -107,15 +107,10 @@ export default function KnowledgeBase() {
                 <span className="muted"> — {chapter.description}</span>
               </h2>
 
+              {/* Folded to title + summary. A filter term opens every match, because
+                  a search that returns a list of closed headings has answered nothing. */}
               {chapter.articles.map(article => (
-                <article key={article.id} id={`kb-${article.id}`} className="kb-section">
-                  {/* `summary` is deliberately not rendered: it restated the heading,
-                      and the body then restated it again. It stays on the record as
-                      search text and as the one-line description of each section. */}
-                  {titled && <h3>{article.title}</h3>}
-                  {article.source && <p className="muted small kb-source">Source: {article.source}</p>}
-                  <ArticleBody body={article.body} level={titled ? 4 : 3} />
-                </article>
+                <Section key={article.id} article={article} titled={titled} forceOpen={!!q} />
               ))}
             </section>
           );

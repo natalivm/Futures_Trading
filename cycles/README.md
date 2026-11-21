@@ -258,6 +258,89 @@ What is untouched by all of this, and still testable with the machinery here,
 is whether counting back from a significant low lands on turns more often than
 counting back from an arbitrary day.
 
+## backtest_gann_square.py
+
+A second source and a different school — the AstroTimeCycles updates, which
+work from Gann calendar squares rather than Baumring analogs. The tool is a
+grid: a span of calendar days from an anchor, divided into eight minor squares
+and those into quarters, every division a candidate reversal date.
+
+```bash
+python3 cycles/backtest_gann_square.py                        # 88-day equinox square
+python3 cycles/backtest_gann_square.py --span 64 --minor 8
+python3 cycles/backtest_gann_square.py --symbol ES_F --tol 2
+```
+
+This is the easiest claim in the project to test and the hardest to wriggle
+out of, because the grid is pure calendar arithmetic. Given the anchor, every
+division for the next century is already fixed — no sliding, no fitting, no
+judgement. The 88-day square is cleaner still: it is anchored on the equinox,
+so it has no free parameter at all.
+
+The generator was checked against the author's own published table: the
+seventeen division dates of the 64-day square for 8 Oct – 11 Dec 2026 come out
+identical, labels included. So the test is of their grid, not an approximation.
+
+The control is a phase shift — the same grid, same count, same spacing,
+anchored 1 to 87 days off the cardinal date — plus a blunter baseline of dates
+drawn out of a hat. Over 400 cardinal anchors and 24,846 S&P sessions:
+
+| Dates tested | Hit (±1 day) | Phase-shifted | Rank |
+|---|---|---|---|
+| Every division | 35.3% | 34.8% [34.0–35.3] | 91st |
+| Quarter divisions | 34.0% | 35.0% [30.2–40.0] | 28th |
+| Dates out of a hat | 34.2% | [33.3–35.4] | — |
+
+**The hit rate is the width of the window, not the merit of the grid.** A turn
+arrives every 8.5 sessions and a ±1-day window is three sessions wide; three in
+8.5 is 35%, which is what the square scores and what random dates score. At ±0
+days everything falls to ~12%, at ±2 days everything rises to ~53%, and the
+grid never separates from the baseline at any width. Across both squares and
+three tolerances the real anchor's rank wanders between the 6th percentile and
+the 91st — parameter noise. The quarter divisions, which the author weights
+most heavily, are the weaker half.
+
+## score_projections.py
+
+The weekly workflow rewrites `public/cycles/*.json` in place, so the projected
+path on the site always starts at the last bar and has never had the chance to
+be wrong. Git kept every earlier version, which means the record existed all
+along and only had to be read back.
+
+```bash
+python3 cycles/score_projections.py --verbose
+python3 cycles/score_projections.py --symbol GSPC --archive   # writes the site's JSON
+```
+
+It walks the git history of `<SLUG>_named.json`, takes each snapshot's forward
+path for each named cycle, and compares it with the prices that have since
+arrived — scoring only the elapsed part, so a 230-bar path made a fortnight ago
+is judged on ten bars and no more. Three numbers per projection, in rising
+order of how much they tell you: direction, daily correlation, path
+correlation. R9's ordering again — the headline is the least informative.
+
+First two scored windows, 6 and 13 November 2026:
+
+| Made | Cycles | Called up | Actual | Direction right |
+|---|---|---|---|---|
+| 6 Nov | 5 | 4 | −6.3% | 1 of 5 |
+| 13 Nov | 7 | 6 | −8.6% | 1 of 7 |
+
+Ten of twelve projections called the market up into the worst 0.7% of
+five-session returns since 1928. The only offset that got it right both times
+is 6.8 years, whose analog window ends on 29 January 2020 — so the path it is
+projecting is the February 2020 crash and the recovery after it.
+
+**Two forecast dates is one event sampled twice, not twelve tests.** Had the
+market risen, ten of twelve would have looked prescient on the same evidence.
+The point of the script is that the record now accumulates on its own; the
+per-cycle rows are not readable yet and the script says so.
+
+The baseline printed beside the direction rate is what "always up" scores on
+the same windows. Both windows so far were down, which makes that baseline
+degenerate — the script detects this and refuses to claim the comparison means
+anything.
+
 ## Pre-specified hypotheses
 
 R7 says an interval named in advance is far stronger evidence than the best of

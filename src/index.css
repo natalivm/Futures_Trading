@@ -1424,10 +1424,84 @@ td input.note {
   margin-top: 0;
 }
 
+/* ── The fold ──
+   The whole header is the hit area, so the title and the summary are both
+   clickable rather than only a chevron the size of a full stop. */
+.kb-section-head {
+  margin: 0;
+  font-size: 17px;
+}
+
+.kb-section-head button {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.kb-section-head button:hover {
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.kb-section-head button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.kb-section-chevron {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  margin-top: 5px;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease;
+}
+
+.kb-section.open .kb-section-chevron {
+  transform: rotate(45deg);
+}
+
+.kb-section-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.kb-section-title {
+  font-weight: 650;
+}
+
+.kb-section-body > :first-child {
+  margin-top: 10px;
+}
+
 .kb-section-sum {
   color: var(--muted);
   font-size: 15px;
-  margin-bottom: 6px;
+  font-weight: 400;
+  margin-bottom: 0;
+}
+
+/* The legend under a figure: two items that must not run together. */
+.kb-figure-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  padding: 2px 12px 8px;
+  font-size: 12px;
+  color: var(--muted);
 }
 
 .kb-source {

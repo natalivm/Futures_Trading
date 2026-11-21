@@ -44,7 +44,7 @@ jobs:
         # these files are a rolling window that goes stale from the back. A
         # weekly run is what keeps the lunar overlay testable at all; miss
         # enough runs and the early months are simply gone.
-        run: python3 cycles/fetch_hourly.py --symbols ES=F,QQQ,GC=F 2>&1 | tee -a /tmp/fetch.log
+        run: python3 cycles/fetch_hourly.py --symbols ES=F,QQQ,GC=F,^GSPC 2>&1 | tee -a /tmp/fetch.log
 
       - name: Run the analysis and write the report
         run: |
@@ -141,6 +141,19 @@ jobs:
           # point and costs nothing; --control is the search over random walks.
           run_section "Daily series and the golden ratio" \
             python3 cycles/backtest_series_phi.py --tautology --control --trials 200
+          # The Gann calendar squares, against a phase-shifted control. Both
+          # spans, because the 88-day one has an astronomical anchor and the
+          # 64-day one does not.
+          run_section "Gann calendar square (88-day, equinox-anchored)" \
+            python3 cycles/backtest_gann_square.py --span 88 --minor 11 --trials 100
+          run_section "Gann calendar square (64-day)" \
+            python3 cycles/backtest_gann_square.py --span 64 --minor 8 --trials 100
+          # Score the PREVIOUS weeks' projections before this run's scan is
+          # committed. It reads the scan files back out of git history, so the
+          # record grows by itself and cannot be quietly revised, and writes
+          # public/cycles/<SLUG>_named_scored.json for the site to draw.
+          run_section "Projections scored against what arrived" \
+            python3 cycles/score_projections.py --symbol GSPC --archive --verbose
 
           if [ -n "$SYMBOL" ]; then
             run_section "Ad-hoc: $SYMBOL at $LAGS year(s), window $WINDOW" \
