@@ -1445,6 +1445,9 @@ td input.note {
   font: inherit;
   text-align: left;
   cursor: pointer;
+  /* Buttons are globally nowrap, which on a phone pushed the summary line out
+     to 552px inside a 317px box and dragged the whole document sideways. */
+  white-space: normal;
 }
 
 .kb-section-head button:hover {
@@ -1477,6 +1480,8 @@ td input.note {
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .kb-section-title {

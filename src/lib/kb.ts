@@ -1082,6 +1082,81 @@ const lunarOverlay: KbArticle = {
 };
 
 /**
+ * Our own call, and the first on the register written before its window
+ * opened. Included because the standing complaint against both other entries
+ * is that neither said what would prove it wrong, and making that complaint
+ * without submitting to it would be worthless.
+ */
+const forecastNov21: KbArticle = {
+  id: 'forecast-2026-11-21',
+  title: '21 November 2026 \u2014 our own call, pre-registered',
+  summary: 'After an 8.6% week: probably not the final low, but a higher month. Levels stated in advance, graded mechanically.',
+  source: 'cycles/calls.json, graded by cycles/score_calls.py',
+  updated: TODAY_NOV21,
+  body: [
+    'Both other entries in this journal are marked down for the same thing: neither said what would prove it wrong. Making that complaint and then declining to submit to it would be worth nothing, so this is a call on the register, written before its window opened, with its levels and dates fixed and a scorer that grades it without reading a word of prose.',
+    { kind: 'heading', text: 'The question, and the only part of it with a real sample' },
+    'The S&P fell 8.61% in the five sessions to 20 November and closed at 6,910.39, near the low of the day. Did it bottom? That condition — a five-session fall at least that steep that is also a 40-day low — has occurred 103 times since 1928, which is the one piece of evidence here with a sample worth the name.',
+    {
+      kind: 'table',
+      caption: 'S&P 500, 1928\u20132026. What followed the 103 prior sessions matching Friday\u2019s condition.',
+      head: ['Measure', 'Value'],
+      rows: [
+        ['Friday was the final low (no lower close in 63 sessions)', '16%'],
+        ['A lower close within 5 sessions', '66%'],
+        ['A lower close within 21 sessions', '77%'],
+        ['Median return, 21 sessions', '+3.87%'],
+        ['Median return, 63 sessions', '+7.20%'],
+        ['Median further fall before the eventual low', '\u22126.2%'],
+        ['25th percentile of that further fall', '\u221219.3%'],
+      ],
+    },
+    {
+      kind: 'list',
+      items: [
+        'The two halves are not in conflict. The usual shape is a lower low first and a higher price a month later: three in four make a new low inside three weeks, and two in three are higher after one month.',
+        'Friday\u2019s particular shape \u2014 five straight down closes, the worst of them last \u2014 was tested as a refinement and does not discriminate: 13% against 17% for “this was the low”. No edge, so none is claimed.',
+        'The left tail is the real risk. A quarter of these cases fell another 19% or more before bottoming, and 9 and 11 March 2020 are both in the sample. A 16% chance of having bottomed is not a 16% chance of a mild outcome.',
+      ],
+    },
+    { kind: 'heading', text: 'What the repository\u2019s own tools add, which is very little' },
+    {
+      kind: 'rules',
+      items: [
+        { rule: 'The named cycles: discount heavily', detail: 'Six of seven project higher over ten sessions, median +2.2%. The same ensemble was bullish going into last week, where ten of twelve projections called up into the decline. A tool with no demonstrated ability to flag a fall is not evidence when it fails to flag one.' },
+        { rule: 'The 6.8-year offset: note, do not trade', detail: 'The only one that called the decline. It projects +4.5% into mid-December and then −13% by late December — because its analog window ends on 29 January 2020 and it is transposing the COVID crash onto the calendar. Interesting; measured at chance; n of 1.' },
+        { rule: 'The lunar overlay: nothing', detail: 'The month one lunar month back drifted slightly up. Whether to read that upright or inverted is the 51/49 coin flip measured elsewhere on these pages, so it yields no direction at all.' },
+        { rule: 'The Gann divisions: nothing', detail: '25 and 27 November and 11 December are division dates on the two squares. Measured at the same hit rate as dates drawn out of a hat.' },
+      ],
+    },
+    { kind: 'heading', text: 'The call, as lodged' },
+    {
+      kind: 'table',
+      caption: 'From cycles/calls.json. Graded by cycles/score_calls.py against closing prices \u2014 no interpretation at scoring time.',
+      head: ['Role', 'Check', 'Resolves'],
+      rows: [
+        ['Prediction', 'A close below 6,910.39 before 18 Dec', 'the 77% base rate'],
+        ['Prediction', 'Higher than 6,910.39 twenty-one sessions out', '22 Dec'],
+        ['Confirmation', 'A close back above 7,175.83 before 18 Dec', 'would settle it early'],
+        ['Invalidation', 'A close below 6,220 voids the read', 'the fat-tail branch'],
+      ],
+    },
+    {
+      kind: 'callout',
+      tone: 'key',
+      title: 'What this is and is not',
+      text: 'It is a base rate with levels attached, not a forecast derived from any cycle on this site — the cycle work contributed essentially nothing to it and the write-up says so rather than borrowing its authority. It can be wrong in both directions at once: the market can make a lower low and still be lower in a month, which would score one prediction right and one wrong. That is the point of splitting them. The honest summary is that the asymmetry has shifted — late in a decline rather than early — and that a 16% chance of having bottomed on Friday is a statement about a distribution with a long left tail, not a forecast of a mild outcome.',
+    },
+    {
+      kind: 'callout',
+      tone: 'note',
+      title: 'Why the register exists',
+      text: 'cycles/calls.json holds every dated call on this record, each with its checks fixed before its window opened, and cycles/score_calls.py grades them from price data alone. Four primitives cover what these forecasts actually assert — a close above or below a level by a date, the sign of a move, and a turn on a date. A check that needs interpreting is a check that can be reinterpreted afterwards, which is how the Reminick entry came to be scored at 3 of 4 on one basis and 2 of 4 on another. The register records the basis on the call, in advance, and prints both answers.',
+    },
+  ],
+};
+
+/**
  * The overlay's own forward row, scored at last. Separate from the two
  * journal entries because those score what a person said; this scores what
  * this repository's own tool said, which is the harder and more useful test.
@@ -1678,6 +1753,12 @@ const forecastSep2026: KbArticle = {
     },
     {
       kind: 'callout',
+      tone: 'warn',
+      title: 'Three of four is on intraday extremes \u2014 on closing prices it is two',
+      text: 'The mechanical scorer grades every call on the register twice, and the two answers differ here. Read on intraday highs and lows, which is the basis the lecture used because it was drawn on an hourly chart, the 24 September low lands in the same session and the score is 3 of 4. Read on closing prices the 24 September low is not a turn at all — the market closed well off its low that day — and the score is 2 of 4. Neither basis is wrong, and that is the problem: a result that moves by a quarter depending on a choice made after the fact is weaker than the one-in-ten control suggested. The register records the basis on the call so the choice is made once, in advance, and printed with the answer.',
+    },
+    {
+      kind: 'callout',
       tone: 'note',
       title: 'An earlier version of this page scored it wrong',
       text: 'It was written from the first half of the session only, which contained the 24 Sep low and the 29 Sep high but not the 1 Oct low or the 7 Oct high. On that partial record the 1 Oct low read as a refutation — a lower low after the rally was supposed to have resumed — when in fact it was the third called turn and it landed to the session. The lesson is about scoring, not about the moon: a roadmap has to be recorded in full before the window opens, or the scoring will quietly grade it against whichever calls are remembered.',
@@ -1750,7 +1831,7 @@ export const categories: KbCategory[] = [
     id: 'review',
     title: 'Forecast journal & review',
     description: 'recording a forecast on the day it is made, scoring it once the window has passed, and the review that turns a run of calls into a measured hit rate.',
-    articles: [forecastSep2026, forecastNov2026, projectionScorecard],
+    articles: [forecastSep2026, forecastNov2026, forecastNov21, projectionScorecard],
   },
 ];
 

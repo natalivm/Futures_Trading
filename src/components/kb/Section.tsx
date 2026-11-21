@@ -31,8 +31,16 @@ export default function Section({ article, titled, forceOpen }:
   // closed heading and looks broken.
   useEffect(() => {
     const wanted = () => decodeURIComponent(location.hash.replace(/^#/, '')) === `kb-${article.id}`;
-    if (wanted()) setOpen(true);
-    const onHash = () => wanted() && setOpen(true);
+    const reveal = () => {
+      setOpen(true);
+      // After the body renders, not before, or the anchor lands on the
+      // pre-expansion position and the section opens off-screen.
+      requestAnimationFrame(() =>
+        document.getElementById(`kb-${article.id}`)
+          ?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
+    };
+    if (wanted()) reveal();
+    const onHash = () => wanted() && reveal();
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, [article.id]);

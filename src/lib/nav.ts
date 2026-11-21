@@ -39,6 +39,11 @@ export function sectionTag(page: Page, symbol: string): string {
 }
 
 export function pageFromHash(): Page {
-  const h = location.hash.slice(1);
-  return (PAGES as string[]).includes(h) ? (h as Page) : 'home';
+  const h = decodeURIComponent(location.hash.slice(1));
+  if ((PAGES as string[]).includes(h)) return h as Page;
+  // A link to one section of the knowledge base — `#kb-<article-id>`. Without
+  // this the hash matches no page and a shared link lands on home, which is
+  // how the section-opening code came to be unreachable.
+  if (h.startsWith('kb-')) return 'kb';
+  return 'home';
 }
