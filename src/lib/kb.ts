@@ -35,6 +35,7 @@ export interface KbCategory {
 }
 
 const TODAY = '2026-11-08';
+const TODAY_NOV21 = '2026-11-21';
 
 // ── The course ──
 
@@ -1081,6 +1082,84 @@ const lunarOverlay: KbArticle = {
 };
 
 /**
+ * The overlay's own forward row, scored at last. Separate from the two
+ * journal entries because those score what a person said; this scores what
+ * this repository's own tool said, which is the harder and more useful test.
+ */
+const projectionScorecard: KbArticle = {
+  id: 'projection-scorecard',
+  title: 'What our own overlays projected, and what arrived',
+  summary: 'The weekly scan rewrites itself, so it could never be wrong. Git kept the old copies \u2014 here they are, scored.',
+  source: 'cycles/score_projections.py, read back from the git history of public/cycles/*_named.json',
+  updated: TODAY_NOV21,
+  body: [
+    'Every other overlay on these pages is drawn from today. The workflow rewrites the scan in place each week, so the projected path always starts at the last bar and has never yet had the chance to be wrong. That is a comfortable way to run a forecasting tool and a useless one. Git kept every earlier version of those files, which means the record existed all along and only had to be read back out.',
+    { kind: 'heading', text: 'The first two scored windows, and they are brutal' },
+    { kind: 'scorecard', series: 'GSPC',
+      caption: 'Each named cycle\u2019s projection from the chosen date, dashed, against the S&P that followed, solid. Both share the anchor close, so the gap between them is the error in points.' },
+    {
+      kind: 'table',
+      caption: 'Projections made on 6 and 13 November 2026, scored on the bars that have since elapsed.',
+      head: ['Made', 'Cycles', 'Called up', 'Called down', 'Actual', 'Direction right'],
+      rows: [
+        ['6 Nov', '5', '4', '1', '\u22126.3%', '1 of 5'],
+        ['13 Nov', '7', '6', '1', '\u22128.6%', '1 of 7'],
+      ],
+    },
+    {
+      kind: 'list',
+      items: [
+        'Ten of twelve projections called the market up into a decline that ran \u22128.6% in the week to 20 November \u2014 the worst 0.7% of all five-session returns since 1928.',
+        'The same cycle got it right both times, and it is the only one that did: the 6.8-year offset, which projected \u22120.5% and then \u22121.9%. It was right about the sign and nowhere near the size.',
+        'Mean daily correlation across all twelve is \u22120.01. The projected day-to-day shape carries no information about the real one.',
+        'The 60-year cycle scores +0.82 daily correlation on one five-bar window, which is five numbers and means nothing. It is in the table because leaving out the flattering noise would be as dishonest as quoting it.',
+      ],
+    },
+    {
+      kind: 'callout',
+      tone: 'warn',
+      title: 'Two forecast dates is not a verdict on anything',
+      text: 'Twelve projections from two snapshots, both of which happened to land in front of the same decline, are one event sampled twice — not twelve independent tests. If the market had risen instead, ten of twelve would have looked prescient on exactly as little evidence. The per-cycle rows are printed so the record accumulates somewhere, not because they can yet be read. What this page is actually worth today is the machinery: from now on every weekly scan leaves a scored copy behind, and in a year the table will mean something.',
+    },
+    { kind: 'heading', text: 'Which years align best, by the two answers that disagree' },
+    {
+      kind: 'table',
+      caption: 'S&P 500, window 25 Feb 2025 \u2192 20 Nov 2026. R9 puts swing correlation above price correlation; the headline column is the one to trust least.',
+      head: ['Offset', 'Analog window', 'Swing corr', 'Price corr', 'Projects'],
+      rows: [
+        ['6.80 yr', 'May 2018 \u2192 Jan 2020', '+0.351', '+0.619', '+18.0%'],
+        ['28.00 yr', 'Feb 1997 \u2192 Nov 1998', '+0.324', '+0.872', '+16.1%'],
+        ['60.00 yr', 'Feb 1965 \u2192 Oct 1966', '+0.298', '\u22120.310', '+32.6%'],
+        ['78.50 yr', 'Jul 1946 \u2192 Apr 1948', '+0.260', '\u22120.518', '\u22122.4%'],
+        ['22.00 yr', 'Feb 2003 \u2192 Nov 2004', '+0.028', '+0.850', '+1.3%'],
+        ['11.65 yr', 'Jun 2013 \u2192 Mar 2015', '\u22120.024', '+0.919', '\u221214.5%'],
+        ['4.00 yr', 'Feb 2021 \u2192 Nov 2022', '\u22120.160', '\u22120.233', '+12.8%'],
+      ],
+    },
+    {
+      kind: 'list',
+      items: [
+        'By price correlation \u2014 the number every slide quotes \u2014 the best fit is 11.65 years at 0.919. By swing correlation it is the second worst of the seven. A random walk scores 0.947 on price correlation, which is the whole reason R9 ranks it last.',
+        'By swing correlation, which asks whether the two windows turn together, 6.8 years leads at +0.351. That it is also the only offset that called the recent decline is worth exactly one raised eyebrow and no more \u2014 two windows.',
+        'The seven offsets project between \u221214.5% and +32.6% over the next 230 sessions. R5 says the composite is the forecast and this is what disagreement looks like: no usable direction, which is itself the reading.',
+      ],
+    },
+    {
+      kind: 'callout',
+      tone: 'key',
+      title: 'Where the 6.8-year analog is pointing, and why to be careful with it',
+      text: 'Its window ends on 29 January 2020. The path it projects forward is therefore the first half of 2020 — a few quiet weeks, then the February crash, then the recovery that makes its 230-bar net come out at +18%. That is why it called the last fortnight down while every other offset called it up, and it is also why the +18% headline is misleading: the shape it is projecting is a crash followed by a V, not a climb. If the alignment holds it says the worst is immediately ahead and the recovery after it is fast. If it does not hold, it is one offset out of seven, leading a ranking on a metric whose whole band spans 0.35, with two scored windows behind it. Both sentences are true and the second one is the one to size positions on.',
+    },
+    {
+      kind: 'callout',
+      tone: 'note',
+      title: 'How this stays honest',
+      text: 'cycles/score_projections.py walks the git history of the scan files, takes each snapshot\u2019s forward path, and compares it with the prices that have since arrived — scoring only the part of the horizon that has actually elapsed, so a 230-bar path made a fortnight ago is judged on ten bars and no more. The workflow now runs it every week and commits the result, so the record grows by itself and cannot be quietly revised. The baseline printed beside the direction rate is what “always up” would have scored on the same windows; both windows so far were down, which makes that baseline degenerate and the comparison meaningless until the record holds some of each. The script says so rather than flattering itself.',
+    },
+  ],
+};
+
+/**
  * The forward-looking row, scored. Separate article because it is a result
  * about the tool rather than about the course.
  */
@@ -1309,6 +1388,92 @@ const cycleGlossary: KbArticle = {
  * of it, how to use them, and then reference.
  */
 /**
+ * A second source, and a different school: Gann calendar squares and
+ * planetary aspects rather than Baumring analogs. Worth its own article
+ * because the claims are specified far more tightly than the course's —
+ * tightly enough to generate every date for the next century — which makes
+ * them the easiest thing in this project to test and the hardest to wriggle
+ * out of afterwards.
+ */
+const gannSquare: KbArticle = {
+  id: 'gann-calendar-square',
+  title: 'The Gann calendar square, tested on 99 years',
+  summary: 'A timing grid specified to the day and testable in bulk \u2014 and it finds turns at the rate dates drawn out of a hat do.',
+  source: 'AstroTimeCycles.com \u2014 Michael Chalek, Market Update 15 Nov 2026; tested with cycles/backtest_gann_square.py',
+  updated: TODAY_NOV21,
+  body: [
+    'A different author and a different lineage from the rest of these pages — Gann’s calendar squares and planetary aspects rather than Baumring’s analogs. It is included because of a property the course material does not have: the central tool is specified to the day. A span of calendar days is drawn from an anchor, divided into eight minor squares and those into quarters, and the result is a grid of candidate reversal dates with nothing discretionary in it. Given the anchor, every division for the next hundred years is already fixed. That is rare and valuable, and it is exactly what makes the method testable in bulk.',
+    { kind: 'heading', text: 'The two squares' },
+    {
+      kind: 'rules',
+      items: [
+        { rule: 'The 64-day square', detail: 'Eight minor squares of eight calendar days, on a 32-step grid giving two-day segments. Quarter and halfway subdivisions are read as candidate turns. Its anchor is chosen by the author — the one discretionary element.' },
+        { rule: 'The 88-day square', detail: 'Anchored on the equinox, eight minor squares of eleven days: 88 = 8 × 11 = 4 × 22, with 22 as the “Master Time Factor”. The 88 days are Mercury’s orbital period. Its anchor is astronomical, so this one has no free parameter at all.' },
+        { rule: 'The weighting claim', detail: '“I generally assign the greatest weight to the quarter divisions as potential reversal points. Prices also show reactions near the halfway subdivisions.” Quarters and halfways are therefore scored separately below.' },
+      ],
+    },
+    {
+      kind: 'callout',
+      tone: 'note',
+      title: 'The implementation was checked against the author\u2019s own published table',
+      text: 'The 15 November update prints all seventeen division dates of its 64-day square, 8 October to 11 December 2026. The generator here reproduces that list exactly — same dates, same labels, quarter for quarter and halfway for halfway. Anchoring the 88-day square on the September equinox likewise lands on the published 22 September to 19 December span. So what follows tests the author’s grid, not an approximation of it. One wrinkle: the 2026 September equinox falls at 00:05 UT on the 23rd, which is the evening of the 22nd in New York, and the update anchors on the 22nd. At a tolerance of a day either way it makes no difference.',
+    },
+    { kind: 'heading', text: 'The test, and the control' },
+    'Every equinox and solstice from 1928 to 2026 is taken as an anchor — 400 of them — and the grid drawn from each. A division counts as a hit if a swing turn falls within a trading day of it. The control is a phase shift: the identical grid, same count, same spacing, anchored a random 1 to 87 days off the cardinal date. That keeps everything the square is except its alignment with the sky, which is the only thing being claimed.',
+    {
+      kind: 'table',
+      caption: 'S&P 500 cash, 24,846 sessions, 1928\u20132026. Turns at strength 5: 2,918, one every 8.5 sessions. Hit = within \u00b11 trading day.',
+      head: ['Dates tested', 'Hit rate', 'Phase-shifted grids', 'Rank'],
+      rows: [
+        ['Every division (n = 9,887)', '35.3%', '34.8% [34.0\u201335.3]', '91st'],
+        ['Quarter divisions (n = 1,187)', '34.0%', '35.0% [30.2\u201340.0]', '28th'],
+        ['Dates drawn out of a hat', '34.2%', '[33.3\u201335.4]', '\u2014'],
+      ],
+    },
+    {
+      kind: 'callout',
+      tone: 'key',
+      title: 'The hit rate is the width of the window, not the merit of the grid',
+      text: 'A third of all dates land within a day of a turn, because a turn arrives every 8.5 sessions and a ±1-day window is three sessions wide. Three in 8.5 is 35%, which is what the square scores, what a grid anchored 60 days off the equinox scores, and what dates pulled at random score. At ±0 days every number falls to about 12%; at ±2 days every number rises to about 53%. The grid never separates from the baseline at any width. This is the same trap the projection row fell into elsewhere in this project, and it is the single most common way a timing method looks impressive: quote the raw rate, never the rate of an arbitrary date judged the same way.',
+    },
+    {
+      kind: 'table',
+      caption: 'The rank of the real anchor inside its own control band, across both squares and three tolerances. A stable finding does not move like this.',
+      head: ['Square', '\u00b10 d', '\u00b11 d', '\u00b12 d'],
+      rows: [
+        ['88-day, every division', '57th', '91st', '45th'],
+        ['88-day, quarters only', '25th', '29th', '6th'],
+        ['64-day, every division', '21st', '7th', '27th'],
+        ['64-day, quarters only', '62nd', '37th', '43rd'],
+      ],
+    },
+    {
+      kind: 'list',
+      items: [
+        'Twelve cells, ranks from the 6th percentile to the 91st. The one cell that looks like a result — the 91st — has the 57th and the 45th on either side of it at narrower and wider tolerance. That is parameter noise, not a cycle.',
+        'The quarter divisions, which the text says carry the greatest weight, are the weaker half: below the 50th percentile in five cells of six, and at the 6th in one.',
+        'Nothing here depends on the anchor being astronomically correct. A grid nailed to an arbitrary day in October performs the same, which is the whole finding.',
+      ],
+    },
+    { kind: 'heading', text: 'The other machinery in the same report' },
+    {
+      kind: 'rules',
+      items: [
+        { rule: 'Price reduced to degrees', detail: 'A low of 7,499 becomes 299° by subtracting 20 complete 360° cycles, and is compared with a Pluto price-longitude line near 7,500. The arithmetic is right; the choice of scale is free, and the same report elsewhere scales a price by dividing by 100 instead (7,550 → 75.5°). Two different conversions from price to angle in one document is a sign the mapping is chosen to fit, not derived.' },
+        { rule: 'The planetary concentration count', detail: '36 two-body pairs are tracked and 14 November 2026 ranks first across 2000–2030, with eight simultaneous turning points against seven for the next-ranked date. Read as “a reason to watch for a potentially significant rally.” The author is explicit that the count does not establish direction — and the week that followed was the worst 0.7% of all five-session returns since 1928, in the other direction.' },
+        { rule: 'The eight-day interval', detail: 'A 5 Nov low to 13 Nov low is eight calendar days; the interval is then repeated forward from the 11th and the 12th to produce the 19th and the 20th. This is the one piece that is a genuine out-of-sample projection rather than a grid, and it is scored in the journal entry.' },
+      ],
+    },
+    {
+      kind: 'callout',
+      tone: 'key',
+      title: 'What to take from this author, which is not nothing',
+      text: 'Three things are worth borrowing even though the grid is inert. The dates are written down years ahead and cannot be revised after the fact, which is the standard everything else here should be held to. The weekly review grades the previous forecast against what happened before making a new one, honestly — it marked a high as a day late where the closing basis would have given it an exact hit. And the report says plainly that the count of planetary events does not establish direction, instead of letting the reader assume it does. The grid is worth having on a calendar because it costs nothing to look. It is not worth a position, and the measurement is unambiguous about why: it is a list of dates, and dates out of a hat do as well.',
+    },
+  ],
+};
+
+/**
  * The second technique in this session, and a different kind of failure from
  * the overlay: not a weak effect but a circular argument. Kept separate
  * because the overlay is about the moon and this is about arithmetic.
@@ -1382,6 +1547,76 @@ const seriesPhi: KbArticle = {
       tone: 'note',
       title: 'What is left, and it is not nothing',
       text: 'Strip out the phi and the summation and a testable claim remains: that counting trading days back from a significant low lands on turns more often than counting back from an arbitrary day. That is the series technique’s real content, it is measurable with the machinery already here, and it is untouched by any of the above. The session’s own framing points the same way — “this is how you get the big picture, but it’s not as sensitive” — a statement about which timeframe to use, not about spirals.',
+    },
+  ],
+};
+
+/**
+ * The second journal entry, and the counterweight to the first. A dated
+ * forecast from a different author and a different method, scored the same
+ * way — and it failed completely, during a tail event. Kept beside the
+ * Reminick roadmap deliberately: one hit and one miss is the honest state of
+ * this record, and neither is a result on its own.
+ */
+const forecastNov2026: KbArticle = {
+  id: 'forecast-2026-11-15',
+  title: '15 November 2026 \u2014 a rally called into an 8.6% week',
+  summary: 'A Gann-square forecast for 16\u201320 November, scored. Wrong on direction from the first session.',
+  source: 'AstroTimeCycles.com \u2014 Michael Chalek, Market Update 15 Nov 2026; S&P 500 cash',
+  updated: TODAY_NOV21,
+  body: [
+    'The second dated forecast in this journal, from a different author and a different method — Gann calendar squares, Mercury’s direct station, lunar apogee, a North Node speed turn and a proprietary “Law of Vibration” cycle. It is scored here on the same terms as the first: what was written before the fact, against what happened.',
+    { kind: 'heading', text: 'Called on 15 November, for the week of the 16th' },
+    {
+      kind: 'rules',
+      items: [
+        { rule: 'The scenario', detail: '“A rally from Monday, November 16 into Thursday, November 19, followed by a decline into Friday, November 20.”' },
+        { rule: 'The preferred high', detail: 'November 19, from the Law of Vibration cycle and a lunar projection, with November 20 allowed as a later-high alternative from the eight-day interval.' },
+        { rule: 'The starting reference', detail: 'The 13 November low — 7,499.40 on the cash index, which the report ties to a Pluto price-longitude line near 7,500.' },
+        { rule: 'The supporting cluster', detail: 'Mercury turning direct on the 13th, lunar apogee on the 13th, a Mars–South Node conjunction on the 14th, and 14 November ranking first in the author’s planetary-concentration table for 2000–2030.' },
+      ],
+    },
+    {
+      kind: 'timeline',
+      title: 'What the week did',
+      caption: 'S&P 500 cash closes. The 13 November close was 7,561.67.',
+      rows: [
+        { when: 'Mon 16 Nov', what: 'Closed 7,416.59, down 145. The day’s high of 7,515.60 never reached Friday’s close, and the 7,499.40 low — the forecast’s own starting reference — broke in the first session.' },
+        { when: 'Tue 17 Nov', what: 'Closed 7,340.53, down 76.' },
+        { when: 'Wed 18 Nov', what: 'Closed 7,323.63, down 17.' },
+        { when: 'Thu 19 Nov', what: 'The preferred high. Closed 7,175.83, down 148 — at the low of the week to that point.', now: true },
+        { when: 'Fri 20 Nov', what: 'Closed 6,910.39, down 265. Low 6,882.66.' },
+      ],
+    },
+    {
+      kind: 'callout',
+      tone: 'warn',
+      title: 'Wrong on direction, every session, into the worst 0.7% of weeks on record',
+      text: 'Five sessions, five down closes, 7,561.67 to 6,910.39 — −8.61%. Measured against every five-session return in the S&P since 1928, only 166 of 24,842 were worse: the 0.67th percentile. This is not a timing miss. The method called a rally into one of the hundred worst weeks in ninety-nine years and the turn it named for the high, 19 November, was the second-largest down day of the five until Friday beat it. Five consecutive down closes alone happen on 2.2% of days; the size on top of that puts the week far outside anything the forecast contemplated.',
+    },
+    {
+      kind: 'callout',
+      tone: 'key',
+      title: 'The lesson is the missing invalidation, and it is one the rules here already state',
+      text: 'The report names its starting reference precisely — the 13 November low at 7,499.40 — and never says what happens if it breaks. It broke on Monday, the first session of the forecast window, and the bullish scenario ran on unchanged for four more days. R10 in the rules of analysis asks for exactly this before entering: not “the square says up into the 19th” but “long while the 13 November low holds, void below it”. Written that way the forecast would have been void at Monday’s open with the index 100 points off its reference, instead of still being the working scenario 650 points lower. The forecast being wrong is ordinary. Having no level at which it was wrong is the part worth not copying.',
+    },
+    { kind: 'heading', text: 'Set against the other entry in this journal' },
+    {
+      kind: 'table',
+      caption: 'The two scored forecasts on this record, both dated before the fact.',
+      head: ['', '23 Sep \u2014 Reminick overlay', '15 Nov \u2014 AstroTimeCycles square'],
+      rows: [
+        ['Form', 'Four dated turns, 1\u201312 sessions out', 'Direction for a week, two dated turns'],
+        ['Result', '3 of 4 turns, two to the session', 'Direction wrong on all five sessions'],
+        ['Against control', '\u2248 1 in 10', 'No control needed \u2014 the sign was wrong'],
+        ['Stated invalidation', 'None', 'None'],
+      ],
+    },
+    {
+      kind: 'callout',
+      tone: 'note',
+      title: 'Two entries is not a sample, and that is the point of keeping the journal',
+      text: 'One method produced a one-in-ten roadmap and the other called a rally into a crash. Neither tells you anything on its own, and the temptation to read the pair as “the moon works and Gann does not” should be resisted completely — the backtests say the overlay is indistinguishable from its neighbours and the square is indistinguishable from dates out of a hat, which is the same verdict on both. What the journal is for is accumulating enough scored, pre-dated calls that the question stops being anecdote. Two is a start. The one thing both entries already agree on is the finding that needed no statistics: neither forecast said what would prove it wrong.',
     },
   ],
 };
@@ -1467,7 +1702,7 @@ export const categories: KbCategory[] = [
     id: 'cycles',
     title: 'Locating cycles',
     description: 'searching every offset for the one today’s market rhymes with, and the controls that say which scores to believe.',
-    articles: [cycleScanner, multiplesRule, seriesPhi, moonCycles, lunarOverlay, projectionScored],
+    articles: [cycleScanner, multiplesRule, seriesPhi, moonCycles, lunarOverlay, gannSquare, projectionScored],
   },
   {
     id: 'catalogue',
@@ -1515,7 +1750,7 @@ export const categories: KbCategory[] = [
     id: 'review',
     title: 'Forecast journal & review',
     description: 'recording a forecast on the day it is made, scoring it once the window has passed, and the review that turns a run of calls into a measured hit rate.',
-    articles: [forecastSep2026],
+    articles: [forecastSep2026, forecastNov2026, projectionScorecard],
   },
 ];
 

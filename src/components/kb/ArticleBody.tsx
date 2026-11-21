@@ -1,6 +1,7 @@
 import { type KbBlock } from '../../lib/kbBlocks';
 import CycleOverlay from './CycleOverlay';
 import NoiseCycleDemo from './NoiseCycleDemo';
+import ProjectionScore from './ProjectionScore';
 
 /**
  * Renders an article's blocks. A plain string is still a paragraph.
@@ -40,6 +41,9 @@ export default function ArticleBody({ body, level = 3 }: { body: KbBlock[]; leve
 
           case 'demo':
             return <NoiseCycleDemo key={i} caption={block.caption} />;
+
+          case 'scorecard':
+            return <ProjectionScore key={i} series={block.series} caption={block.caption} />;
 
           case 'list': {
             const List = block.ordered ? 'ol' : 'ul';

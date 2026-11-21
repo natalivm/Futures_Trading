@@ -24,7 +24,14 @@ export type KbBlock =
   | { kind: 'timeline'; title?: string; caption?: string; rows: TimelineRow[] }
   | { kind: 'table'; head: string[]; rows: string[][]; caption?: string }
   /** An interactive demonstration, keyed by id. */
-  | { kind: 'demo'; id: 'noise'; caption?: string };
+  | { kind: 'demo'; id: 'noise'; caption?: string }
+  /**
+   * Past projections against what arrived, from
+   * public/cycles/<series>_named_scored.json. Unlike `overlay`, which always
+   * draws from today and so can never be wrong yet, this only draws windows
+   * that have elapsed.
+   */
+  | { kind: 'scorecard'; series?: string; caption?: string };
 
 export interface RuleItem {
   /** The rule itself, or the term being defined. Kept short enough to scan. */
@@ -61,5 +68,7 @@ export function blockText(block: KbBlock): string {
       return [...block.head, ...block.rows.flat(), block.caption ?? ''].join(' ');
     case 'demo':
       return block.caption ?? '';
+    case 'scorecard':
+      return `projection scorecard ${block.series ?? ''} ${block.caption ?? ''}`;
   }
 }

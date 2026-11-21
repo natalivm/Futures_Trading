@@ -31,9 +31,13 @@ HEADERS = {
 }
 
 SYMBOLS = {
-    "ES=F": "E-mini S&P 500 continuous futures",
-    "QQQ":  "Invesco QQQ Trust",
-    "GC=F": "Gold continuous futures",
+    "ES=F":  "E-mini S&P 500 continuous futures",
+    "QQQ":   "Invesco QQQ Trust",
+    "GC=F":  "Gold continuous futures",
+    # The cash index, because the forecasts being scored in the journal are
+    # written against SPX cash, not the future, and an intraday high or low
+    # quoted to the tick has to be checked on the series it was quoted from.
+    "^GSPC": "S&P 500 cash index",
 }
 
 
