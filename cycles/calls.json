@@ -1,0 +1,55 @@
+{
+  "_README": "Pre-registered calls. A row is added BEFORE its window opens and is never edited afterwards — score_calls.py grades it from cycles/data/<symbol>.csv. Editing a check after the fact defeats the entire point of the file; add a new call instead.",
+  "calls": [
+    {
+      "id": "2026-09-23-reminick-es",
+      "made": "2026-09-23",
+      "symbol": "ES_F",
+      "by": "Allen Reminick — one-month lunar overlay",
+      "basis": "intraday",
+      "summary": "Four dated turns read off two hourly overlays, with ES at 7765.25.",
+      "checks": [
+        { "id": "low-0924", "role": "prediction", "type": "turn_on", "date": "2026-09-24", "turn": "low", "tol": 1,
+          "desc": "A low on 24 Sep" },
+        { "id": "high-0929", "role": "prediction", "type": "turn_on", "date": "2026-09-29", "turn": "high", "tol": 1,
+          "desc": "A high on 29 Sep after a three-day rally" },
+        { "id": "low-1001", "role": "prediction", "type": "turn_on", "date": "2026-10-01", "turn": "low", "tol": 1,
+          "desc": "A low on 1 Oct" },
+        { "id": "high-1007", "role": "prediction", "type": "turn_on", "date": "2026-10-07", "turn": "high", "tol": 1,
+          "desc": "A high on 7 Oct" }
+      ]
+    },
+    {
+      "id": "2026-11-15-astrotimecycles-spx",
+      "made": "2026-11-15",
+      "symbol": "GSPC",
+      "by": "Michael Chalek — Gann 64/88-day squares",
+      "summary": "A rally 16-19 Nov to a preferred high on the 19th, then a decline into the 20th.",
+      "checks": [
+        { "id": "rally", "role": "prediction", "type": "net_change", "from": 7561.67, "by": "2026-11-19", "expect": "up",
+          "desc": "Higher on 19 Nov than the 13 Nov close of 7,561.67" },
+        { "id": "high-1119", "role": "prediction", "type": "turn_on", "date": "2026-11-19", "turn": "high", "tol": 1,
+          "desc": "A high on 19 Nov" },
+        { "id": "ref-holds", "role": "invalidation", "type": "close_below", "level": 7499.40, "by": "2026-11-20", "expect": false,
+          "desc": "The 13 Nov low at 7,499.40 holds — the forecast's own starting reference" }
+      ]
+    },
+    {
+      "id": "2026-11-21-claude-spx",
+      "made": "2026-11-21",
+      "symbol": "GSPC",
+      "by": "Claude Code — base rates (n=103) plus the repo's scans, discounted",
+      "summary": "Friday 20 Nov was probably not the final low (~1 in 6), but the month ahead is more likely up than down. Expect a retest or marginal lower low first.",
+      "checks": [
+        { "id": "lower-low", "role": "prediction", "type": "close_below", "level": 6910.39, "by": "2026-12-18", "expect": true,
+          "desc": "A close below Friday's 6,910.39 at some point before 18 Dec — the 77%-within-21-sessions base rate" },
+        { "id": "month-higher", "role": "prediction", "type": "net_change", "from": 6910.39, "by": "2026-12-22", "expect": "up",
+          "desc": "Higher than 6,910.39 twenty-one sessions out — the +3.87% median" },
+        { "id": "confirm", "role": "confirmation", "type": "close_above", "level": 7175.83, "by": "2026-12-18", "expect": true,
+          "desc": "A close back above 7,175.83 (Thu 19 Nov close) would confirm the low is in" },
+        { "id": "tail", "role": "invalidation", "type": "close_below", "level": 6220.00, "by": "2027-01-29", "expect": false,
+          "desc": "A close below 6,220 (-10% from Friday) opens the fat-tail branch and the read is void" }
+      ]
+    }
+  ]
+}

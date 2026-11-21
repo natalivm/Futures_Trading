@@ -341,6 +341,49 @@ the same windows. Both windows so far were down, which makes that baseline
 degenerate — the script detects this and refuses to claim the comparison means
 anything.
 
+## calls.json and score_calls.py
+
+The journal's standing complaint against every forecast it has scored is that
+none of them said what would prove it wrong. This is the fix, applied to
+ourselves too.
+
+`cycles/calls.json` is a register of dated calls. A row is added **before its
+window opens** and is never edited afterwards; `score_calls.py` grades it from
+`cycles/data/<symbol>.csv` alone.
+
+```bash
+python3 cycles/score_calls.py
+python3 cycles/score_calls.py --json     # writes public/cycles/calls_scored.json
+```
+
+Four primitives cover what the forecasts on this record actually assert, and
+nothing in the scorer reads prose:
+
+| type | asserts |
+|---|---|
+| `close_below` / `close_above` | a level is breached at some close on or before a date |
+| `net_change` | the sign of the move from a level to a date |
+| `turn_on` | a swing turn of the named kind on a date, ±tol |
+
+Each check carries a **role**. A `prediction` is the forecast proper, a
+`confirmation` is a level that settles it early, an `invalidation` is the line
+that voids it — and the invalidation is scored like everything else, so a call
+whose invalidation tripped cannot be quietly remembered as merely early.
+
+### The basis matters, so it is recorded on the call
+
+A forecast read off an hourly chart names intraday turns; scoring it on
+closing prices asks a different question. The Reminick roadmap scores **3 of
+4 on intraday extremes and 2 of 4 on closes** — the 24 September low is a
+turn on one basis and not on the other. Neither is wrong, which is exactly why
+the call carries `"basis": "intraday"` set in advance, and why the scorer
+prints both answers whenever an hourly file lets it compute them. A result
+that moves by a quarter on a choice made after the fact is weaker than its
+control suggested.
+
+Current state of the register: Reminick 3 of 4 (2 on closes), AstroTimeCycles
+0 of 2 with its invalidation tripped, and one open call lodged 21 November.
+
 ## Pre-specified hypotheses
 
 R7 says an interval named in advance is far stronger evidence than the best of

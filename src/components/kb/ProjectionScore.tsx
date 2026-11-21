@@ -126,23 +126,28 @@ export default function ProjectionScore({ series = 'GSPC', caption }:
         <span>— actual, to {actual.through}</span>
         <span className="muted">- - - each named cycle’s projection from {made}</span>
       </div>
-      <table className="kb-table">
-        <thead>
-          <tr><th>Cycle</th><th>Projected</th><th>Actual</th><th>Direction</th><th>Daily r</th></tr>
-        </thead>
-        <tbody>
-          {rows.map(r => (
-            <tr key={r.lag}>
-              <td>{r.lag.toFixed(2)} yr</td>
-              <td>{r.projPct >= 0 ? '+' : ''}{r.projPct.toFixed(1)}%</td>
-              <td>{r.realPct >= 0 ? '+' : ''}{r.realPct.toFixed(1)}%</td>
-              <td>{r.dirRight ? 'right' : 'wrong'}</td>
-              <td>{r.dailyCorr === null ? '—'
-                   : `${r.dailyCorr >= 0 ? '+' : ''}${r.dailyCorr.toFixed(2)}`}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {/* The same wrapper every other table on the page uses: without it this
+          one set a 401px floor and forced the whole document to scroll
+          sideways on a phone. */}
+      <div className="kb-table-wrap">
+        <table className="kb-table">
+          <thead>
+            <tr><th>Cycle</th><th>Projected</th><th>Actual</th><th>Direction</th><th>Daily r</th></tr>
+          </thead>
+          <tbody>
+            {rows.map(r => (
+              <tr key={r.lag}>
+                <th scope="row">{r.lag.toFixed(2)} yr</th>
+                <td>{r.projPct >= 0 ? '+' : ''}{r.projPct.toFixed(1)}%</td>
+                <td>{r.realPct >= 0 ? '+' : ''}{r.realPct.toFixed(1)}%</td>
+                <td>{r.dirRight ? 'right' : 'wrong'}</td>
+                <td>{r.dailyCorr === null ? '—'
+                     : `${r.dailyCorr >= 0 ? '+' : ''}${r.dailyCorr.toFixed(2)}`}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       {caption && <figcaption>{caption}</figcaption>}
     </figure>
   );

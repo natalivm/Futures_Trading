@@ -154,6 +154,11 @@ jobs:
           # public/cycles/<SLUG>_named_scored.json for the site to draw.
           run_section "Projections scored against what arrived" \
             python3 cycles/score_projections.py --symbol GSPC --archive --verbose
+          # The pre-registered calls. Each was written into cycles/calls.json
+          # before its window opened and is graded from price data alone, so
+          # this run can only ever change a status, never a claim.
+          run_section "Pre-registered calls" \
+            python3 cycles/score_calls.py --json
 
           if [ -n "$SYMBOL" ]; then
             run_section "Ad-hoc: $SYMBOL at $LAGS year(s), window $WINDOW" \
